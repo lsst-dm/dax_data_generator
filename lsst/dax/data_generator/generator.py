@@ -53,4 +53,4 @@ class DataGenerator:
                     output_columns[column_name] = output_data
                 output_tables[table] = pd.DataFrame(output_columns)
 
-            return output_tables
+        return output_tables

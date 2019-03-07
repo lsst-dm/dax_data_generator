@@ -27,6 +27,35 @@ class ColumnGenerator(ABC):
         return NotImplemented
 
 
+class CcdVisitGenerator(ColumnGenerator):
+
+    def __init__(self, ccd_visits_per_chunk, filters="ugrizy"):
+        # TODO: Is this CcdVisits or Visits?
+        self.filters = filters
+        self.ccd_visits_per_chunk = ccd_visits_per_chunk
+
+    def __call__(self, cell_id, length):
+        """
+        Returns
+        -------
+        CcdVisitId : array
+            Unique IDs for each CcdVisit.
+        hpix8 : array
+            The healpix level 8 pixel number for the CcdVisits.
+        filterName : array
+            The name of the filter for each CcdVisit.
+        """
+
+        # Generate a bunch of hpix8 values for CcdVisit centers
+        hpix8 = np.zeros(self.ccd_visits_per_chunk)
+        # Multiply by the number of filters
+        filterName = np.random.choice(list(self.filters),
+                                      self.ccd_visits_per_chunk)
+        # Generate IDs for each of them
+        ccdVisitId = np.arange(self.ccd_visits_per_chunk)
+        return (ccdVisitId, hpix8, filterName)
+
+
 class RaDecGenerator(ColumnGenerator):
 
     def __call__(self, cell_id, length, **kwargs):
