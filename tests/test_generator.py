@@ -22,3 +22,17 @@ class TestDataGenerator(unittest.TestCase):
         data = generator.make_chunk(cell_id, num_rows=50)
         self.assertIn('Object', data.keys())
         self.assertEqual(len(data['Object']), 50)
+
+    def testResolveTableOrder(self):
+        generator_spec = {
+            "ForcedSource": {
+                "prereq_row": "Object",
+                "prereq_tables": ["CcdVisit"],
+                "columns": {}
+            },
+            "CcdVisit": {
+                "columns": {}
+            }
+        }
+        table_order = DataGenerator._resolve_table_order(generator_spec)
+        self.assertTrue(table_order.index("CcdVisit") < table_order.index("ForcedSource"))

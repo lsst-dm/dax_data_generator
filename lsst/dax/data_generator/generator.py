@@ -10,10 +10,23 @@ class DataGenerator:
         self.spec = spec
         self.tables = spec.keys()
 
+    @staticmethod
+    def _resolve_table_order(spec):
+        all_tables = list(spec.keys())
+        prereqs = []
+        for table_name, table_spec in spec.items():
+            if(table_spec.get("prereq_row", "") in all_tables):
+                prereqs.append(table_spec["prereq_row"])
+            for prereq_table in table_spec.get("prereq_tables", []):
+                if prereq_table in all_tables:
+                    prereqs.append(prereq_table)
+        non_prereqs = set(all_tables) - set(prereqs)
+        return prereqs + list(non_prereqs)
+
     def make_chunk(self, chunk_id, num_rows=None):
         output_tables = {}
 
-        for table in self.tables:
+        for table in self._resolve_table_order(self.spec):
             column_generators = self.spec[table]["columns"]
             prereq_rows = self.spec[table].get("prereq_row", None)
             prereq_tables = self.spec[table].get("prereq_tables", [])
