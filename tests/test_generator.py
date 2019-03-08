@@ -37,6 +37,21 @@ class TestDataGenerator(unittest.TestCase):
         table_order = DataGenerator._resolve_table_order(generator_spec)
         self.assertTrue(table_order.index("CcdVisit") < table_order.index("ForcedSource"))
 
+    def testCcdVisit(self):
+        generator_spec = {
+            "CcdVisit": {
+                "columns": {"ccdVisitId": columns.ObjIdGenerator(),
+                            "filterName": columns.FilterGenerator(filters="ugr"),
+                            "ra,dec": columns.RaDecGenerator()
+                            }
+            },
+        }
+        chunk_id = 5000
+        generator = DataGenerator(generator_spec)
+        chunk_table = generator.make_chunk(chunk_id, 50)
+        self.assertIn("CcdVisit", chunk_table.keys())
+        self.assertEqual(len(chunk_table["CcdVisit"]), 50)
+
     def testForcedSource(self):
 
         generator_spec = {
@@ -49,6 +64,7 @@ class TestDataGenerator(unittest.TestCase):
             "CcdVisit": {
                 "columns": {"ccdVisitId": columns.ObjIdGenerator(),
                             "filterName": columns.FilterGenerator(filters="ugr"),
+                            "ra,dec": columns.RaDecGenerator()
                             }
             },
             "ForcedSource": {

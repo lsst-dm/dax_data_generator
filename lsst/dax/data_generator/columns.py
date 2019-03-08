@@ -1,6 +1,7 @@
 
 import numpy as np
 from abc import ABC
+import healpy
 
 __all__ = ["ColumnGenerator", "ObjIdGenerator", "FilterGenerator",
            "RaDecGenerator", "MagnitudeGenerator", "ForcedSourceGenerator"]
@@ -29,10 +30,22 @@ class ColumnGenerator(ABC):
 
 class CcdVisitGenerator(ColumnGenerator):
 
-    def __init__(self, ccd_visits_per_chunk, filters="ugrizy"):
+    def __init__(self, chunker, ccd_visits_per_chunk, filters="ugrizy"):
         # TODO: Is this CcdVisits or Visits?
+        self.chunker = chunker
         self.filters = filters
         self.ccd_visits_per_chunk = ccd_visits_per_chunk
+
+    def _find_hpix8_in_cell(self, chunk_id):
+        chunk_bounds = self.chunker.getChunkBounds(chunk_id)
+        grid_size = 9 
+        lon_arr = np.linspace(chunk_bounds.lonMin, chunk_bounds.lonMax, grid_size)
+        lat_arr = np.linspace(chunk_bounds.latMin, chunk_bounds.latMax, grid_size)
+        xx, yy = np.meshgrid(lon_arr[1::-2], lat_arr[1::-2])
+        nside = healpy.order2nside(8)
+        trial_healpix = healpy.ang2pix(nside, lon_arr, lat_arr, nest=True, lonlat=True)
+
+        return list(set(trial_healpix))
 
     def __call__(self, cell_id, length):
         """
