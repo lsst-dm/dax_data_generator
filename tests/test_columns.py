@@ -2,6 +2,7 @@
 import unittest
 import numpy as np
 import healpy
+import pandas as pd
 
 import lsst.dax.data_generator.columns as columns
 from lsst.dax.data_generator import Chunker
@@ -9,17 +10,19 @@ from lsst.dax.data_generator import Chunker
 
 class ColumnGeneratorTests(unittest.TestCase):
 
-    @unittest.skip("Disabled while CcdVisit under repair")
     def testCcdVisitGenerator(self):
         filters = "ugrizy"
         num_ccd_visits = 10
-        cell_id = 5000
-        ccdVisitGenerator = columns.CcdVisitGenerator(num_ccd_visits, filters=filters)
+        cell_id = 1
+        chunker = Chunker(0, 0, 0)
+        ccdVisitGenerator = columns.CcdVisitGenerator(chunker, num_ccd_visits, filters=filters)
 
         results = ccdVisitGenerator(cell_id, 0)
         self.assertEqual(len(results), 3)
 
         ccdVisitId, hpix8, filterName = results
+        self.assertEqual(len(ccdVisitId), len(hpix8))
+        self.assertEqual(len(ccdVisitId), len(filterName))
         self.assertEqual(len(ccdVisitId), num_ccd_visits)
         self.assertEqual(len(ccdVisitId), len(set(ccdVisitId)))
 
@@ -71,3 +74,52 @@ class ColumnGeneratorTests(unittest.TestCase):
         filter_generator = columns.FilterGenerator(filters)
         filter_values = filter_generator(5000, 40)
         self.assertTrue(set(filter_values).issubset(filters))
+
+    def testFSGenerator(self):
+        object_ids = np.array([1, 2, 3,
+                              4,
+                              5, 6, 7, 8])
+        object_ra_decs = [(1.1, 1.1), (1.1, 1.2), (1.1, 1.3),
+                          (2.0, 2.1),
+                          (3.0, 3.1), (3.1, 3.0), (3.05, 3.05), (3.1, 3.1)]
+
+        visit_ids = np.array([101, 102, 103, 104])
+        visit_ra_decs = [(1.0, 1.0), (2.0, 2.0), (3.0, 3.0), (3.02, 3.02)]
+        visit_df = pd.DataFrame({'CcdVisitId': visit_ids,
+                                 'ra': [x[0] for x in visit_ra_decs],
+                                 'decl': [x[1] for x in visit_ra_decs],
+                                 'filterName': ['g']*len(visit_ids)
+                                 })
+        prereq_tables = {'CcdVisit': visit_df}
+
+        object_df = pd.DataFrame({'objectId': object_ids,
+                                  'ra': [x[0] for x in object_ra_decs],
+                                  'decl': [x[1] for x in object_ra_decs],
+                                  'mag_g': [20]*len(object_ids)
+                                  })
+
+        cell_id = 1
+        length = 0
+        fs_generator = columns.ForcedSourceGenerator(visit_radius=0.30)
+
+        # Expected result in the form of a list for each object,
+        # containing (objectId, visitId) tuples.
+        expected = [[(1, 101)],
+                    [(2, 101)],
+                    [],
+                    [(4, 102)],
+                    [(5, 103), (5, 104)],
+                    [(6, 103), (6, 104)],
+                    [(7, 103), (7, 104)],
+                    [(8, 103), (8, 104)]]
+
+        for object_row_id, expected_res in enumerate(expected):
+            fs_output = fs_generator(cell_id, length,
+                                     prereq_row=object_df.iloc[object_row_id],
+                                     prereq_tables=prereq_tables)
+            print(fs_output)
+            output_obj_ids, output_ccdvisits, _, _ = fs_output
+            self.assertEqual(len(output_obj_ids), len(expected_res))
+            for res_row_obj, res_row_visit in expected_res:
+                self.assertIn(res_row_obj, output_obj_ids)
+                self.assertIn(res_row_visit, output_ccdvisits)

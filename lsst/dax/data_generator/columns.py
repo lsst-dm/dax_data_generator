@@ -47,7 +47,7 @@ class CcdVisitGenerator(ColumnGenerator):
 
         return list(set(trial_healpix))
 
-    def __call__(self, cell_id, length):
+    def __call__(self, chunk_id, length):
         """
         Returns
         -------
@@ -60,12 +60,13 @@ class CcdVisitGenerator(ColumnGenerator):
         """
 
         # Generate a bunch of hpix8 values for CcdVisit centers
-        hpix8 = np.zeros(self.ccd_visits_per_chunk)
+        hpix8 = np.random.choice(self._find_hpix8_in_cell(chunk_id),
+                                 self.ccd_visits_per_chunk)
         # Multiply by the number of filters
         filterName = np.random.choice(list(self.filters),
                                       self.ccd_visits_per_chunk)
         # Generate IDs for each of them
-        ccdVisitId = np.arange(self.ccd_visits_per_chunk)
+        ccdVisitId = chunk_id * 10**9 + np.arange(self.ccd_visits_per_chunk)
         return (ccdVisitId, hpix8, filterName)
 
 
@@ -139,23 +140,39 @@ class FilterGenerator(ColumnGenerator):
 
 class ForcedSourceGenerator(ColumnGenerator):
 
-    filters = "ugrizy"
+    def __init__(self, filters="ugrizy", visit_radius=0.30):
+        self.filters = filters
+        self.visit_radius = visit_radius
 
     def __call__(self, cell_id, length, prereq_row=None, prereq_tables=None):
         assert prereq_row is not None, "ForcedSourceGenerator requires rows from Object."
         assert prereq_tables is not None, "ForcedSourceGenerator requires the Visit table."
 
-        visit_length = len(prereq_tables['CcdVisit'])
+        visit_table = prereq_tables['CcdVisit']
+        object_record = prereq_row
 
-        objectId = np.zeros(visit_length) + prereq_row['objectId']
-        ccdVisitId = prereq_tables['CcdVisit']['ccdVisitId']
+        dists_to_visit_center = np.sqrt((visit_table['ra'] - object_record['ra'])**2 +
+                                        (visit_table['decl'] - object_record['decl'])**2)
+        n_matching_visits = np.sum(dists_to_visit_center < self.visit_radius)
 
-        psFlux = np.random.randn(visit_length)
+        objectId = np.zeros(n_matching_visits) + object_record['objectId']
+        psFlux = np.random.randn(n_matching_visits)
+        psFluxSigma = np.zeros(n_matching_visits) + 0.1
+        ccdVisitId = np.zeros(n_matching_visits)
+
+        index_position = 0
         for filter_name in self.filters:
-            sel, = np.where(prereq_tables['CcdVisit']['filterName'] == filter_name)
-            if(len(sel) > 0):
-                psFlux[sel] += prereq_row['mag_{:s}'.format(filter_name)]
+            sel, = np.where((visit_table['filterName'] == filter_name) &
+                            (dists_to_visit_center < self.visit_radius))
+            matching_filter_visitIds = visit_table['CcdVisitId'][sel]
 
-        psFluxSigma = np.zeros(visit_length) + 0.1
+            if(len(matching_filter_visitIds) == 0):
+                continue
+
+            n_filter_visits = len(matching_filter_visitIds)
+            output_indices = slice(index_position, index_position + n_filter_visits)
+            ccdVisitId[output_indices] = matching_filter_visitIds
+            psFlux[output_indices] += object_record['mag_{:s}'.format(filter_name)]
+            index_position += n_filter_visits
 
         return (objectId, ccdVisitId, psFlux, psFluxSigma)

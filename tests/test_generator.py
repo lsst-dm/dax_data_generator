@@ -10,7 +10,7 @@ class TestDataGenerator(unittest.TestCase):
         generator_spec = {
             "Object": {
                 "columns": {"objectId": columns.ObjIdGenerator(),
-                            "ra,dec": columns.RaDecGenerator(),
+                            "ra,decl": columns.RaDecGenerator(),
                             "mag_u,mag_g,mag_r": columns.MagnitudeGenerator(n_mags=3)
                             }
             }
@@ -42,7 +42,7 @@ class TestDataGenerator(unittest.TestCase):
             "CcdVisit": {
                 "columns": {"ccdVisitId": columns.ObjIdGenerator(),
                             "filterName": columns.FilterGenerator(filters="ugr"),
-                            "ra,dec": columns.RaDecGenerator()
+                            "ra,decl": columns.RaDecGenerator()
                             }
             },
         }
@@ -57,14 +57,14 @@ class TestDataGenerator(unittest.TestCase):
         generator_spec = {
             "Object": {
                 "columns": {"objectId": columns.ObjIdGenerator(),
-                            "ra,dec": columns.RaDecGenerator(),
+                            "ra,decl": columns.RaDecGenerator(),
                             "mag_u,mag_g,mag_r": columns.MagnitudeGenerator(n_mags=3)
                             }
             },
             "CcdVisit": {
                 "columns": {"ccdVisitId": columns.ObjIdGenerator(),
                             "filterName": columns.FilterGenerator(filters="ugr"),
-                            "ra,dec": columns.RaDecGenerator()
+                            "ra,decl": columns.RaDecGenerator()
                             }
             },
             "ForcedSource": {
