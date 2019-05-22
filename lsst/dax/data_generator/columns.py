@@ -186,6 +186,7 @@ class ForcedSourceGenerator(ColumnGenerator):
 
         dists_to_visit_center = np.sqrt((visit_table['ra'] - object_record['ra'])**2 +
                                         (visit_table['decl'] - object_record['decl'])**2)
+        print(object_record)
         n_matching_visits = np.sum(dists_to_visit_center < self.visit_radius)
 
         objectId = np.zeros(n_matching_visits) + object_record['objectId']

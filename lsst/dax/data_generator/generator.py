@@ -24,6 +24,15 @@ class DataGenerator:
         non_prereqs = set(all_tables) - set(prereqs)
         return prereqs + list(non_prereqs)
 
+    def _add_to_list(self, generated_data, output_columns, split_column_names):
+        if isinstance(generated_data, tuple) or isinstance(generated_data, list):
+            for i, name in enumerate(split_column_names):
+                output_columns[name].append(generated_data[i])
+        else:
+            output_columns[split_column_names[0]] = generated_data
+            if(len(split_column_names) > 1):
+                assert ValueError, "Column name implies multiple returns, but generator returned one"
+
     def make_chunk(self, chunk_id, num_rows=None):
         output_tables = {}
         if isinstance(num_rows, dict):
@@ -35,27 +44,24 @@ class DataGenerator:
             column_generators = self.spec[table]["columns"]
             prereq_rows = self.spec[table].get("prereq_row", None)
             prereq_tables = self.spec[table].get("prereq_tables", [])
-            output_columns = {}
             for column_name, column_generator in column_generators.items():
 
+                split_column_names = column_name.split(",")
+                output_columns = {name: [] for name in split_column_names}
                 if prereq_rows is None:
-                    output_data = column_generator(chunk_id, rows_per_table[table],
-                                                   prereq_tables={t: output_tables[t] for t in prereq_tables})
+                    individual_obj = column_generator(chunk_id, rows_per_table[table],
+                                                      prereq_tables={t: output_tables[t] for t in prereq_tables})
+                    self._add_to_list(individual_obj, output_columns, split_column_names)
                 else:
                     prereq_table_contents = {t: output_tables[t] for t in prereq_tables}
-                    output_data = column_generator(chunk_id, rows_per_table[table],
-                                                   prereq_row = output_tables[prereq_rows].iloc[1],
-                                                   prereq_tables=prereq_table_contents)
-
-                split_column_names = column_name.split(",")
-                if isinstance(output_data, tuple) or isinstance(output_data, list):
-                    for i, name in enumerate(split_column_names):
-                        output_columns[name] = output_data[i]
-                else:
-                    if(len(split_column_names) > 1):
-                        assert ValueError, "Column name implies multiple returns, but generator returned one"
-
-                    output_columns[column_name] = output_data
+                    for n in range(len(output_tables[prereq_rows])):
+                        individual_obj = column_generator(chunk_id, rows_per_table[table],
+                                                          prereq_row=output_tables[prereq_rows].iloc[n],
+                                                          prereq_tables=prereq_table_contents)
+                        self._add_to_list(individual_obj, output_columns, split_column_names)
+                for name in output_columns.keys():
+                    output_columns[name] = pd.DataFrame()
+                    
                 output_tables[table] = pd.DataFrame(output_columns)
 
         return output_tables
