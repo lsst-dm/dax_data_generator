@@ -1,4 +1,5 @@
 
+import numpy as np
 import pandas as pd
 from collections import defaultdict
 
@@ -29,7 +30,7 @@ class DataGenerator:
             for i, name in enumerate(split_column_names):
                 output_columns[name].append(generated_data[i])
         else:
-            output_columns[split_column_names[0]] = generated_data
+            output_columns[split_column_names[0]].append(generated_data)
             if(len(split_column_names) > 1):
                 assert ValueError, "Column name implies multiple returns, but generator returned one"
 
@@ -44,10 +45,13 @@ class DataGenerator:
             column_generators = self.spec[table]["columns"]
             prereq_rows = self.spec[table].get("prereq_row", None)
             prereq_tables = self.spec[table].get("prereq_tables", [])
+            output_columns = {}
             for column_name, column_generator in column_generators.items():
 
                 split_column_names = column_name.split(",")
-                output_columns = {name: [] for name in split_column_names}
+                for name in split_column_names:
+                    output_columns[name] = []
+
                 if prereq_rows is None:
                     individual_obj = column_generator(chunk_id, rows_per_table[table],
                                                       prereq_tables={t: output_tables[t] for t in prereq_tables})
@@ -59,9 +63,11 @@ class DataGenerator:
                                                           prereq_row=output_tables[prereq_rows].iloc[n],
                                                           prereq_tables=prereq_table_contents)
                         self._add_to_list(individual_obj, output_columns, split_column_names)
-                for name in output_columns.keys():
-                    output_columns[name] = pd.DataFrame()
-                    
-                output_tables[table] = pd.DataFrame(output_columns)
+
+            for name in output_columns.keys():
+                temp = np.concatenate(output_columns[name])
+                output_columns[name] = temp
+
+            output_tables[table] = pd.DataFrame(output_columns)
 
         return output_tables

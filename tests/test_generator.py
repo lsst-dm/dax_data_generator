@@ -96,22 +96,6 @@ class TestDataGenerator(unittest.TestCase):
         print(len(chunk_tables['ForcedSource']))
         print(len(chunk_tables['CcdVisit']))
         print(len(chunk_tables['Object']))
-        # print("Object: ", min(chunk_tables['Object']['decl']), max(chunk_tables['Object']['decl']))
-        # print("Visit: ", min(chunk_tables['CcdVisit']['decl']), max(chunk_tables['CcdVisit']['decl']))
-        # print(chunk_tables['CcdVisit']['ra'][:20], chunk_tables['CcdVisit']['decl'][:20])
-        # print(chunk_tables['Object']['ra'][:20], chunk_tables['Object']['decl'][:20])
-        delta_set = (set(chunk_tables['CcdVisit']['ccdVisitId']) -
-                     set(chunk_tables['ForcedSource']['ccdVisitId']))
-        test_id = delta_set.pop()
-        target_visit = chunk_tables['CcdVisit'][chunk_tables['CcdVisit']['ccdVisitId'] == test_id]
-        print(target_visit)
-        center_ra = target_visit.iloc[0]['ra']
-        center_dec = target_visit.iloc[0]['decl']
-        dists = np.sqrt((chunk_tables['Object']['ra'] - center_ra)**2 +
-                        (chunk_tables['Object']['decl'] - center_dec))
-        #  print(dists)
-        # print(chunk_tables['Object']['ra'] - float(center_ra))
-        print(center_ra)
         self.assertEqual(set(chunk_tables['ForcedSource']['ccdVisitId']),
                          set(chunk_tables['CcdVisit']['ccdVisitId']))
 
