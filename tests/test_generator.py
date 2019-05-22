@@ -2,6 +2,11 @@
 import unittest
 from lsst.dax.data_generator import DataGenerator
 import lsst.dax.data_generator.columns as columns
+from lsst.dax.data_generator import Chunker
+
+num_stripes = 50
+num_substripes = 5
+chunker = Chunker(0, num_stripes, num_substripes)
 
 
 class TestDataGenerator(unittest.TestCase):
@@ -10,7 +15,7 @@ class TestDataGenerator(unittest.TestCase):
         generator_spec = {
             "Object": {
                 "columns": {"objectId": columns.ObjIdGenerator(),
-                            "ra,decl": columns.RaDecGenerator(),
+                            "ra,decl": columns.RaDecGenerator(chunker),
                             "mag_u,mag_g,mag_r": columns.MagnitudeGenerator(n_mags=3)
                             }
             }
@@ -40,9 +45,9 @@ class TestDataGenerator(unittest.TestCase):
     def testCcdVisit(self):
         generator_spec = {
             "CcdVisit": {
-                "columns": {"ccdVisitId": columns.ObjIdGenerator(),
+                "columns": {"ccdVisitId": columns.VisitIdGenerator(),
                             "filterName": columns.FilterGenerator(filters="ugr"),
-                            "ra,decl": columns.RaDecGenerator()
+                            "ra,decl": columns.RaDecGenerator(chunker)
                             }
             },
         }
@@ -57,34 +62,41 @@ class TestDataGenerator(unittest.TestCase):
         generator_spec = {
             "Object": {
                 "columns": {"objectId": columns.ObjIdGenerator(),
-                            "ra,decl": columns.RaDecGenerator(),
+                            "ra,decl": columns.RaDecGenerator(chunker),
                             "mag_u,mag_g,mag_r": columns.MagnitudeGenerator(n_mags=3)
                             }
             },
             "CcdVisit": {
-                "columns": {"ccdVisitId": columns.ObjIdGenerator(),
+                "columns": {"ccdVisitId": columns.VisitIdGenerator(),
                             "filterName": columns.FilterGenerator(filters="ugr"),
-                            "ra,decl": columns.RaDecGenerator()
+                            "ra,decl": columns.RaDecGenerator(chunker)
                             }
             },
             "ForcedSource": {
                 "prereq_row": "Object",
                 "prereq_tables": ["CcdVisit"],
                 "columns": {
-                    "objectId,ccdVisitId,psFlux,psFlux_Sigma": columns.ForcedSourceGenerator(),
+                    "objectId,ccdVisitId,psFlux,psFlux_Sigma":
+                        columns.ForcedSourceGenerator(visit_radius=3.0),
                 },
             }
         }
 
-        chunk_id = 5000
-        num_filters = 3
+        chunk_id = 2525
         generator = DataGenerator(generator_spec)
-        chunk_tables = generator.make_chunk(chunk_id, num_rows=40)
+        row_counts = {"CcdVisit": 200,
+                      "Object": 100,
+                      "ForcedSource": 0}
+        chunk_tables = generator.make_chunk(chunk_id, row_counts)
         self.assertIn("ForcedSource", chunk_tables.keys())
         self.assertIn("Object", chunk_tables.keys())
         self.assertIn("CcdVisit", chunk_tables.keys())
 
-        self.assertEqual(len(chunk_tables['ForcedSource']), len(chunk_tables['CcdVisit']*num_filters))
+        # Deprecated now that we don't give a new FS for every visit*object
+        # self.assertEqual(len(chunk_tables['ForcedSource']), len(chunk_tables['CcdVisit']*num_filters))
+        print(len(chunk_tables['ForcedSource']))
+        print(len(chunk_tables['CcdVisit']))
+        print(len(chunk_tables['Object']))
         self.assertEqual(set(chunk_tables['ForcedSource']['ccdVisitId']),
                          set(chunk_tables['CcdVisit']['ccdVisitId']))
 

@@ -7,32 +7,37 @@ import pandas as pd
 import lsst.dax.data_generator.columns as columns
 from lsst.dax.data_generator import Chunker
 
+num_stripes = 50
+num_substripes = 5
+
 
 class ColumnGeneratorTests(unittest.TestCase):
 
     def testCcdVisitGenerator(self):
         filters = "ugrizy"
         num_ccd_visits = 10
-        cell_id = 1
-        chunker = Chunker(0, 0, 0)
+        cell_id = 2500
+        chunker = Chunker(0, num_stripes, num_substripes)
         ccdVisitGenerator = columns.CcdVisitGenerator(chunker, num_ccd_visits, filters=filters)
 
-        results = ccdVisitGenerator(cell_id, 0)
-        self.assertEqual(len(results), 3)
+        results = ccdVisitGenerator(cell_id, num_ccd_visits)
+        self.assertEqual(len(results), 4)
 
-        ccdVisitId, hpix8, filterName = results
-        self.assertEqual(len(ccdVisitId), len(hpix8))
+        ccdVisitId, ra_centers, dec_centers, filterName = results
+        self.assertEqual(len(ccdVisitId), len(ra_centers))
         self.assertEqual(len(ccdVisitId), len(filterName))
         self.assertEqual(len(ccdVisitId), num_ccd_visits)
         self.assertEqual(len(ccdVisitId), len(set(ccdVisitId)))
 
+    @unittest.skip("hpix8 is deprecated")
     def testCcdVisitHpix8(self):
         filters = "ugrizy"
         num_ccd_visits = 10
-        cell_id = 1
-        chunker = Chunker(0, 0, 0)
+        cell_id = 2500 
+        chunker = Chunker(0, num_stripes, num_substripes)
         ccdVisitGenerator = columns.CcdVisitGenerator(chunker, num_ccd_visits, filters=filters)
         hpix8_values = ccdVisitGenerator._find_hpix8_in_cell(cell_id)
+        print(hpix8_values)
         self.assertTrue(len(hpix8_values) > 0)
 
         nside = healpy.order2nside(8)
@@ -42,6 +47,7 @@ class ColumnGeneratorTests(unittest.TestCase):
         # Some of the hpix centers will be outside of the chunk area, and that seems ok.
         # The test is to confirm that we get enough of them with centers inside the
         # chunk to confirm that the code is working.
+        print(chunks)
         self.assertGreaterEqual(np.sum(hpix_centers_in_chunk)/float(len(hpix8_values)), 0.5)
 
     def testObjIdGenerator(self):
@@ -85,7 +91,7 @@ class ColumnGeneratorTests(unittest.TestCase):
 
         visit_ids = np.array([101, 102, 103, 104])
         visit_ra_decs = [(1.0, 1.0), (2.0, 2.0), (3.0, 3.0), (3.02, 3.02)]
-        visit_df = pd.DataFrame({'CcdVisitId': visit_ids,
+        visit_df = pd.DataFrame({'ccdVisitId': visit_ids,
                                  'ra': [x[0] for x in visit_ra_decs],
                                  'decl': [x[1] for x in visit_ra_decs],
                                  'filterName': ['g']*len(visit_ids)
@@ -117,7 +123,7 @@ class ColumnGeneratorTests(unittest.TestCase):
             fs_output = fs_generator(cell_id, length,
                                      prereq_row=object_df.iloc[object_row_id],
                                      prereq_tables=prereq_tables)
-            print(fs_output)
+
             output_obj_ids, output_ccdvisits, _, _ = fs_output
             self.assertEqual(len(output_obj_ids), len(expected_res))
             for res_row_obj, res_row_visit in expected_res:

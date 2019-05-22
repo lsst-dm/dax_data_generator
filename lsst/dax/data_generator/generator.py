@@ -1,5 +1,6 @@
 
 import pandas as pd
+from collections import defaultdict
 
 __all__ = ["DataGenerator"]
 
@@ -25,6 +26,10 @@ class DataGenerator:
 
     def make_chunk(self, chunk_id, num_rows=None):
         output_tables = {}
+        if isinstance(num_rows, dict):
+            rows_per_table = dict(num_rows)
+        else:
+            rows_per_table = defaultdict(lambda: num_rows)
 
         for table in self._resolve_table_order(self.spec):
             column_generators = self.spec[table]["columns"]
@@ -34,11 +39,11 @@ class DataGenerator:
             for column_name, column_generator in column_generators.items():
 
                 if prereq_rows is None:
-                    output_data = column_generator(chunk_id, num_rows,
+                    output_data = column_generator(chunk_id, rows_per_table[table],
                                                    prereq_tables={t: output_tables[t] for t in prereq_tables})
                 else:
                     prereq_table_contents = {t: output_tables[t] for t in prereq_tables}
-                    output_data = column_generator(chunk_id, num_rows,
+                    output_data = column_generator(chunk_id, rows_per_table[table],
                                                    prereq_row = output_tables[prereq_rows].iloc[1],
                                                    prereq_tables=prereq_table_contents)
 

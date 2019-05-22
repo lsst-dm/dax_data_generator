@@ -1,4 +1,6 @@
 
+from lsst import sphgeom
+
 __all__ = ["Chunker", "SphericalBox"]
 
 
@@ -21,14 +23,15 @@ class SphericalBox:
 
 class Chunker:
     """
-    This is a temporary mock for creating chunks,
-    should be replaced with the real partitioning package.
+    This is a shim to the sphgeom Chunker. It may later be reasonable to
+    eliminate this and have other components call sphgeom directly.
     """
 
     def __init__(self, overlap, numStripes, numSubStripesPerStripe):
         self.overlap = overlap
         self.numStripes = numStripes
         self.numSubStripesPerStripe = numSubStripesPerStripe
+        self.chunker = sphgeom.Chunker(numStripes, numSubStripesPerStripe)
 
     def getChunkBounds(self, chunkId):
         """
@@ -36,20 +39,19 @@ class Chunker:
         -------
         chunk : SphericalBox
         """
-        if chunkId == 1:
-            return SphericalBox(0, 0.5, 0, 0.5)
-        else:
-            return ValueError
+
+        stripe = self.chunker._getStripe(chunkId)
+        return self.chunker.getChunkBoundingBox(stripe, chunkId)
 
     def locate(self, position):
         """
         Find the non-overlap location of the given position.
         """
         lon, lat = position
-        chunk = self.getChunkBounds(1)
-        result = (lon > chunk.lonMin) * (lon < chunk.lonMax)
-        result *= (lat > chunk.latMin) * (lat < chunk.latMax)
-        return 1*result
+        center = sphgeom.lonLat.LonLat.fromDegrees(lon, lat)
+        region = sphgeom.Box(center)
+        chunks = self.chunker.getChunksIntersecting(region)
+        return chunks[0]
 
 
 

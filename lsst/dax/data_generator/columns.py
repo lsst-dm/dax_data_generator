@@ -37,10 +37,14 @@ class CcdVisitGenerator(ColumnGenerator):
         self.ccd_visits_per_chunk = ccd_visits_per_chunk
 
     def _find_hpix8_in_cell(self, chunk_id):
-        chunk_bounds = self.chunker.getChunkBounds(chunk_id)
+        chunk_box = self.chunker.getChunkBounds(chunk_id)
         grid_size = 9 
-        lon_arr = np.linspace(chunk_bounds.lonMin, chunk_bounds.lonMax, grid_size)
-        lat_arr = np.linspace(chunk_bounds.latMin, chunk_bounds.latMax, grid_size)
+        lon_arr = np.linspace(chunk_box.getLon().getA().asDegrees(),
+                              chunk_box.getLon().getB().asDegrees(),
+                              grid_size)
+        lat_arr = np.linspace(chunk_box.getLat().getA().asDegrees(),
+                              chunk_box.getLat().getB().asDegrees(),
+                              grid_size)
         xx, yy = np.meshgrid(lon_arr[1::-2], lat_arr[1::-2])
         nside = healpy.order2nside(8)
         trial_healpix = healpy.ang2pix(nside, lon_arr, lat_arr, nest=True, lonlat=True)
@@ -60,19 +64,31 @@ class CcdVisitGenerator(ColumnGenerator):
         """
 
         # Generate a bunch of hpix8 values for CcdVisit centers
-        hpix8 = np.random.choice(self._find_hpix8_in_cell(chunk_id),
-                                 self.ccd_visits_per_chunk)
+        # hpix8 = np.random.choice(self._find_hpix8_in_cell(chunk_id),
+        #                         self.ccd_visits_per_chunk)
+        chunk_box = self.chunker.getChunkBounds(chunk_id)
+        ra_delta = (chunk_box.getLon().getB().asDegrees() -
+                    chunk_box.getLon().getA().asDegrees())
+        dec_delta = (chunk_box.getLat().getB().asDegrees() -
+                     chunk_box.getLat().getA().asDegrees())
+        ra_min = chunk_box.getLon().getA().asDegrees()
+        dec_min = chunk_box.getLat().getA().asDegrees()
+        ra_centers = np.random.random(length)*ra_delta + ra_min
+        dec_centers = np.random.random(length)*dec_delta + dec_min
         # Multiply by the number of filters
         filterName = np.random.choice(list(self.filters),
                                       self.ccd_visits_per_chunk)
         # Generate IDs for each of them
         ccdVisitId = chunk_id * 10**9 + np.arange(self.ccd_visits_per_chunk)
-        return (ccdVisitId, hpix8, filterName)
+        return (ccdVisitId, ra_centers, dec_centers, filterName)
 
 
 class RaDecGenerator(ColumnGenerator):
 
-    def __call__(self, cell_id, length, **kwargs):
+    def __init__(self, chunker):
+        self.chunker = chunker
+
+    def __call__(self, chunk_id, length, prereq_tables=None, **kwargs):
         """
         Parameters
         ----------
@@ -91,13 +107,17 @@ class RaDecGenerator(ColumnGenerator):
             Array containing the generated Dec coordinates.
         """
 
-        ra_limits = (360/80 * cell_id, 360/80 * (cell_id + 1))
-        dec_limits = (0.0, 5.0)
-        ra_delta = max(ra_limits) - min(ra_limits)
-        dec_delta = max(dec_limits) - min(dec_limits)
-        ra_array = np.random.random(length)*ra_delta + min(ra_limits)
-        dec_array = np.random.random(length)*dec_delta + min(dec_limits)
-        return (ra_array, dec_array)
+        chunk_box = self.chunker.getChunkBounds(chunk_id)
+        ra_delta = (chunk_box.getLon().getB().asDegrees() -
+                    chunk_box.getLon().getA().asDegrees())
+        dec_delta = (chunk_box.getLat().getB().asDegrees() -
+                     chunk_box.getLat().getA().asDegrees())
+        ra_min = chunk_box.getLon().getA().asDegrees()
+        dec_min = chunk_box.getLat().getA().asDegrees()
+        ra_centers = np.random.random(length)*ra_delta + ra_min
+        dec_centers = np.random.random(length)*dec_delta + dec_min
+
+        return (ra_centers, dec_centers)
 
 
 class ObjIdGenerator(ColumnGenerator):
@@ -111,6 +131,19 @@ class ObjIdGenerator(ColumnGenerator):
         """
 
         return (cell_id * 100000) + np.arange(length)
+
+
+class VisitIdGenerator(ColumnGenerator):
+
+    def __call__(self, cell_id, length, **kwargs):
+        """
+        Returns
+        -------
+        visit_id : array
+            Array containing unique IDs for each visit
+        """
+
+        return 10000000000 + (cell_id * 100000) + np.arange(length)
 
 
 class MagnitudeGenerator(ColumnGenerator):
@@ -164,7 +197,7 @@ class ForcedSourceGenerator(ColumnGenerator):
         for filter_name in self.filters:
             sel, = np.where((visit_table['filterName'] == filter_name) &
                             (dists_to_visit_center < self.visit_radius))
-            matching_filter_visitIds = visit_table['CcdVisitId'][sel]
+            matching_filter_visitIds = visit_table['ccdVisitId'][sel]
 
             if(len(matching_filter_visitIds) == 0):
                 continue
