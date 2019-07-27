@@ -38,7 +38,7 @@ class CcdVisitGenerator(ColumnGenerator):
 
     def _find_hpix8_in_cell(self, chunk_id):
         chunk_box = self.chunker.getChunkBounds(chunk_id)
-        grid_size = 9 
+        grid_size = 9
         lon_arr = np.linspace(chunk_box.getLon().getA().asDegrees(),
                               chunk_box.getLon().getB().asDegrees(),
                               grid_size)
@@ -147,6 +147,10 @@ class VisitIdGenerator(ColumnGenerator):
 
 
 class MagnitudeGenerator(ColumnGenerator):
+    """
+    Currently generates a flat magnitude distribution. Should properly
+    be some power law.
+    """
 
     def __init__(self, n_mags=1, min_mag=0, max_mag=27.5):
         self.n_mags = n_mags
@@ -186,7 +190,6 @@ class ForcedSourceGenerator(ColumnGenerator):
 
         dists_to_visit_center = np.sqrt((visit_table['ra'] - object_record['ra'])**2 +
                                         (visit_table['decl'] - object_record['decl'])**2)
-        print(object_record)
         n_matching_visits = np.sum(dists_to_visit_center < self.visit_radius)
 
         objectId = np.zeros(n_matching_visits) + object_record['objectId']
