@@ -21,6 +21,11 @@ if __name__ == "__main__":
     chunk_id = args.chunk
     row_counts = {"CcdVisit": args.visits,
                   "Object": args.objects}
+
+    # ForcedSource count is defined by visits and objects.
+    if("ForcedSource" in spec):
+        row_counts["ForcedSource"] = None
+
     tables = dataGen.make_chunk(chunk_id, num_rows=row_counts)
 
     for table_name, table in tables.items():
