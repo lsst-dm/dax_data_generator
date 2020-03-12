@@ -7,6 +7,10 @@ Fake Catalog Generator
 Requires sphgeom, using the branch available at
 https://github.com/lsst/sphgeom/tree/u/ctslater/getchunk. No other LSST packages are required.
 
+pip install healpy
+pip install pyarrow
+pip install .
+
 Example usage:
 ```
 python bin/datagen.py --chunk 3525 --visits 30 --objects 10000 example_spec.py

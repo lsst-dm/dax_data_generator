@@ -99,9 +99,15 @@ class DataGenClient:
                         else:
                             print("generator failed for", chunk)
                         print("&&& genOut", genOut)
+                    # If no chunks were 
+                    if len(createdChunks) == 0:
+                        print("ERROR no chunks were successfully created, ending program")
+                        self._loop = False
                     # Client sends the list of completed chunks back
-                    while len(createdChunks) > 0:
+                    while True:
                         createdChunks = self._client.clientReportChunksComplete(createdChunks)
+                        if len(createdChunks) == 0:
+                            break
 
 def testC():
     dgClient = DataGenClient("127.0.0.1", 13042)

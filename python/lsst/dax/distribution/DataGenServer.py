@@ -50,17 +50,20 @@ class ChunkInfo:
     Parameters
     ----------
     chunkId : integer chunk ID
-    genStage : `GenerationStage` of the chunk
-    clientId : The id of the client assigned to generate chunkId.
     """
 
     def __init__(self, chunkId):
         self.chunkId = chunkId
+        # `GenerationStage` of the chunk
         self.genStage = GenerationStage(GenerationStage.UNASSIGNED)
+        # The client id of the client assigned to generate chunkId.
         self.clientId = '-1'
+        # IP address of the client
+        self.clientAddr = None
 
     def __repr__(self):
-        return("ChunkInfo " + str(self.chunkId) + ' ' + self.clientId + ' ' + str(self.genStage))
+        return ("ChunkInfo " + str(self.chunkId) + ' ' + self.clientId + 
+                ' ' + str(self.clientAddr) + ' ' + str(self.genStage))
 
 def testChunkInfo():
     """Test that __repr__ doesn't crash"""
@@ -225,6 +228,7 @@ class DataGenServer:
                         cInfo = self._chunksToSend[chunk]
                         cInfo.genStage = GenerationStage.ASSIGNED
                         cInfo.clientId = name
+                        cInfo.clientAddr = addr
                     for chunk in chunksForClient:
                         self._chunksToSendSet.discard(chunk)
                     # self._listLock.release() &&&

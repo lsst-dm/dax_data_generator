@@ -145,6 +145,110 @@ class DataGenConnection():
         print("&&&setDiff", setDiff)
         return setDiff
 
+
+    def clientReqInit(self):
+        """Connect to the server, request initialization information."""
+        self._send_msg(self.C_INIT_R, '')
+    def servReqInit(self):
+        """Receive the initialization request from the client"""
+        msg_id, msg, msg_len = self._recv_msg()
+        print('&&& servReqInit', msg_id, msg)
+        if not msg_id == self.C_INIT_R:
+            self.warnings += 1
+            raise DataGenError('ERROR servRecvInit ' + str(msg_id) + ' ' + msg + ' ' +str(msg_len))
+        return msg_id, msg
+    def servRespInit(self, name, arg_string, cfg_file_contents):
+        """Respond to the client initialization request by sending it
+        a name, visits value, objects value, and the contents of the
+        configuration file.
+        """
+        print("&&& servRespInit CHANGE to send configuration file for generator")
+        sep = self.COMPLEXSEP
+        msg = name + sep + arg_string + sep + cfg_file_contents
+        self._send_msg(self.S_INIT_R, msg)
+    def clientRespInit(self):
+        msg_id, msg, msg_len = self._recv_msg()
+        if not msg_id == self.S_INIT_R:
+            self.warnings += 1
+            raise DataGenError('ERROR clientRespInit ' + str(msg_id) + ' ' + str(msg_len) + ' ' + msg)
+        sep = self.COMPLEXSEP
+        splt_msg = msg.split(sep)
+        name = splt_msg[0]
+        arg_string = splt_msg[1]
+        cfg_file_contents = splt_msg[2]
+        return name, arg_string, cfg_file_contents
+
+    def clientReqChunks(self, max_count):
+        print("&&& clientReqChunks C_CHUNKR")
+        msg = str(max_count)
+        self._send_msg(self.C_CHUNKR, msg)
+    def servRecvReqChunks(self):
+        print("&&& servRecvReqChunks C_CHUNKR")
+        msg_id, msg, msg_len = self._recv_msg()
+        if not msg_id == self.C_CHUNKR:
+            self.warnings += 1
+            raise DataGenError('ERROR servRecvReqChunks' + str(msg_id) + ' ' + str(msg_len) + ' ' + msg)
+        return int(msg)
+
+    def servSendChunks(self, chunk_list):
+        """Send a list of chunks to the client so they can be generated."""
+        print("&&& servSendChunks S_CNKLST", chunk_list)
+        chunk_msg, sent_chunks = self._buildChunksMsg(chunk_list)
+        self._send_msg(self.S_CNKLST, chunk_msg)
+        return sent_chunks
+    def clientRecvChunks(self):
+        print("&&& clientRecvChunks S_CNKLST")
+        msg_id, msg, msg_len = self._recv_msg()
+        if not msg_id == self.S_CNKLST:
+            self.warnings += 1
+            raise DataGenError('ERROR clientRecvChunks' + str(msg_id) + ' ' + str(msg_len) + ' ' + msg)
+        msg_chunks, problem = self._extractChunksFromMsg(msg)
+        if problem:
+            self.warnings += 1
+            print("clientRecvChunks problem with", msg, msg_chunks)
+        return msg_chunks, problem
+
+    def clientReportChunksComplete(self, chunk_list):
+        """Send a list of compled chunks to the server and
+        return a list of chunks that could not fit in the message.
+        If there were no left over chunks, finish by sending a
+        C_CKCFIN message.
+        """
+        print("&&& clientReportChunksComplete C_CKCOMP", chunk_list)
+        chunk_msg, completed_chunks = self._buildChunksMsg(chunk_list)
+        self._send_msg(self.C_CKCOMP, chunk_msg)
+        leftover = []
+        if len(completed_chunks) != len(chunk_list):
+            leftover = set(chunk_list) - set(completed_chunks)
+        print("&&& leftover", leftover)
+        if len(leftover) == 0:
+            self._send_msg(self.C_CKCFIN, '')
+        return leftover
+    def servRecvChunksComplete(self):
+        """Receive a list of finished chunks from a client. The
+        list ends with a C_CKCFIN message.
+        Returns list of chunks, message finished, problem
+        """
+        print("&&& servRecvChunksComplete C_CKCOMP")
+        msg_id, msg, msg_len = self._recv_msg()
+        if not msg_id == self.C_CKCOMP:
+            if msg_id == self.C_CKCFIN:
+                # All chunks were sent
+                return [], True, False
+            else:
+                self.warnings += 1
+                raise DataGenError('ERROR servRecvChunksComplete ' + 
+                                   str(msg_id) + ' ' + str(msg_len) + '~' + msg + '~')
+        msg_chunks, problem = self._extractChunksFromMsg(msg)
+        if problem:
+            self.warnings += 1
+            print("servRecvChunksComplete problem with", msg, msg_chunks)
+        return msg_chunks, False, problem
+    def servAcceptChunksComplete(self):
+        print("&&& servAcceptChunksComplete S_CHUNKA NEED CODE")
+    def clientRecvAccept(self):
+        print("&&& clientRecvAccept S_CHUNKA NEED CODE")
+
     def testMethods(self):
         print("&&& testMethods")
         success = None
@@ -206,108 +310,6 @@ class DataGenConnection():
         if success is None: success = True
         print("&&& testMethods success=", success)
         return success
-
-    def clientReqInit(self):
-        """Connect to the server, request initialization information."""
-        self._send_msg(self.C_INIT_R, '')
-    def servReqInit(self):
-        """Receive the initialization request from the client"""
-        msg_id, msg, msg_len = self._recv_msg()
-        print('&&& servReqInit', msg_id, msg)
-        if not msg_id == self.C_INIT_R:
-            self.warnings += 1
-            raise RuntimeError('ERROR servRecvInit', msg_id, msg, msg_len)
-        return msg_id, msg
-    def servRespInit(self, name, arg_string, cfg_file_contents):
-        """Respond to the client initialization request by sending it
-        a name, visits value, objects value, and the contents of the
-        configuration file.
-        """
-        print("&&& servRespInit CHANGE to send configuration file for generator")
-        sep = self.COMPLEXSEP
-        msg = name + sep + arg_string + sep + cfg_file_contents
-        self._send_msg(self.S_INIT_R, msg)
-    def clientRespInit(self):
-        msg_id, msg, msg_len = self._recv_msg()
-        if not msg_id == self.S_INIT_R:
-            self.warnings += 1
-            raise RuntimeError('ERROR clientRespInit', msg_id, msg, msg_len)
-        sep = self.COMPLEXSEP
-        splt_msg = msg.split(sep)
-        name = splt_msg[0]
-        arg_string = splt_msg[1]
-        cfg_file_contents = splt_msg[2]
-        return name, arg_string, cfg_file_contents
-
-    def clientReqChunks(self, max_count):
-        print("&&& clientReqChunks C_CHUNKR")
-        msg = str(max_count)
-        self._send_msg(self.C_CHUNKR, msg)
-    def servRecvReqChunks(self):
-        print("&&& servRecvReqChunks C_CHUNKR")
-        msg_id, msg, msg_len = self._recv_msg()
-        if not msg_id == self.C_CHUNKR:
-            self.warnings += 1
-            raise RuntimeError('ERROR servRecvReqChunks', msg_id, msg, msg_len)
-        return int(msg)
-
-    def servSendChunks(self, chunk_list):
-        """Send a list of chunks to the client so they can be generated."""
-        print("&&& servSendChunks S_CNKLST", chunk_list)
-        chunk_msg, sent_chunks = self._buildChunksMsg(chunk_list)
-        self._send_msg(self.S_CNKLST, chunk_msg)
-        return sent_chunks
-    def clientRecvChunks(self):
-        print("&&& clientRecvChunks S_CNKLST")
-        msg_id, msg, msg_len = self._recv_msg()
-        if not msg_id == self.S_CNKLST:
-            self.warnings += 1
-            raise RuntimeError('ERROR clientRecvChunks', msg_id, msg, msg_len)
-        msg_chunks, problem = self._extractChunksFromMsg(msg)
-        if problem:
-            self.warnings += 1
-            print("clientRecvChunks problem with", msg, msg_chunks)
-        return msg_chunks, problem
-
-    def clientReportChunksComplete(self, chunk_list):
-        """Send a list of compled chunks to the server and
-        return a list of chunks that could not fit in the message.
-        If there were no left over chunks, finish by sending a
-        C_CKCFIN message.
-        """
-        print("&&& clientReportChunksComplete C_CKCOMP", chunk_list)
-        chunk_msg, completed_chunks = self._buildChunksMsg(chunk_list)
-        self._send_msg(self.C_CKCOMP, chunk_msg)
-        leftover = []
-        if len(completed_chunks) != len(chunk_list):
-            leftover = set(chunk_list) - set(completed_chunks)
-        print("&&& leftover", leftover)
-        if len(leftover) == 0:
-            self._send_msg(self.C_CKCFIN, '')
-        return leftover
-    def servRecvChunksComplete(self):
-        """Receive a list of finished chunks from a client. The
-        list ends with a C_CKCFIN message.
-        Returns list of chunks, message finished, problem
-        """
-        print("&&& servRecvChunksComplete C_CKCOMP")
-        msg_id, msg, msg_len = self._recv_msg()
-        if not msg_id == self.C_CKCOMP:
-            if msg_id == self.C_CKCFIN:
-                # All chunks were sent
-                return [], True, False
-            else:
-                self.warnings += 1
-                raise RuntimeError('ERROR servRecvChunksComplete', msg_id, msg, msg_len)
-        msg_chunks, problem = self._extractChunksFromMsg(msg)
-        if problem:
-            self.warnings += 1
-            print("servRecvChunksComplete problem with", msg, msg_chunks)
-        return msg_chunks, False, problem
-    def servAcceptChunksComplete(self):
-        print("&&& servAcceptChunksComplete S_CHUNKA NEED CODE")
-    def clientRecvAccept(self):
-        print("&&& clientRecvAccept S_CHUNKA NEED CODE")
 
 ### Following only for testing
 import threading # only used for testing
@@ -394,10 +396,6 @@ class ClientTestThrd(threading.Thread):
             chunkListARecv, problem = client.clientRecvChunks()
             chunkARecvSet = set(chunkListARecv)
             chunkASet = set(self.chunkListA)
-            #print("&&&==================================================================")
-            #print("&&&A=", chunkASet)
-            #print("&&&------------------------------------------------------------------")
-            #print("&&&Arecv=", chunkARecvSet)
             chunkADiff = chunkASet.difference(chunkARecvSet)
             if chunkADiff:
                 print("errors in chunk lists diff~", chunkADiff)
