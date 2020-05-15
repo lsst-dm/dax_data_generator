@@ -53,5 +53,8 @@ class Chunker:
         chunks = self.chunker.getChunksIntersecting(region)
         return chunks[0]
 
+    def getAllChunks(self):
+        return self.chunker.getAllChunks()
+
 
 

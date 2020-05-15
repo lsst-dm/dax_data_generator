@@ -135,12 +135,8 @@ class DataGenConnection():
         """Chunk lists should be sets, so duplicate chunks are ignored.
         Return a list of chunks that are in one set but not the other.
         """
-        # &&& NEED UNIT TEST
         setA = set(listA)
         setB = set(listB)
-        #print("&&&==================================================================")
-        #print("&&&A=", setA)
-        #print("&&&B=", setB)
         setDiff = setA ^ setB
         print("&&&setDiff", setDiff)
         return setDiff
@@ -311,6 +307,7 @@ class DataGenConnection():
         print("&&& testMethods success=", success)
         return success
 
+#####################################################
 ### Following only for testing
 import threading # only used for testing
 import time
