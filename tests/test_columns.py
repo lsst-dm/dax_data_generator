@@ -129,3 +129,8 @@ class ColumnGeneratorTests(unittest.TestCase):
             for res_row_obj, res_row_visit in expected_res:
                 self.assertIn(res_row_obj, output_obj_ids)
                 self.assertIn(res_row_visit, output_ccdvisits)
+
+    def testRaDecGeneratorEF(self):
+        self.assertTrue(columns.tst_convertBlockToRows(False))
+        self.assertTrue(columns.tst_mergeBlocks(False))
+        self.assertTrue(columns.tst_RaDecGeneratorEF(False, 1000))

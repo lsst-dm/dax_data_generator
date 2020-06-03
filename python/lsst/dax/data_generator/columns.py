@@ -4,12 +4,14 @@ import numpy as np
 from abc import ABC
 import healpy
 
-
-from lsst.dax.data_generator import Chunker
+#from lsst.dax.data_generator import Chunker
+from .chunker import Chunker
 
 
 __all__ = ["ColumnGenerator", "ObjIdGenerator", "FilterGenerator",
-           "RaDecGenerator", "MagnitudeGenerator", "ForcedSourceGenerator"]
+           "RaDecGenerator", "MagnitudeGenerator", "ForcedSourceGenerator",
+           "ObjIdGeneratorEF", "RaDecGeneratorEF", "MagnitudeGeneratorEF",
+           "FilterGeneratorEF"]
 
 
 def calcSeedFrom(chunk_id, seed, columnVal):
@@ -145,7 +147,7 @@ class ColumnGenerator(ABC):
         return NotImplemented
 
 
-class CcdVisitGeneratorOriginal(ColumnGenerator):
+class CcdVisitGenerator(ColumnGenerator):
 
     def __init__(self, chunker, ccd_visits_per_chunk, filters="ugrizy"):
         # TODO: Is this CcdVisits or Visits?
@@ -200,7 +202,7 @@ class CcdVisitGeneratorOriginal(ColumnGenerator):
         return (ccdVisitId, ra_centers, dec_centers, filterName)
 
 
-class CcdVisitGenerator(ColumnGenerator):
+class CcdVisitGeneratorEF(ColumnGenerator):
 
     def __init__(self, chunker, ccd_visits_per_chunk, filters="ugrizy"):
         # TODO: Is this CcdVisits or Visits?
@@ -321,7 +323,7 @@ class CcdVisitGenerator(ColumnGenerator):
                 blocks["entire"] = mergeBlocks(blocks["entire"], blockMiddle)
         return blocks["entire"]
 
-class RaDecGeneratorOriginal(ColumnGenerator):
+class RaDecGenerator(ColumnGenerator):
 
     def __init__(self, chunker):
         self.chunker = chunker
@@ -357,7 +359,7 @@ class RaDecGeneratorOriginal(ColumnGenerator):
 
         return (ra_centers, dec_centers)
 
-class RaDecGenerator(ColumnGenerator):
+class RaDecGeneratorEF(ColumnGenerator):
 
     def __init__(self, chunker):
         self.chunker = chunker
@@ -480,6 +482,19 @@ class ObjIdGenerator(ColumnGenerator):
         return (cell_id * 100000) + np.arange(length)
 
 
+class ObjIdGeneratorEF(ColumnGenerator):
+
+    def __call__(self, chunk_id, length, seed, **kwargs):
+        """
+        Returns
+        -------
+        object_id : array
+            Array containing unique IDs for each object
+        """
+
+        return (chunk_id * 100000) + np.arange(length) # &&& more than 100k objects in a chunk will cause issues
+
+
 class VisitIdGenerator(ColumnGenerator):
 
     def __call__(self, cell_id, length, **kwargs):
@@ -491,6 +506,19 @@ class VisitIdGenerator(ColumnGenerator):
         """
 
         return 10000000000 + (cell_id * 100000) + np.arange(length)
+
+
+class VisitIdGeneratorEF(ColumnGenerator):
+
+    def __call__(self, chunk_id, length, seed, **kwargs):
+        """
+        Returns
+        -------
+        visit_id : array
+            Array containing unique IDs for each visit
+        """
+
+        return 10000000000 + (chunk_id * 100000) + np.arange(length)
 
 
 class MagnitudeGenerator(ColumnGenerator):
@@ -513,12 +541,49 @@ class MagnitudeGenerator(ColumnGenerator):
         return mags
 
 
+class MagnitudeGeneratorEF(ColumnGenerator):
+    """
+    Currently generates a flat magnitude distribution. Should properly
+    be some power law.
+    If there is more than one call to this in a single table, there will
+    be correlation between rows as the same random numbers will be used.
+    """
+
+    def __init__(self, n_mags=1, min_mag=0, max_mag=27.5):
+        self.n_mags = n_mags
+        self.min_mag = min_mag
+        self.max_mag = max_mag
+        self.columnVal = 7  # arbitrary, but different from other columns
+
+    def __call__(self, chunk_id, length, seed, **kwargs):
+
+        np.random.seed(calcSeedFrom(chunk_id, seed, self.columnVal))
+
+        mags = []
+        delta_mag = self.max_mag - self.min_mag
+        for n in range(self.n_mags):
+            mag = np.random.rand(length)*delta_mag + self.min_mag
+            mags.append(mag)
+        return mags
+
+
 class FilterGenerator(ColumnGenerator):
 
     def __init__(self, filters="ugrizy"):
         self.filters = filters
 
     def __call__(self, cell_id, length, **kwargs):
+        return np.random.choice(list(self.filters), length)
+
+
+class FilterGeneratorEF(ColumnGenerator):
+
+    def __init__(self, filters="ugrizy"):
+        self.filters = filters
+        self.columnVal = 6
+
+    def __call__(self, chunk_id, length, seed, **kwargs):
+        np.random.seed(calcSeedFrom(chunk_id, seed, self.columnVal))
         return np.random.choice(list(self.filters), length)
 
 
@@ -562,7 +627,7 @@ class ForcedSourceGenerator(ColumnGenerator):
         return (objectId, ccdVisitId, psFlux, psFluxSigma)
 
 
-def tst_convertBlockToRows():
+def tst_convertBlockToRows(logMsgs=True):
     vals1 = np.array([101, 102, 103])
     vals2 = np.array([309, 308, 307])
     vals3 = np.array([951, 952, 953])
@@ -572,14 +637,15 @@ def tst_convertBlockToRows():
     rowsExpected.append(list([102, 308, 952]))
     rowsExpected.append(list([103, 307, 953]))
     rowsA = convertBlockToRows(blockA)
-    print("rowsA=", rowsA)
-    print("expected=", rowsExpected)
+    if logMsgs:
+        print("rowsA=", rowsA)
+        print("expected=", rowsExpected)
     if rowsA != rowsExpected:
         print("FAILED rows did not match a=", rowsA, " expected=", rowsExpected)
         return False
     return True
 
-def tst_mergeBlocks():
+def tst_mergeBlocks(logMsgs=True):
     vals1 = np.array([101, 102, 103, 104, 105])
     vals2 = np.array([309, 308, 307, 306, 305])
     vals3 = np.array([951, 952, 953, 954, 955])
@@ -588,10 +654,11 @@ def tst_mergeBlocks():
     vals5 = np.array([609, 608, 607, 606, 605, 604])
     vals6 = np.array([751, 752, 753, 754, 755, 756])
     blockB = (vals4, vals5, vals6)
-    print("blockA=",blockA)
-    print("blockB=",blockB)
     blockC = mergeBlocks(blockA, blockB)
-    print("blockC=",blockC)
+    if logMsgs:
+        print("blockA=",blockA)
+        print("blockB=",blockB)
+        print("blockC=",blockC)
     expected1 = np.array([101, 102, 103, 104, 105, 201, 202, 203, 204, 205, 207])
     expected2 = np.array([309, 308, 307, 306, 305, 609, 608, 607, 606, 605, 604])
     expected3 = np.array([951, 952, 953, 954, 955, 751, 752, 753, 754, 755, 756])
@@ -621,10 +688,9 @@ def tst_mergeBlocks():
     
     if success is None:
         success = True
-    print("Success=", success)
     return success
 
-def tst_CcdVisitGenerator():
+def tst_CcdVisitGeneratorEF(logMsgs=True):
     """ Hmm, it looks like CcdVisitGenerator is not being used and
     it doesn't produce a valid table as the column lengths are not equal.
     """
@@ -640,14 +706,14 @@ def tst_CcdVisitGenerator():
     # a bit more than an arcminute for edge_width.
     edge_width = 0.018
     visitsPerChunk = 25
-    colGen = CcdVisitGenerator(localChunker, visitsPerChunk)
+    colGen = CcdVisitGeneratorEF(localChunker, visitsPerChunk)
     completeBlock = colGen(chunk_id, length, edge_width, edgeOnly=False)
     print("completeBlock=", completeBlock)
     # Check the lengths of all arrays in the block are the same
     # 
     sz = len(completeBlock[0])
     for arr in completeBlock:
-        print("&&& sz=", sz, " len(arr)=", len(arr))
+        if logMsgs: print("&&& sz=", sz, " len(arr)=", len(arr))
         if sz != len(arr):
             print("FAILED array length mismatch", sz, " ", len(arr), arr)
             success = False
@@ -656,7 +722,7 @@ def tst_CcdVisitGenerator():
         success = True
     return success
 
-def tst_RaDecGenerator():
+def tst_RaDecGeneratorEF(logMsgs=True, everyNth=75):
     success = None
     # setup chunking information
     num_stripes = 200
@@ -664,38 +730,38 @@ def tst_RaDecGenerator():
     localChunker = Chunker(0, num_stripes, num_substripes)
 
     allChunks = localChunker.getAllChunks()
-    print("&&& allChunks=", len(allChunks))
-    manyChunks = allChunks[0::75]
+    if logMsgs: print("&&& allChunks=", len(allChunks))
+    manyChunks = allChunks[0::everyNth]
     if manyChunks[-1] != allChunks[-1]:
         manyChunks.append(allChunks[-1])
     length = 10000
     # a bit more than an arcminute for edge_width.
     edge_width = 0.018
-    colGen = RaDecGenerator(localChunker)
+    colGen = RaDecGeneratorEF(localChunker)
     seed = 1
     blocksA = dict()
     j = 0
     for chunk_id in manyChunks:
         blocksA[chunk_id] = colGen(chunk_id, length, seed, edge_width, edgeOnly=False)
-        print("blocksA[", chunk_id, "]=", blocksA[chunk_id])
+        if logMsgs: print("blocksA[", chunk_id, "]=", blocksA[chunk_id])
     
     blocksB = dict()
     j = 0
     for chunk_id in manyChunks:
         blocksB[chunk_id] = colGen(chunk_id, length, seed, edge_width, edgeOnly=False)
-        print("blocksB[", chunk_id, "]=", blocksB[chunk_id])
+        if logMsgs: print("blocksB[", chunk_id, "]=", blocksB[chunk_id])
 
     blocksC = dict()
     j = 0
     for chunk_id in manyChunks:
         blocksC[chunk_id] = colGen(chunk_id, length, seed, edge_width, edgeOnly=True)
-        print("blocksC[", chunk_id, "]=", blocksC[chunk_id])
+        if logMsgs: print("blocksC[", chunk_id, "]=", blocksC[chunk_id])
 
     blocksD = dict()
     j = 0
     for chunk_id in manyChunks:
         blocksD[chunk_id] = colGen(chunk_id, length, seed, edge_width, edgeOnly=True)
-        print("blocksD[", chunk_id, "]=", blocksD[chunk_id])
+        if logMsgs: print("blocksD[", chunk_id, "]=", blocksD[chunk_id])
 
     for chunk_id in manyChunks:
         blockA = blocksA[chunk_id]
@@ -723,9 +789,9 @@ if __name__ == "__main__":
         success = False
     if not tst_mergeBlocks():
         success = False
-    #if not tst_CcdVisitGenerator():
+    #if not tst_CcdVisitGeneratorEF():
     #    success = False
-    if not tst_RaDecGenerator():
+    if not tst_RaDecGeneratorEF():
         success = False
     if success is None:
         success = True
