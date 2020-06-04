@@ -361,9 +361,14 @@ class RaDecGenerator(ColumnGenerator):
 
 class RaDecGeneratorEF(ColumnGenerator):
 
-    def __init__(self, chunker):
+    def __init__(self, chunker, ignoreEdgeOnly=False):
         self.chunker = chunker
+        self.ignoreEdgeOnly = ignoreEdgeOnly
         self.columnVal = 1
+        # avoid having the same ra and dec in different tables.
+        if self.ignoreEdgeOnly:
+            self.columnVal = 2
+
 
     def _generateBlock(self, chunk_id, simpleBox, length):
         """ Generate 'length' number of ccd visit data entries for 'simpleBox' """
@@ -396,6 +401,10 @@ class RaDecGeneratorEF(ColumnGenerator):
             Array containing the generated Dec coordinates.
         """
         np.random.seed(calcSeedFrom(chunk_id, seed, self.columnVal))
+
+        # Some tables, such as ccdVisit, cannot be generated edgeOnly.
+        if self.ignoreEdgeOnly:
+            edgeOnly = False
 
         # sphgeom Box from Chunker::getChunkBoundingBox
         chunk_box = self.chunker.getChunkBounds(chunk_id)
@@ -479,7 +488,11 @@ class ObjIdGenerator(ColumnGenerator):
             Array containing unique IDs for each object
         """
 
-        return (cell_id * 100000) + np.arange(length)
+        #return (cell_id * 100000) + np.arange(length)
+        vals = (cell_id * 100000) + np.arange(length)
+        print("&&&objectId[0]=", vals[0])
+        print("&&& type(vals)=", type(vals), "type(vals[0])=", type(vals[0]), "type(vals[100])=", type(vals[100]))
+        return vals
 
 
 class ObjIdGeneratorEF(ColumnGenerator):
@@ -493,7 +506,7 @@ class ObjIdGeneratorEF(ColumnGenerator):
         """
 
         return (chunk_id * 100000) + np.arange(length) # &&& more than 100k objects in a chunk will cause issues
-
+        
 
 class VisitIdGenerator(ColumnGenerator):
 
@@ -604,10 +617,53 @@ class ForcedSourceGenerator(ColumnGenerator):
                                         (visit_table['decl'] - object_record['decl'])**2)
         n_matching_visits = np.sum(dists_to_visit_center < self.visit_radius)
 
-        objectId = np.zeros(n_matching_visits) + object_record['objectId']
+        objectId = np.zeros(n_matching_visits, dtype=int) + int(object_record['objectId'])
         psFlux = np.random.randn(n_matching_visits)
         psFluxSigma = np.zeros(n_matching_visits) + 0.1
-        ccdVisitId = np.zeros(n_matching_visits)
+        ccdVisitId = np.zeros(n_matching_visits, dtype=int)
+
+        index_position = 0
+        for filter_name in self.filters:
+            sel, = np.where((visit_table['filterName'] == filter_name) &
+                            (dists_to_visit_center < self.visit_radius))
+            matching_filter_visitIds = visit_table['ccdVisitId'][sel]
+
+            if(len(matching_filter_visitIds) == 0):
+                continue
+
+            n_filter_visits = len(matching_filter_visitIds)
+            output_indices = slice(index_position, index_position + n_filter_visits)
+            ccdVisitId[output_indices] = matching_filter_visitIds
+            psFlux[output_indices] += object_record['mag_{:s}'.format(filter_name)]
+            index_position += n_filter_visits
+
+        return (objectId, ccdVisitId, psFlux, psFluxSigma)
+
+
+class ForcedSourceGeneratorEF(ColumnGenerator):
+
+    def __init__(self, filters="ugrizy", visit_radius=0.30):
+        self.filters = filters
+        self.visit_radius = visit_radius
+        self.columnVal = 3
+
+    def __call__(self, chunk_id, length, seed, prereq_row=None, prereq_tables=None):
+        assert prereq_row is not None, "ForcedSourceGenerator requires rows from Object."
+        assert prereq_tables is not None, "ForcedSourceGenerator requires the Visit table."
+
+        np.random.seed(calcSeedFrom(chunk_id, seed, self.columnVal))
+
+        visit_table = prereq_tables['CcdVisit']
+        object_record = prereq_row
+
+        dists_to_visit_center = np.sqrt((visit_table['ra'] - object_record['ra'])**2 +
+                                        (visit_table['decl'] - object_record['decl'])**2)
+        n_matching_visits = np.sum(dists_to_visit_center < self.visit_radius)
+
+        objectId = np.zeros(n_matching_visits, dtype=int) + int(object_record['objectId'])
+        psFlux = np.random.randn(n_matching_visits)
+        psFluxSigma = np.zeros(n_matching_visits) + 0.1
+        ccdVisitId = np.zeros(n_matching_visits, dtype=int)
 
         index_position = 0
         for filter_name in self.filters:

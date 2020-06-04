@@ -35,9 +35,13 @@ if __name__ == "__main__":
         seed = 1
         edgeWidth = 0.018 # degrees
         tables = dataGen.make_chunk_edge_1st(chunk_id, num_rows=row_counts, seed=seed,
-                                             edgeWidth=edgeWidth, edgeOnly=False)
+                                             edgeWidth=edgeWidth, edgeOnly=edgeOnly)
     else:   
         tables = dataGen.make_chunk(chunk_id, num_rows=row_counts)
+
+    print("visits:\n", tables["CcdVisit"])
+    print("forced:\n", tables["ForcedSource"])
+    print("object:\n", tables["Object"])
 
     for table_name, table in tables.items():
         table.to_parquet("chunk{:d}_{:s}.parquet".format(chunk_id, table_name))

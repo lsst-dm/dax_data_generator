@@ -15,7 +15,7 @@ spec = {
     "CcdVisit": {
         "columns": {"ccdVisitId": columns.VisitIdGeneratorEF(),
                     "filterName": columns.FilterGeneratorEF(filters="ugriz"),
-                    "ra,decl": columns.RaDecGeneratorEF(chunker)
+                    "ra,decl": columns.RaDecGeneratorEF(chunker, ignoreEdgeOnly=True)
                     }
     },
     "ForcedSource": {

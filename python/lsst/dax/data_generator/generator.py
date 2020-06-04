@@ -254,7 +254,7 @@ class DataGenerator:
                 colNames = col
                 colInfo = TableColumnInfo(colNames, generator, position)
                 position += 1
-                # RaDecGenerator needs to run first to determine the
+                # RaDecGeneratorEF needs to run first to determine the
                 # length of the table.
                 if isinstance(generator, columns.RaDecGeneratorEF):
                     colInfo.block = colInfo.generator(chunk_id, tableLength, seed, edgeWidth, edgeOnly)
@@ -265,7 +265,7 @@ class DataGenerator:
                         tableLength = blockLength
                 cols.append(colInfo)
             tableColumns[table] = cols
-            newRowsPerTable[table] = tableLength
+            rows_per_table[table] = tableLength
 
         for table in resolvedOrder:
             cols = tableColumns[table]
@@ -280,7 +280,7 @@ class DataGenerator:
 
                 if prereq_rows is None:
                     if colInfo.block is None:
-                        prereq_tbls={t: output_tables[t] for t in prereq_tables}
+                        prereq_tbls = {t: output_tables[t] for t in prereq_tables}
                         print("&&& col=", colInfo)
                         print("&&& prereq_tbls=", prereq_tbls)
                         print("&&& table=", table, " rows=", rows_per_table[table])
@@ -291,15 +291,21 @@ class DataGenerator:
                 else:
                     prereq_table_contents = {t: output_tables[t] for t in prereq_tables}
                     for n in range(len(output_tables[prereq_rows])):
+                        #print("&&& len=",  len(output_tables[prereq_rows])) #&&&
+                        #print("&&& rereq_rows=", prereq_rows)
+                        preq_rw = output_tables[prereq_rows].iloc[n]   #&&&
+                        #print("&&& preq_rw=", preq_rw)
                         colInfo.block = colInfo.generator(
                             chunk_id, rows_per_table[table],
-                            prereq_row=output_tables[prereq_rows].iloc[n],
+                            prereq_row=preq_rw,
                             prereq_tables=prereq_table_contents)
                         self._add_to_list(colInfo.block, output_columns, split_column_names)
 
             for name in output_columns.keys():
                 temp = np.concatenate(output_columns[name])
                 output_columns[name] = temp
+                print("&&& output_colums name=", name, " len=", len(output_columns[name]))
+            print("&&&rows_per_table=", rows_per_table)
 
             output_tables[table] = pd.DataFrame(output_columns)
 
