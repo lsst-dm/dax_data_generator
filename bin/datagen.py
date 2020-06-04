@@ -34,8 +34,8 @@ if __name__ == "__main__":
     if args.edgefirst > 0:
         seed = 1
         edgeWidth = 0.018 # degrees
-        tables = dataGen.make_chunk_edge_1st(chunk_id, num_rows=row_counts, seed=seed,
-                                             edgeWidth=edgeWidth, edgeOnly=edgeOnly)
+        tables = dataGen.make_chunkEF(chunk_id, num_rows=row_counts, seed=seed,
+                                      edgeWidth=edgeWidth, edgeOnly=edgeOnly)
     else:   
         tables = dataGen.make_chunk(chunk_id, num_rows=row_counts)
 

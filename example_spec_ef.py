@@ -23,7 +23,7 @@ spec = {
         "prereq_tables": ["CcdVisit"],
         "columns": {
             "objectId,ccdVisitId,psFlux,psFlux_Sigma":
-                columns.ForcedSourceGenerator(visit_radius=1.4, filters="ugriz"),
+                columns.ForcedSourceGeneratorEF(visit_radius=1.4, filters="ugriz"),
         },
     }
 }

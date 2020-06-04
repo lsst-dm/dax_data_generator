@@ -149,69 +149,7 @@ class DataGenerator:
 
         return output_tables
 
-    def make_chunk_edge_1stOld(self, chunk_id, num_rows=None, seed=1, edge=120):
-        """Generate synthetic data for one chunk.
-
-        Parameters
-        ----------
-        chunk_id : int
-                  ID of the chunk to generate.
-        num_rows : int or dict
-                  Generate the specified number of rows. Can either be a
-                  scalar, or a dictionary of the form {table_name: num_rows}.
-        seed     : int 
-                  Random number seed
-        edge     :
-                  Width/height of the edge in arcseconds 
-
-        Returns
-        -------
-        dictionary of pandas.DataFrames
-            The output dictionary contains each generated table as a
-            pandas.DataFrame.
-
-        """
-
-        output_tables = {}
-        if isinstance(num_rows, dict):
-            rows_per_table = dict(num_rows)
-        else:
-            rows_per_table = defaultdict(lambda: num_rows)
-
-        for table in self._resolve_table_order(self.spec):
-            column_generators = self.spec[table]["columns"]
-            prereq_rows = self.spec[table].get("prereq_row", None)
-            prereq_tables = self.spec[table].get("prereq_tables", [])
-            output_columns = {}
-            for column_name, column_generator in column_generators.items():
-
-                split_column_names = column_name.split(",")
-                for name in split_column_names:
-                    output_columns[name] = []
-
-                if prereq_rows is None:
-                    individual_obj = column_generator(
-                        chunk_id, rows_per_table[table],
-                        prereq_tables={t: output_tables[t] for t in prereq_tables})
-                    self._add_to_list(individual_obj, output_columns, split_column_names)
-                else:
-                    prereq_table_contents = {t: output_tables[t] for t in prereq_tables}
-                    for n in range(len(output_tables[prereq_rows])):
-                        individual_obj = column_generator(
-                            chunk_id, rows_per_table[table],
-                            prereq_row=output_tables[prereq_rows].iloc[n],
-                            prereq_tables=prereq_table_contents)
-                        self._add_to_list(individual_obj, output_columns, split_column_names)
-
-            for name in output_columns.keys():
-                temp = np.concatenate(output_columns[name])
-                output_columns[name] = temp
-
-            output_tables[table] = pd.DataFrame(output_columns)
-
-        return output_tables
-
-    def make_chunk_edge_1st(self, chunk_id, num_rows=None, seed=1, edgeWidth=0.018, edgeOnly=False):
+    def make_chunkEF(self, chunk_id, num_rows=None, seed=1, edgeWidth=0.018, edgeOnly=False):
         """Generate synthetic data for one chunk.
 
         Parameters
@@ -261,7 +199,6 @@ class DataGenerator:
                     blockLength = len(colInfo.block[0])
                     if tableLength != blockLength:
                         # Reducing length to what was generated for RA and Dec
-                        print("&&& table length change old=", tableLength, "new=", blockLength)
                         tableLength = blockLength
                 cols.append(colInfo)
             tableColumns[table] = cols
@@ -281,9 +218,6 @@ class DataGenerator:
                 if prereq_rows is None:
                     if colInfo.block is None:
                         prereq_tbls = {t: output_tables[t] for t in prereq_tables}
-                        print("&&& col=", colInfo)
-                        print("&&& prereq_tbls=", prereq_tbls)
-                        print("&&& table=", table, " rows=", rows_per_table[table])
                         colInfo.block = colInfo.generator(
                             chunk_id, rows_per_table[table], seed,
                             prereq_tables=prereq_tbls)
@@ -291,12 +225,9 @@ class DataGenerator:
                 else:
                     prereq_table_contents = {t: output_tables[t] for t in prereq_tables}
                     for n in range(len(output_tables[prereq_rows])):
-                        #print("&&& len=",  len(output_tables[prereq_rows])) #&&&
-                        #print("&&& rereq_rows=", prereq_rows)
-                        preq_rw = output_tables[prereq_rows].iloc[n]   #&&&
-                        #print("&&& preq_rw=", preq_rw)
+                        preq_rw = output_tables[prereq_rows].iloc[n]
                         colInfo.block = colInfo.generator(
-                            chunk_id, rows_per_table[table],
+                            chunk_id, rows_per_table[table], seed,
                             prereq_row=preq_rw,
                             prereq_tables=prereq_table_contents)
                         self._add_to_list(colInfo.block, output_columns, split_column_names)
