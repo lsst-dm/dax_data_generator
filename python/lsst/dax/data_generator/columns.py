@@ -58,8 +58,9 @@ def convertBlockToRows(block):
                 raise IndexError
             row.append(x[j])
         rows.append(row)
-    print("rows=", rows)
+    #print("rows=", rows)
     return rows
+
 
 def containsBlock(blockA, blockB):
     """ 
@@ -572,12 +573,22 @@ class MagnitudeGeneratorEF(ColumnGenerator):
 
         np.random.seed(calcSeedFrom(chunk_id, seed, self.columnVal))
 
-        mags = []
+        # &&& must make row by row not column by column.
+        #mags = []
+        #delta_mag = self.max_mag - self.min_mag
+        #for n in range(self.n_mags):
+        #    mag = np.random.rand(length)*delta_mag + self.min_mag
+        #    mags.append(mag)
+        #return mags
+        magRows = list()
         delta_mag = self.max_mag - self.min_mag
-        for n in range(self.n_mags):
-            mag = np.random.rand(length)*delta_mag + self.min_mag
-            mags.append(mag)
-        return mags
+        for j in range(length):
+            mag = np.random.rand(self.n_mags)*delta_mag + self.min_mag
+            magRows.append(mag)
+        magCols = convertBlockToRows(magRows)
+        print("&&&magRows=", magRows)
+        print("&&&magCols=", magCols)
+        return magCols
 
 
 class FilterGenerator(ColumnGenerator):
@@ -837,18 +848,3 @@ def tst_RaDecGeneratorEF(logMsgs=True, everyNth=75):
         success = True
     return success
 
-        
-
-if __name__ == "__main__":
-    success = None
-    if not tst_convertBlockToRows():
-        success = False
-    if not tst_mergeBlocks():
-        success = False
-    #if not tst_CcdVisitGeneratorEF():
-    #    success = False
-    if not tst_RaDecGeneratorEF():
-        success = False
-    if success is None:
-        success = True
-    print("Success=", success)

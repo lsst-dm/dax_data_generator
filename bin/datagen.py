@@ -2,7 +2,13 @@
 import argparse
 from lsst.dax.data_generator import DataGenerator
 
-
+# start with 
+# original data generation: 
+#   python bin/datagen.py --chunk 3525 --visits 30 --objects 1000 example_spec.py
+# edge first complete chunk:
+#   python bin/datagen.py --edgefirst --chunk 3525 --visits 30 --objects 1000 example_spec_ef.py
+# edge first only the edge:
+#   python bin/datagen.py --edgefirst --edgeonly --chunk 3525 --visits 30 --objects 1000 example_spec_ef.py
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
