@@ -62,7 +62,7 @@ class ChunkInfo:
         self.clientAddr = None
 
     def __repr__(self):
-        return ("ChunkInfo " + str(self.chunkId) + ' ' + self.clientId + 
+        return ("ChunkInfo " + str(self.chunkId) + ' ' + self.clientId +
                 ' ' + str(self.clientAddr) + ' ' + str(self.genStage))
 
 def testChunkInfo():
@@ -101,6 +101,7 @@ class DataGenServer:
 
         self._cfgFileName = cfgFileName
         # Set of all chunkIds to generate.
+        # TODO: Need to get valid chunks from sphgeom.
         self._totalChunks = set(range(minChunkNum, maxChunkNum))
 
         # Set to false to stop accepting and end the program
