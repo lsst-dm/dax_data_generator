@@ -15,7 +15,7 @@ __all__ = ["ColumnGenerator", "ObjIdGenerator", "FilterGenerator",
 
 
 def calcSeedFrom(chunk_id, seed, columnVal):
-    """ Trying to avoid having chunks and columns having seeds 
+    """ Trying to avoid having chunks and columns having seeds
     near each other in hopes that changing the seed value by 1
     will not look like everyting was just shifted over by 1 chunk/column.
     Each ColumnGenerator should have a unique arbitrary columnVal.
@@ -23,9 +23,9 @@ def calcSeedFrom(chunk_id, seed, columnVal):
     return (chunk_id*10000 + seed + columnVal*100)
 
 def mergeBlocks(blockA, blockB):
-    """ 
-    Merge the corresponding lists from each tuple and return the new tuple 
-    The lists should maintain the order of the individual elements. 
+    """
+    Merge the corresponding lists from each tuple and return the new tuple
+    The lists should maintain the order of the individual elements.
     """
     newList = list()
     # There's probably a more pythonic way to do this.
@@ -63,9 +63,9 @@ def convertBlockToRows(block):
 
 
 def containsBlock(blockA, blockB):
-    """ 
+    """
     Return True if every row in blockA has a matching row in blockB.
-    The data is stored in columns and it is easier to do the 
+    The data is stored in columns and it is easier to do the
     comparison using rows.
     """
     if len(blockA) != len(blockB):
@@ -96,9 +96,10 @@ def containsBlock(blockA, blockB):
     return True
 
 class SimpleBox:
-    """  
+    """
     A simple RA DEC box where raA is always smaller than raB and decA is always smaller than decB and
-    the units are degrees.
+    the units are degrees. This has no internal mechanism to fix wrap around from 360 to 0, so a
+    box that includes long 0 should go from -1 to 1 not 359 to 1.
     """
     def __init__(self, raA, raB, decA, decB):
         self.raA = raA
@@ -113,9 +114,14 @@ class SimpleBox:
             tmp = decA
             decA = decB
             decB = tmp
+        if (decA > 90.0): decA = 90.0
+        if (decA < -90.0): decA = -90.0
+        if (decB > 90.0): decB = 90.0
+        if (decB < -90.0): decB = -90.0
+
 
     def __repr__(self):
-        return ('{raA=' + str(self.raA) + ' raB=' + str(self.raB) + 
+        return ('{raA=' + str(self.raA) + ' raB=' + str(self.raB) +
                ' decA=' + str(self.decA) + ' decB=' + str(self.decB) + '}')
 
     def area(self):
@@ -253,7 +259,7 @@ class CcdVisitGeneratorEF(ColumnGenerator):
             The healpix level 8 pixel number for the CcdVisits.
         filterName : array
             The name of the filter for each CcdVisit.
-        edge_width : width of the edge in degrees 
+        edge_width : width of the edge in degrees
         """
 
         # sphgeom Box from Chunker::getChunkBoundingBox
@@ -273,12 +279,12 @@ class CcdVisitGeneratorEF(ColumnGenerator):
         boxes["entire"] = entireBox
 
         if edge_width > 0.0:
-            # Correct the edge_width for declination so there is at least 
+            # Correct the edge_width for declination so there is at least
             # edge_width at both the top an bottom of the east and west blocks.
             edge_raA = edge_width / math.cos(decA + edge_width)
             edge_raB = edge_width / math.cos(decB - edge_width)
             edge_widthRA = max(edge_raA, edge_raB)
-                    
+
             boxes["north"] = SimpleBox(raA, raB, decB - edge_width, decB)
             boxes["east"] = SimpleBox(raA, raA + edge_widthRA, decA + edge_width, decB - edge_width)
             boxes["west"] = SimpleBox(raB - edge_widthRA, raB, decA + edge_width, decB - edge_width)
@@ -286,7 +292,7 @@ class CcdVisitGeneratorEF(ColumnGenerator):
 
         print('chunk_id=', chunk_id, ' &&&boxes->', boxes)
 
-        # If the area of the entire box is only slightly larger than the sub-boxes, 
+        # If the area of the entire box is only slightly larger than the sub-boxes,
         # don't bother with separate edge calculation
         edgeArea = 0.0
         entireArea = 0.0
@@ -295,7 +301,7 @@ class CcdVisitGeneratorEF(ColumnGenerator):
                 entireArea = value.area()
             else:
                 edgeArea += value.area()
-        
+
         ratioEdgeToEntire = edgeArea/entireArea
         blocks = dict()
         # &&& replace 10 with minLength and 0.90 with maxRatioEdgeToEntire
@@ -317,7 +323,7 @@ class CcdVisitGeneratorEF(ColumnGenerator):
                     blocks[key] = self._generateBlock(chunk_id, boxes[key], lengths[key])
             blockNS = mergeBlocks(blocks["north"], blocks["south"])
             blockEW = mergeBlocks(blocks["east"], blocks["west"])
-            blocks["entire"] = mergeBlocks(blockNS, blockEW)    
+            blocks["entire"] = mergeBlocks(blockNS, blockEW)
             if not edgeOnly:
                 boxMiddle = SimpleBox(boxes["east"].raB, boxes["west"].raA, boxes["north"].decB, boxes["south"].decA)
                 blockMiddle = self._generateBlock(chunk_id, boxMiddle, subLength)
@@ -425,12 +431,12 @@ class RaDecGeneratorEF(ColumnGenerator):
         boxes["entire"] = entireBox
 
         if edge_width > 0.0:
-            # Correct the edge_width for declination so there is at least 
+            # Correct the edge_width for declination so there is at least
             # edge_width at both the top an bottom of the east and west blocks.
             edge_raA = edge_width / math.cos(decA + edge_width)
             edge_raB = edge_width / math.cos(decB - edge_width)
             edge_widthRA = max(edge_raA, edge_raB)
-                    
+
             boxes["north"] = SimpleBox(raA, raB, decB - edge_width, decB)
             boxes["east"] = SimpleBox(raA, raA + edge_widthRA, decA + edge_width, decB - edge_width)
             boxes["west"] = SimpleBox(raB - edge_widthRA, raB, decA + edge_width, decB - edge_width)
@@ -438,7 +444,7 @@ class RaDecGeneratorEF(ColumnGenerator):
 
         print('chunk_id=', chunk_id, ' &&&boxes->', boxes)
 
-        # If the area of the entire box is only slightly larger than the sub-boxes, 
+        # If the area of the entire box is only slightly larger than the sub-boxes,
         # don't bother with separate edge calculation
         edgeArea = 0.0
         entireArea = 0.0
@@ -447,7 +453,7 @@ class RaDecGeneratorEF(ColumnGenerator):
                 entireArea = value.area()
             else:
                 edgeArea += value.area()
-        
+
         ratioEdgeToEntire = edgeArea/entireArea
         blocks = dict()
         # &&& replace 10 with minLength and 0.90 with maxRatioEdgeToEntire
@@ -469,7 +475,7 @@ class RaDecGeneratorEF(ColumnGenerator):
                     blocks[key] = self._generateBlock(chunk_id, boxes[key], lengths[key])
             blockNS = mergeBlocks(blocks["north"], blocks["south"])
             blockEW = mergeBlocks(blocks["east"], blocks["west"])
-            blocks["entire"] = mergeBlocks(blockNS, blockEW)    
+            blocks["entire"] = mergeBlocks(blockNS, blockEW)
             if not edgeOnly:
                 boxMiddle = SimpleBox(boxes["east"].raB, boxes["west"].raA, boxes["north"].decB, boxes["south"].decA)
                 blockMiddle = self._generateBlock(chunk_id, boxMiddle, subLength)
@@ -507,7 +513,7 @@ class ObjIdGeneratorEF(ColumnGenerator):
         """
 
         return (chunk_id * 100000) + np.arange(length) # &&& more than 100k objects in a chunk will cause issues
-        
+
 
 class VisitIdGenerator(ColumnGenerator):
 
@@ -743,16 +749,16 @@ def tst_mergeBlocks(logMsgs=True):
         print("FAILED blockA should have been found in blockC A=", blockA, " C=", blockC)
         success = False
     if containsBlock(blockBad, blockExpected):
-        print("FAILED blockBad should not have been found in blockExpected bad=", blockBad, 
+        print("FAILED blockBad should not have been found in blockExpected bad=", blockBad,
               "ex=", blockExpected)
         success = False
     # check for duplicate row
     blockBad2 = (np.array([101, 101]), np.array([309, 309]), np.array([951, 951]))
     if containsBlock(blockBad2, blockC):
-        print("FAILED blockBad2 should not have been found in blockC bad=", blockBad, 
+        print("FAILED blockBad2 should not have been found in blockC bad=", blockBad,
               "C=", blockC)
         success = False
-    
+
     if success is None:
         success = True
     return success
@@ -777,14 +783,14 @@ def tst_CcdVisitGeneratorEF(logMsgs=True):
     completeBlock = colGen(chunk_id, length, edge_width, edgeOnly=False)
     print("completeBlock=", completeBlock)
     # Check the lengths of all arrays in the block are the same
-    # 
+    #
     sz = len(completeBlock[0])
     for arr in completeBlock:
         if logMsgs: print("&&& sz=", sz, " len(arr)=", len(arr))
         if sz != len(arr):
             print("FAILED array length mismatch", sz, " ", len(arr), arr)
             success = False
-    
+
     if success is None:
         success = True
     return success
@@ -811,7 +817,7 @@ def tst_RaDecGeneratorEF(logMsgs=True, everyNth=75):
     for chunk_id in manyChunks:
         blocksA[chunk_id] = colGen(chunk_id, length, seed, edge_width, edgeOnly=False)
         if logMsgs: print("blocksA[", chunk_id, "]=", blocksA[chunk_id])
-    
+
     blocksB = dict()
     j = 0
     for chunk_id in manyChunks:
@@ -842,7 +848,7 @@ def tst_RaDecGeneratorEF(logMsgs=True, everyNth=75):
             print("FAILED edgeOnly blocks not equal chunk_id=", chunk_id)
             success = False
         if not containsBlock(blockC, blockA):
-            print("FAILED edgeOnly blocks not found in larger block chunk_id=", chunk_id) 
+            print("FAILED edgeOnly blocks not found in larger block chunk_id=", chunk_id)
 
     if success is None:
         success = True

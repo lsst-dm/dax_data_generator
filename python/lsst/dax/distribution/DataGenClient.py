@@ -100,7 +100,7 @@ class DataGenClient:
                 success = False
             print("&&& cmdStr=", cmdStr, 'genResult=', genResult, 'genOut=', genOut)
             outFileNames.append(outName)
-            #os.remove(os.path.join(self._targetDir, fName))
+            os.remove(os.path.join(self._targetDir, fName))
         print("&&& outFileNames=", outFileNames)
         if success == None:
             success = True
@@ -130,9 +130,9 @@ class DataGenClient:
                     print("No more chunks to create, exiting")
                     self._loop = False
                 else:
-                    # &&& print the command lines
                     createdChunks = list()
                     for chunk in chunkRecvSet:
+                        # Genrate the chunk parquet files.
                         cmdStr = ("python " + self._datagenpy + " --chunk " + str(chunk) + " " +
                             self._genArgStr + " " + self._cfgFileName)
                         print("&&& running this:", cmdStr)
@@ -144,6 +144,8 @@ class DataGenClient:
                         else:
                             print("generator failed for", chunk)
                         print("&&& genOut", genOut)
+                    # &&& Generate overlaps, register with ingest.
+                    # &&& create edge only chunks as needed.
                     # If no chunks were created, likely fatal error.
                     if len(createdChunks) == 0:
                         print("ERROR no chunks were successfully created, ending program")
