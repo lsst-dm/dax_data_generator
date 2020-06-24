@@ -23,6 +23,15 @@ class SphericalBox:
         )
 
 
+def boxStrDeg(box):
+    bLonADeg = str(box.getLon().getA().asDegrees())
+    bLonBDeg = str(box.getLon().getB().asDegrees())
+    bLatADeg = str(box.getLat().getA().asDegrees())
+    bLatBDeg = str(box.getLat().getB().asDegrees())
+    s = "ra[" + bLonADeg + bLonBDeg + "], dec[" + bLatADeg + bLatBDeg + "]"
+    return s
+
+
 class Chunker:
     """
     This is a shim to the sphgeom Chunker. It may later be reasonable to
@@ -41,9 +50,9 @@ class Chunker:
         -------
         chunk : SphericalBox
         """
-
         stripe = self.chunker._getStripe(chunkId)
-        return self.chunker.getChunkBoundingBox(stripe, chunkId)
+        chunkInStripe = self.chunker._getChunk(chunkId, stripe)
+        return self.chunker.getChunkBoundingBox(stripe, chunkInStripe)
 
     def locate(self, position):
         """
@@ -72,10 +81,8 @@ class Chunker:
         print("&&&!!chunkId=", chunkId, " box=", box, " overlapWRads=", overlapWRads)
         # Increase Latitude by overlapWRads in both directions
         # cap values at PI/2 and -PI/2.
-        # sphgeom Intervals require that A < B, or the area is empty
         latA = box.getLat().getA().asRadians()
         latB = box.getLat().getB().asRadians()
-        print("&&& latA=", latA, "latB=", latB)
         if latA > latB:
             return list()
         latA = latA - overlapWRads
@@ -90,9 +97,6 @@ class Chunker:
         # increase to make it 2PI
         lonA = box.getLon().getA().asRadians()
         lonB = box.getLon().getB().asRadians()
-        print("&&& lonA=", lonA, "lonB=", lonB)
-        lonAI = box.getLon()
-        print("&&& lonAI=", lonAI)
         # sphgeom Intervals are supposed to have A always smaller than B,
         # but the AngleIntrvals in Box get normalized to [0, 2PI)
         twoPi = 2.0*math.pi
@@ -106,35 +110,18 @@ class Chunker:
 
         biggerBox = sphgeom.Box.fromRadians(lonA, latA, lonB, latB)
         print("&&& lonA=", lonA, "latA=", latA, "lonB=", lonB, "latB=", latB)
-        print("&&& box=", box)
-        print("&&& biggerBox=", biggerBox)
-        bLonADeg = box.getLon().getA().asDegrees()
-        bLonBDeg = box.getLon().getB().asDegrees()
-        bLatADeg = box.getLat().getA().asDegrees()
-        bLatBDeg = box.getLat().getB().asDegrees()
-        print("&&& box=[", bLonADeg, bLonBDeg, "], [", bLatADeg, bLatBDeg, "]")
-        bLonADeg = biggerBox.getLon().getA().asDegrees()
-        bLonBDeg = biggerBox.getLon().getB().asDegrees()
-        bLatADeg = biggerBox.getLat().getA().asDegrees()
-        bLatBDeg = biggerBox.getLat().getB().asDegrees()
-        print("&&& big=[", bLonADeg, bLonBDeg, "], [", bLatADeg, bLatBDeg, "]")
+        print("&&& box=", boxStrDeg(box))
+        print("&&& big=", boxStrDeg(biggerBox))
 
         # Use
-        #chunks = self.getChunksIntersecting(biggerBox)
-        chunks = self.getChunksIntersecting(box)
+        chunks = self.getChunksIntersecting(biggerBox)
+        # &&& chunks = self.getChunksIntersecting(box)
         self.printChunkBoundsDegrees(chunkId)
         for ch in chunks: self.printChunkBoundsDegrees(ch)
         return chunks
 
     def printChunkBoundsDegrees(self, chunkId):
         box = self.getChunkBounds(chunkId)
-        raA = box.getLon().getA().asDegrees()
-        raB = box.getLon().getB().asDegrees()
-        subtracted = False
-        if raA > raB:
-            raA -= 360.0
-            subtracted = True
-        decA = box.getLat().getA().asDegrees()
-        decB = box.getLat().getB().asDegrees()
-        print("chunk=", chunkId, "ra=", raA, raB, "Dec=", decA, decB, "sub=", subtracted)
+        st = boxStrDeg(box)
+        print("chunk=", chunkId, "box=", st)
 

@@ -17,11 +17,20 @@ class ChunkerTests(unittest.TestCase):
         result_chunk = chunker.locate((0.0, -20.0))
         self.assertEqual(result_chunk, 1900)
 
+        # south pole
         result_chunks = chunker.getChunksAround(0, 0.018)
         self.assertEqual(result_chunks, [0, 100, 101, 102, 103, 104])
 
+        # north pole
         result_chunks = chunker.getChunksAround(4900, 0.018)
         self.assertEqual(result_chunks, [4800, 4801, 4802, 4803, 4804, 4900])
 
-#        result_chunks = chunker.getChunksAround(2600, 0.018)
-#        self.assertEqual(result_chunks, [2525, 2526, 2527, 2600, 2625, 2626, 2627, 2725, 2726])
+        # first chunk of a stripe
+        result_chunks = chunker.getChunksAround(2600, 0.018)
+        self.assertEqual(result_chunks, [2500, 2501, 2598, 2600, 2601, 2698, 2700, 2797])
+
+        # mid stripe chunk
+        result_chunks = chunker.getChunksAround(1621, 0.018)
+        self.assertEqual(result_chunks, [1519, 1520, 1620, 1621, 1622, 1721, 1722])
+
+

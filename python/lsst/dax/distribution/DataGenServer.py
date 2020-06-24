@@ -78,6 +78,14 @@ class DataGenServer:
     and mismatching chunks, so this process will not be concerned with that.
     """
 
+    def _readDatagenConfig(self):
+            """ Create a Chunker using the same configuration file as the datagen.py."""
+            spec_globals = dict()
+            exec(self._fakeCfgData, spec_globals)
+            assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
+            assert 'chunker' in spec_globals, "Specification file must define a variable 'chunker'."
+            self._chunker = spec_globals['chunker']
+
     def __init__(self, cfgFileName, minChunkNum, maxChunkNum):
         """cfgFileName contains our port number and command line arguments
         to be sent to the fake data generating program. The contents of
@@ -102,7 +110,7 @@ class DataGenServer:
         self._cfgFileName = cfgFileName
         # Set of all chunkIds to generate.
         # TODO: Need to get valid chunks from sphgeom.
-        self._totalChunks = set(range(minChunkNum, maxChunkNum))
+        totalChunks = set(range(minChunkNum, maxChunkNum))
 
         # Set to false to stop accepting and end the program
         self._loop = True
@@ -110,10 +118,10 @@ class DataGenServer:
         self._sequence = 1
         # lock to protect _sequence, _clients
         self._clientLock = threading.Lock()
-        # lock to protect _totalGeneratedChunks, _totalChunks, _chunksToSend,
+        # lock to protect _totalGeneratedChunks, _chunksToSend,
         # _chunksToSendSet
         self._listLock = threading.Lock()
-        # TODO: possibly use a file to set _totalChunks
+        # TODO: possibly use a file to set totalChunks
         # All the chunks generated so far
         self._totalGeneratedChunks = set()
 
@@ -139,19 +147,41 @@ class DataGenServer:
         self._clientThreads = list()
         # Dictionary of clients by clientId
         self._clients = dict()
+
         # Build dictionary of info for chunks to send to workers.
-        self._chunksToSend = dict()
-        for chunk in self._totalChunks:
-            chunkInfo = ChunkInfo(chunk)
-            self._chunksToSend[chunk] = chunkInfo
-        # A set of all chunks that have not yet been sent
-        self._chunksToSendSet = self._totalChunks.copy()
+        # Read the datagen configuration for chunker info.
+        spec_globals = dict()
+        exec(self._fakeCfgData, spec_globals)
+        assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
+        assert 'chunker' in spec_globals, "Specification file must define a variable 'chunker'."
+        chunker = spec_globals['chunker']
+        allChunks = chunker.getAllChunks()
+        self._chunksToSend = dict() # Dictionary of information on chunks to send
+        # Set of chunks to send, desirable to have in order
+        self._chunksToSendSet = set()
+        print("Finding valid chunk numbers...")
+        for chunk in totalChunks:
+            if chunk in allChunks:
+                chunkInfo = ChunkInfo(chunk)
+                self._chunksToSend[chunk] = chunkInfo
+                self._chunksToSendSet.add(chunk)
+        print("&&& len(self._chunksToSendSet)=", len(self._chunksToSendSet))
 
         # Track all client connections so it is possible to
         # determine when the server's job is finished.
         self._activeClientCount = 0
         self._activeClientMtx = threading.Lock()
 
+    def _readDatagenConfig(self):
+        """ Create a Chunker using the same configuration file as the datagen.py."""
+        spec_globals = dict()
+        exec(self._cfgFileContents, spec_globals)
+        assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
+        assert 'chunker' in spec_globals, "Specification file must define a variable 'chunker'."
+        self._spec = spec_globals['spec']
+        self._chunker = spec_globals['chunker']
+        print("&&& self._cfgFileContents=", self._cfgFileContents)
+        print("&&& _spec=", self._spec)
 
     def _servAccept(self):
         """Accept connections from clients, spinning up a new thread
@@ -316,7 +346,7 @@ class DataGenServer:
 
 def testA():
     testChunkInfo()
-    dgServ = DataGenServer("serverCfg.yml", 7, 70)
+    dgServ = DataGenServer("serverCfg.yml", 0, 50000)
     dgServ.start()
 
 if __name__ == "__main__":

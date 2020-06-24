@@ -5,7 +5,7 @@ import pandas as pd
 from collections import defaultdict
 
 #import lsst.dax.data_generator.columns as columns
-#from lsst.dax.data_generator import columns 
+#from lsst.dax.data_generator import columns
 from . import columns
 
 __all__ = ["DataGenerator"]
@@ -19,7 +19,7 @@ class TableColumnInfo:
         self.block = None
 
     def __repr__(self):
-        return ("{colNames:" + self.colNames + ' position:' + str(self.position) 
+        return ("{colNames:" + self.colNames + ' position:' + str(self.position)
               + " generator:" + str(self.generator) + ' block:' + str(self.block))
 
 class DataGenerator:
@@ -218,6 +218,8 @@ class DataGenerator:
                 if prereq_rows is None:
                     if colInfo.block is None:
                         prereq_tbls = {t: output_tables[t] for t in prereq_tables}
+                        print("&&& colInfo=", colInfo)
+                        print("&&& stuff=", chunk_id, rows_per_table[table], seed, prereq_tbls)
                         colInfo.block = colInfo.generator(
                             chunk_id, rows_per_table[table], seed,
                             prereq_tables=prereq_tbls)

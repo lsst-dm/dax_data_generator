@@ -2,8 +2,8 @@
 import argparse
 from lsst.dax.data_generator import DataGenerator
 
-# start with 
-# original data generation: 
+# start with
+# original data generation:
 #   python bin/datagen.py --chunk 3525 --visits 30 --objects 1000 example_spec.py
 # edge first complete chunk:
 #   python bin/datagen.py --edgefirst --chunk 3525 --visits 30 --objects 1000 example_spec_ef.py
@@ -42,7 +42,7 @@ if __name__ == "__main__":
         edgeWidth = 0.018 # degrees
         tables = dataGen.make_chunkEF(chunk_id, num_rows=row_counts, seed=seed,
                                       edgeWidth=edgeWidth, edgeOnly=edgeOnly)
-    else:   
+    else:
         tables = dataGen.make_chunk(chunk_id, num_rows=row_counts)
 
     print("visits:\n", tables["CcdVisit"])
@@ -50,5 +50,7 @@ if __name__ == "__main__":
     print("object:\n", tables["Object"])
 
     for table_name, table in tables.items():
-        table.to_parquet("chunk{:d}_{:s}.parquet".format(chunk_id, table_name))
+        edgeType = "CT"  # complete
+        if edgeOnly: edgeType = "EO" # edge only
+        table.to_parquet("chunk{:d}_{:s}_{:s}.parquet".format(chunk_id, edgeType, table_name))
 
