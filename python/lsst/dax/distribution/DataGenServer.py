@@ -78,14 +78,6 @@ class DataGenServer:
     and mismatching chunks, so this process will not be concerned with that.
     """
 
-    def _readDatagenConfig(self):
-            """ Create a Chunker using the same configuration file as the datagen.py."""
-            spec_globals = dict()
-            exec(self._fakeCfgData, spec_globals)
-            assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
-            assert 'chunker' in spec_globals, "Specification file must define a variable 'chunker'."
-            self._chunker = spec_globals['chunker']
-
     def __init__(self, cfgFileName, minChunkNum, maxChunkNum):
         """cfgFileName contains our port number and command line arguments
         to be sent to the fake data generating program. The contents of
@@ -128,20 +120,20 @@ class DataGenServer:
         # Read configuration to set other values.
         with open(self._cfgFileName, 'r') as cfgFile:
             self._cfg = yaml.load(cfgFile)
-            print("&&& cfg", self._cfg)
+            print("cfg", self._cfg)
         # The port number the host will listen to.
         self._port = self._cfg['server']['port']
         # The arguments that will be passed from server to
         # clients to dax_data_generator/bin/datagen.py.
         self._cfgFakeArgs = self._cfg['fakeDataGenerator']['arguments']
-        print("&&& port=", self._port, self._cfgFakeArgs)
+        print("port=", self._port, self._cfgFakeArgs)
         # The name and contents of the configuration file that will be passed
         # from server to clients to dax_data_generator/bin/datagen.py.
         fakeCfgFileName = self._cfg['fakeDataGenerator']['cfgFileName']
-        print("&&& fakeCfgFileName", fakeCfgFileName)
+        print("fakeCfgFileName", fakeCfgFileName)
         with open(fakeCfgFileName, 'r') as file:
             self._fakeCfgData = file.read()
-        print("&&& fakeCfgData=", self._fakeCfgData)
+        print("fakeCfgData=", self._fakeCfgData)
 
         # List of client connection threads
         self._clientThreads = list()
@@ -165,23 +157,13 @@ class DataGenServer:
                 chunkInfo = ChunkInfo(chunk)
                 self._chunksToSend[chunk] = chunkInfo
                 self._chunksToSendSet.add(chunk)
-        print("&&& len(self._chunksToSendSet)=", len(self._chunksToSendSet))
+        print("len(totalChunks)=", len(totalChunks),
+              "len(self._chunksToSendSet)=", len(self._chunksToSendSet))
 
         # Track all client connections so it is possible to
         # determine when the server's job is finished.
         self._activeClientCount = 0
         self._activeClientMtx = threading.Lock()
-
-    def _readDatagenConfig(self):
-        """ Create a Chunker using the same configuration file as the datagen.py."""
-        spec_globals = dict()
-        exec(self._cfgFileContents, spec_globals)
-        assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
-        assert 'chunker' in spec_globals, "Specification file must define a variable 'chunker'."
-        self._spec = spec_globals['spec']
-        self._chunker = spec_globals['chunker']
-        print("&&& self._cfgFileContents=", self._cfgFileContents)
-        print("&&& _spec=", self._spec)
 
     def _servAccept(self):
         """Accept connections from clients, spinning up a new thread
@@ -199,14 +181,11 @@ class DataGenServer:
                     clientName = 'client' + str(self._sequence)
                     self._sequence += 1
                     self._clientLock.release()
-                    # &&& threading.start_new_thread(self._servClient, (clientName, conn, addr))
                     print("starting thread", clientName, conn, addr)
                     thrd = threading.Thread(target=self._servToClient, args=(clientName, conn, addr))
                     self._clientThreads.append(thrd)
                     with self._activeClientMtx:
-                        #self._activeClientMtx.acquire() &&&
                         self._activeClientCount += 1
-                        #self._activeClientMtx.release() &&&
                     thrd.start()
         print("Accept loop shutting down")
         for j, thrd in enumerate(self._clientThreads):
@@ -238,9 +217,7 @@ class DataGenServer:
             print('Connected by', addr, name, conn)
             serv = DataGenConnection(conn)
             with self._clientLock:
-                # self._clientLock.acquire() &&&
                 self._clients[name] = addr
-                # self._clientLock.release() &&&
             # receive init from client
             serv.servReqInit()
             # server sending back configuration information
@@ -252,9 +229,7 @@ class DataGenServer:
                 chunksForClient = list()
                 # get the first clientReqChunkCount elements of self._chunksToSendSet
                 with self._listLock:
-                    # self._listLock.acquire() &&&
                     for chunk in itertools.islice(self._chunksToSendSet, clientReqChunkCount):
-                        print("&&& sending chunk", chunk)
                         chunksForClient.append(chunk)
                         cInfo = self._chunksToSend[chunk]
                         cInfo.genStage = GenerationStage.ASSIGNED
@@ -262,7 +237,6 @@ class DataGenServer:
                         cInfo.clientAddr = addr
                     for chunk in chunksForClient:
                         self._chunksToSendSet.discard(chunk)
-                    # self._listLock.release() &&&
                 serv.servSendChunks(chunksForClient)
                 if len(chunksForClient) == 0:
                     print("out of chunks to send, nothing more to send")
@@ -278,21 +252,17 @@ class DataGenServer:
                         completed_chunks.extend(completedC)
                     # Mark completed chunks as finished
                     with self._listLock:
-                        # self._listLock.acquire() &&&
                         for completed in completed_chunks:
                             self._totalGeneratedChunks.add(completed)
                             cInfo = self._chunksToSend[completed]
                             cInfo.genStage = GenerationStage.FINISHED
-                        # self._listLock.release() &&&
                     diff = serv.compareChunkLists(completed_chunks, chunksForClient)
                     if len(diff) > 0:
                         # Mark missing chunks as being in limbo.
                         with self._listLock:
-                            # self._listLock.acquire() &&&
                             for missing in diff:
                                 cInfo = self._chunksToSend[missing]
                                 cInfo.genStage = GenerationStage.LIMBO
-                            # self._listLock.release() &&&
         except socket.gaierror as e:
             print("breaking connection", addr, name, "socket.gaierror:", e)
         except socket.error as e:
@@ -304,7 +274,6 @@ class DataGenServer:
         # Decrement the number of running client connections and
         # possibly end the program.
         with self._activeClientMtx:
-            # self._activeClientMtx.acquire() &&&
             self._activeClientCount -= 1
             if self._activeClientCount == 0 and outOfChunks:
                 # Connect to our own socket to get past the accept
@@ -312,7 +281,6 @@ class DataGenServer:
                 self._loop = False
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as termSock:
                     termSock.connect(('127.0.0.1', self._port))
-            # self._activeClientMtx.release() &&&
 
     def chunksInState(self, genState):
         """Return a list of ChunkInfo where the genStage matches one in
@@ -330,7 +298,6 @@ class DataGenServer:
         print("starting")
         self._servAccept()
         print("Done, generated ", self._totalGeneratedChunks)
-        print("&&& print in limbo and unassigned")
         print("chunks failed chunks:", self.chunksInState([GenerationStage.LIMBO, GenerationStage.ASSIGNED]))
         counts = { GenerationStage.UNASSIGNED:0,
             GenerationStage.ASSIGNED:0,

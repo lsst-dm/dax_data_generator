@@ -21,6 +21,7 @@
 
 import socket
 
+
 class DataGenError(Exception):
     def __init__(self, msg):
         super().__init__()
@@ -93,7 +94,7 @@ class DataGenConnection():
         It returns the chunk_msg and a list of chunks that were used in making
         the message.
         """
-        print("&&& buildChunksMsg", chunk_list)
+        print("buildChunksMsg", chunk_list)
         chunk_msg = ''
         used_chunks = []
         first = True
@@ -115,13 +116,12 @@ class DataGenConnection():
         _buildChunksMsg back into a list of integer chunk ids.
         It returns a list of chunk ids and if there was a problem.
         """
-        #print("&&& extractChunksFromMsg")
         problem = False
         msg_split = msg.split(self.SEP)
         if len(msg_split) == 1 and len(msg_split[0]) == 0:
-            print("&&& nothing in msg")
+            print("nothing in msg")
             return list(), problem
-        print("&&& extract msg", msg, "msg_split", msg_split)
+        print("extract msg", msg, "msg_split", msg_split)
         # convert entire list back to int
         msg_ints = [ i for i in msg_split if len(i) > 0 and i.isnumeric() ]
         if not len(msg_ints) == len(msg_split):
@@ -138,9 +138,7 @@ class DataGenConnection():
         setA = set(listA)
         setB = set(listB)
         setDiff = setA ^ setB
-        print("&&&setDiff", setDiff)
         return setDiff
-
 
     def clientReqInit(self):
         """Connect to the server, request initialization information."""
@@ -148,7 +146,7 @@ class DataGenConnection():
     def servReqInit(self):
         """Receive the initialization request from the client"""
         msg_id, msg, msg_len = self._recv_msg()
-        print('&&& servReqInit', msg_id, msg)
+        print('servReqInit', msg_id, msg)
         if not msg_id == self.C_INIT_R:
             self.warnings += 1
             raise DataGenError('ERROR servRecvInit ' + str(msg_id) + ' ' + msg + ' ' +str(msg_len))
@@ -158,7 +156,6 @@ class DataGenConnection():
         a name, visits value, objects value, and the contents of the
         configuration file.
         """
-        print("&&& servRespInit CHANGE to send configuration file for generator")
         sep = self.COMPLEXSEP
         msg = name + sep + arg_string + sep + cfg_file_contents
         self._send_msg(self.S_INIT_R, msg)
@@ -175,11 +172,11 @@ class DataGenConnection():
         return name, arg_string, cfg_file_contents
 
     def clientReqChunks(self, max_count):
-        print("&&& clientReqChunks C_CHUNKR")
+        print("clientReqChunks C_CHUNKR")
         msg = str(max_count)
         self._send_msg(self.C_CHUNKR, msg)
     def servRecvReqChunks(self):
-        print("&&& servRecvReqChunks C_CHUNKR")
+        print("servRecvReqChunks C_CHUNKR")
         msg_id, msg, msg_len = self._recv_msg()
         if not msg_id == self.C_CHUNKR:
             self.warnings += 1
@@ -188,12 +185,12 @@ class DataGenConnection():
 
     def servSendChunks(self, chunk_list):
         """Send a list of chunks to the client so they can be generated."""
-        print("&&& servSendChunks S_CNKLST", chunk_list)
+        print("servSendChunks S_CNKLST", chunk_list)
         chunk_msg, sent_chunks = self._buildChunksMsg(chunk_list)
         self._send_msg(self.S_CNKLST, chunk_msg)
         return sent_chunks
     def clientRecvChunks(self):
-        print("&&& clientRecvChunks S_CNKLST")
+        print("clientRecvChunks S_CNKLST")
         msg_id, msg, msg_len = self._recv_msg()
         if not msg_id == self.S_CNKLST:
             self.warnings += 1
@@ -201,7 +198,7 @@ class DataGenConnection():
         msg_chunks, problem = self._extractChunksFromMsg(msg)
         if problem:
             self.warnings += 1
-            print("clientRecvChunks problem with", msg, msg_chunks)
+            print("WARN clientRecvChunks problem with", msg, msg_chunks)
         return msg_chunks, problem
 
     def clientReportChunksComplete(self, chunk_list):
@@ -210,13 +207,12 @@ class DataGenConnection():
         If there were no left over chunks, finish by sending a
         C_CKCFIN message.
         """
-        print("&&& clientReportChunksComplete C_CKCOMP", chunk_list)
+        print("clientReportChunksComplete C_CKCOMP", chunk_list)
         chunk_msg, completed_chunks = self._buildChunksMsg(chunk_list)
         self._send_msg(self.C_CKCOMP, chunk_msg)
         leftover = []
         if len(completed_chunks) != len(chunk_list):
             leftover = set(chunk_list) - set(completed_chunks)
-        print("&&& leftover", leftover)
         if len(leftover) == 0:
             self._send_msg(self.C_CKCFIN, '')
         return leftover
@@ -225,7 +221,7 @@ class DataGenConnection():
         list ends with a C_CKCFIN message.
         Returns list of chunks, message finished, problem
         """
-        print("&&& servRecvChunksComplete C_CKCOMP")
+        print("servRecvChunksComplete C_CKCOMP")
         msg_id, msg, msg_len = self._recv_msg()
         if not msg_id == self.C_CKCOMP:
             if msg_id == self.C_CKCFIN:
@@ -233,20 +229,15 @@ class DataGenConnection():
                 return [], True, False
             else:
                 self.warnings += 1
-                raise DataGenError('ERROR servRecvChunksComplete ' + 
+                raise DataGenError('ERROR servRecvChunksComplete ' +
                                    str(msg_id) + ' ' + str(msg_len) + '~' + msg + '~')
         msg_chunks, problem = self._extractChunksFromMsg(msg)
         if problem:
             self.warnings += 1
             print("servRecvChunksComplete problem with", msg, msg_chunks)
         return msg_chunks, False, problem
-    def servAcceptChunksComplete(self):
-        print("&&& servAcceptChunksComplete S_CHUNKA NEED CODE")
-    def clientRecvAccept(self):
-        print("&&& clientRecvAccept S_CHUNKA NEED CODE")
 
     def testMethods(self):
-        print("&&& testMethods")
         success = None
         # Compare effectively identical chunk lists
         a = [0, 56, 23, 1000]
@@ -267,7 +258,6 @@ class DataGenConnection():
             print("compare a has more elements len failed", val, diff)
             success = False
         # test b has an extra element
-        #b.append(val)
         x = 73
         b.append(x)
         diff = self.compareChunkLists(a, b)
@@ -304,7 +294,7 @@ class DataGenConnection():
             print("large range chunkMsg failed", diff)
             success = False
         if success is None: success = True
-        print("&&& testMethods success=", success)
+        print("testMethods success=", success)
         return success
 
 #####################################################
@@ -355,7 +345,7 @@ class ServerTestThrd(threading.Thread):
                 completed_chunks.extend(completedC)
             # compare with original chunk list
             diff = serv.compareChunkLists(completed_chunks, self.chunkListA)
-            print("&&& final compare diff=", diff)
+            print("final compare diff=", diff)
             if len(diff) != 0:
                 self.success = False
                 raise RuntimeError("mismatch in sent vs received lists", self.name, diff)
