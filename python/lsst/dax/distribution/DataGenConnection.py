@@ -43,6 +43,8 @@ class DataGenConnection():
     MAX_MSG_LEN = 90000
     C_INIT_R = 'C_INIT_R' # client initial request
     S_INIT_R = 'S_INIT_R' # server initial response
+    C_PCFG_R = 'C_PCFG_R' # client asking for partioner config file
+    S_PCFG_A = 'S_PCFG_A' # server answering with specified config file
     C_CHUNKR = 'C_CHUNKR' # client request for chunks to generate
     S_CNKLST = 'S_CNKLST' # server sending chunks to generate
     C_CKCOMP = 'C_CKCOMP' # client sending list of chunks completed
@@ -154,7 +156,7 @@ class DataGenConnection():
     def servRespInit(self, name, arg_string, cfg_file_contents):
         """Respond to the client initialization request by sending it
         a name, visits value, objects value, and the contents of the
-        configuration file.
+        datagenerator configuration file.
         """
         sep = self.COMPLEXSEP
         msg = name + sep + arg_string + sep + cfg_file_contents
@@ -170,6 +172,39 @@ class DataGenConnection():
         arg_string = splt_msg[1]
         cfg_file_contents = splt_msg[2]
         return name, arg_string, cfg_file_contents
+
+    def clientReqPartitionCfgFile(self, index):
+        """Request a partitioner configuration file"""
+        print("clientReqChunks C_PCFGR")
+        self._send_msg(self.C_PCFG_R, str(index))
+    def servRespPartitionCfgFile(self):
+        print("servRespPartitionCfgFile C_PCFGR")
+        msg_id, msg, msg_len = self._recv_msg()
+        if not msg_id == self.C_PCFG_R:
+            self.warnings += 1
+            raise DataGenError('ERROR servRespPartitionCfgFile' + str(msg_id) + ' ' + str(msg_len) + ' ' + msg)
+        return int(msg)
+    def servSendPartionCfgFile(self, index, fileName, fileContents):
+        """Send the fileName and contents to the requestor. If there are
+        no more Files to send, fileName is empty.
+        """
+        print("servSendPartionCfgFile S_PCFG_A", index, fileName, len(fileContents))
+        sep = self.COMPLEXSEP
+        msg = str(index) + sep + fileName + sep + fileContents
+        self._send_msg(self.S_PCFG_A, msg)
+    def clientRespPartionCfgFile(self):
+        msg_id, msg, msg_len = self._recv_msg()
+        if not msg_id == self.S_PCFG_A:
+            self.warnings += 1
+            raise DataGenError('ERROR clientRespPartionCfgFile ' + str(msg_id) + ' ' + str(msg_len) + ' ' + msg)
+        sep = self.COMPLEXSEP
+        splt_msg = msg.split(sep)
+        index = splt_msg[0]
+        fileName = splt_msg[1]
+        fileContents = splt_msg[2]
+        fileName = fileName.strip()
+        iIndex = int(index)
+        return iIndex, fileName, fileContents
 
     def clientReqChunks(self, max_count):
         print("clientReqChunks C_CHUNKR")
@@ -304,7 +339,8 @@ import time
 
 class ServerTestThrd(threading.Thread):
 
-    def __init__(self, host, port, name, arg_string, cfg_file_contents, maxCount, chunkListA):
+    def __init__(self, host, port, name, arg_string, cfg_file_contents,
+                 maxCount, chunkListA, pCfgFiles):
         super().__init__()
         self.success = None
         self.warnings = 0
@@ -315,6 +351,7 @@ class ServerTestThrd(threading.Thread):
         self.cfg_file_contents = cfg_file_contents
         self.maxCount = maxCount
         self.chunkListA = chunkListA
+        self.pCfgFiles = pCfgFiles
 
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -328,8 +365,21 @@ class ServerTestThrd(threading.Thread):
                 raise RuntimeError("testMethodsFailed")
             # receive init from client
             serv.servReqInit()
-            # server sending back configuration information
+            # server sending back configuration information for datagenerator
             serv.servRespInit(self.name, self.arg_string, self.cfg_file_contents)
+            # client requests partioner configuration files.
+            pCfgDone = False
+            while not pCfgDone:
+                pCfgIndex = serv.servRespPartitionCfgFile()
+                if pCfgIndex in self.pCfgFiles:
+                    pCfgTpl = self.pCfgFiles[pCfgIndex]
+                    pCfgName = pCfgTpl[0]
+                    pCfgContents = pCfgTpl[1]
+                else:
+                    pCfgName = ""
+                    pCfgContents = ""
+                    pCfgDone = True
+                serv.servSendPartionCfgFile(pCfgIndex, pCfgName, pCfgContents)
             # client requesting chunk list
             maxCount = serv.servRecvReqChunks()
             if not maxCount == self.maxCount:
@@ -355,7 +405,8 @@ class ServerTestThrd(threading.Thread):
 
 class ClientTestThrd(threading.Thread):
 
-    def __init__(self, host, port, name, arg_string, cfg_file_contents, maxCount, chunkListA):
+    def __init__(self, host, port, name, arg_string, cfg_file_contents,
+                 maxCount, chunkListA, pCfgFiles):
         super().__init__()
         self.success = None
         self.warnings = 0
@@ -366,6 +417,7 @@ class ClientTestThrd(threading.Thread):
         self.cfg_file_contents = cfg_file_contents
         self.maxCount = maxCount
         self.chunkListA = chunkListA
+        self.pCfgFiles = pCfgFiles
 
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -379,6 +431,23 @@ class ClientTestThrd(threading.Thread):
             else:
                 self.success = False
                 raise RuntimeError("Client test failed", name, arg_string, cfg_file_contents)
+            # Request partioner configuration files
+            pCfgIndex = 0
+            pCfgDict = dict()
+            pCfgName = "nothing"
+            while not pCfgName == "":
+                client.clientReqPartitionCfgFile(pCfgIndex)
+                indx, pCfgName, pCfgContents = client.clientRespPartionCfgFile()
+                if indx != pCfgIndex:
+                    self.success = False
+                    raise RuntimeError("Client test failed", indx, pCfgName, pCfgContents)
+                if not pCfgName == "":
+                    pCfgDict[pCfgIndex] = (pCfgName, pCfgContents)
+                pCfgIndex += 1
+            if pCfgDict != self.pCfgFiles:
+                print("ERROR in partioner configuration files", pCfgDict, self.pCfgFiles)
+                self.success = False
+            # Request chunks to generate
             client.clientReqChunks(self.maxCount)
             chunkListARecv, problem = client.clientRecvChunks()
             chunkARecvSet = set(chunkListARecv)
@@ -391,7 +460,7 @@ class ClientTestThrd(threading.Thread):
             else:
                 print("chunks read success")
             self.warnings += client.warnings
-            # Client sends the list of completed chunks back
+            # Send the list of completed chunks back
             completedChunks = chunkListARecv.copy()
             while len(completedChunks) > 0:
                 completedChunks = client.clientReportChunksComplete(completedChunks)
@@ -401,11 +470,13 @@ class ClientTestThrd(threading.Thread):
         if self.success == None: self.success = True
 
 
-def testDataGenConnection(port, name, arg_string, cfg_file_contents, maxCount, chunkListA):
+def testDataGenConnection(port, name, arg_string, cfg_file_contents, maxCount, chunkListA, pCfgFiles):
     """Short test to check that inputs to one side match outputs on the other"""
     host = "127.0.0.1"
-    servThrd = ServerTestThrd(host, port, name, arg_string, cfg_file_contents, maxCount, chunkListA)
-    clientThrd = ClientTestThrd(host, port, name, arg_string, cfg_file_contents, maxCount, chunkListA)
+    servThrd = ServerTestThrd(host, port, name, arg_string, cfg_file_contents,
+                              maxCount, chunkListA, pCfgFiles)
+    clientThrd = ClientTestThrd(host, port, name, arg_string, cfg_file_contents,
+                                maxCount, chunkListA, pCfgFiles)
     servThrd.start()
     time.sleep(1)
     clientThrd.start()
@@ -424,6 +495,11 @@ def testDataGenConnection(port, name, arg_string, cfg_file_contents, maxCount, c
 
 if __name__ == "__main__":
     cListA = range(26,235)
-    testDataGenConnection(14242, 'qt', '--visits 30 --objects 10000', 'bunch of json file entries', 28, cListA)
+    pCfgFiles = {0:("obj.cfg", "a lot of obj cfg info"),
+                 1:("fs.cfg", "some forcedSource info"),
+                 2:("junk_cfg", "blah blah junk\n more stuff")}
+    testDataGenConnection(14242, 'qt', '--visits 30 --objects 10000',
+                          'bunch of json file entries', 28, cListA,
+                          pCfgFiles)
 
 
