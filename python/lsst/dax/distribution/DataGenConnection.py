@@ -431,7 +431,7 @@ class ClientTestThrd(threading.Thread):
             else:
                 self.success = False
                 raise RuntimeError("Client test failed", name, arg_string, cfg_file_contents)
-            # Request partioner configuration files
+            # Request partioner configuration files from server
             pCfgIndex = 0
             pCfgDict = dict()
             pCfgName = "nothing"

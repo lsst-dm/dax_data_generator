@@ -20,6 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import itertools
+import os
 import socket
 import threading
 import yaml
@@ -95,13 +96,13 @@ class DataGenServer:
             "50-99, 105, 110, 140-300", that accepts ranges and
             individual chunkIds. This progam can then generate a file in this
             format containing failed chunkIds, which can then be fed back to
-            the program, if desirable.
+            the program.
 
         """
 
         self._cfgFileName = cfgFileName
-        # Set of all chunkIds to generate.
-        # TODO: Need to get valid chunks from sphgeom.
+        # Set of all chunkIds to generate. sphgeom::Chunker is used to limit
+        # the list to valid chunks.
         totalChunks = set(range(minChunkNum, maxChunkNum))
 
         # Set to false to stop accepting and end the program
@@ -134,6 +135,11 @@ class DataGenServer:
         with open(fakeCfgFileName, 'r') as file:
             self._fakeCfgData = file.read()
         print("fakeCfgData=", self._fakeCfgData)
+        # Get the directory containing partioner configuration files.
+        partionerCfgDir = self._cfg['partitioner']['cfgDir']
+        print("partionerCfgDir=", partionerCfgDir)
+        # Read all the files in that directory and their contents.
+        self._partionerCfgDict = self._readPartionerCfgDir(partionerCfgDir)
 
         # List of client connection threads
         self._clientThreads = list()
@@ -164,6 +170,31 @@ class DataGenServer:
         # determine when the server's job is finished.
         self._activeClientCount = 0
         self._activeClientMtx = threading.Lock()
+
+    def _readPartionerCfgDir(self, partionerCfgDir):
+        """Read all the files ending with cfg in partionerCfgDir and
+        make entries for them in a dictionary with keys indexNum, and
+        values tuple of the file name and file contents. The keys
+        must be sequential and start at 0.
+        """
+        entries = os.listdir(partionerCfgDir)
+        files = list()
+        for e in entries:
+            if os.path.isfile(os.path.join(partionerCfgDir, e)):
+                ext = os.path.splitext(e)[1]
+                if ext == '.cfg':
+                    files.append(os.path.basename(e))
+        print("&&& partitionCfg files=", files, entries)
+        fileDict = dict()
+        index = 0
+        for f in files:
+            fName = os.path.join(partionerCfgDir, f)
+            with open(fName, 'r') as file:
+                fileData = file.read()
+                fileDict[index] = (f, fileData)
+                index += 1
+        print("&&& fileDict", fileDict)
+        return fileDict
 
     def _servAccept(self):
         """Accept connections from clients, spinning up a new thread
@@ -213,6 +244,7 @@ class DataGenServer:
         """
         # Connection and communication exceptions are caught so
         # other connections can continue.
+        outOfChunks = False
         try:
             print('Connected by', addr, name, conn)
             serv = DataGenConnection(conn)
@@ -222,8 +254,24 @@ class DataGenServer:
             serv.servReqInit()
             # server sending back configuration information
             serv.servRespInit(name, self._cfgFakeArgs, self._fakeCfgData)
+            # client requests partioner configuration files, starting with
+            # pCfgIndex=0 and incrementing it until pCfgName==""
+            pCfgDone = False
+            while not pCfgDone:
+                pCfgIndex = serv.servRespPartitionCfgFile()
+                print("&&& pCfgIndex=", pCfgIndex)
+                if pCfgIndex in self._partionerCfgDict:
+                    print("&&& pCfgIndex=", pCfgIndex, " in ", self._partionerCfgDict)
+                    pCfgTpl = self._partionerCfgDict[pCfgIndex]
+                    pCfgName = pCfgTpl[0]
+                    pCfgContents = pCfgTpl[1]
+                else:
+                    print("&&& pCfgIndex=", pCfgIndex, " not in ", self._partionerCfgDict)
+                    pCfgName = ""
+                    pCfgContents = ""
+                    pCfgDone = True
+                serv.servSendPartionCfgFile(pCfgIndex, pCfgName, pCfgContents)
             # client requesting chunk list
-            outOfChunks = False
             while self._loop and not outOfChunks:
                 clientReqChunkCount = serv.servRecvReqChunks()
                 chunksForClient = list()

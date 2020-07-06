@@ -35,7 +35,7 @@ class DataGenClient:
     fake chunks while reporting what chunks have been created.
     """
 
-    def __init__(self, host, port, targetDir='fakeData'):
+    def __init__(self, host, port, targetDir='fakeData', partionCfgDir='partitionCfgs'):
         self._loop = True # set to false to end the program
         self._host = host # server host
         self._port = port # server port
@@ -50,7 +50,9 @@ class DataGenClient:
                               # in example_spec as changing it will change the chunk contents.
         self._datagenpy = '~/work/dax_data_generator/bin/datagen.py' # TODO: this has to go
         self._targetDir = targetDir
+        self._partionCfgDir = partionCfgDir
         self.makeDir(self._targetDir)
+        self.makeDir(os.path.join(self._targetDir, self._partionCfgDir))
 
     def createFileName(self, chunkId, tableName, ext, edgeOnly=False, useTargPath=False):
         typeStr = 'CT_'
@@ -339,6 +341,28 @@ class DataGenClient:
             fileName = os.path.join(self._targetDir, self._cfgFileName)
             with open(fileName, "w") as fw:
                 fw.write(self._cfgFileContents)
+            # Request partioner configuration files from server
+            pCfgIndex = 0
+            pCfgDict = dict()
+            pCfgName = "nothing"
+            while not pCfgName == "":
+                self._client.clientReqPartitionCfgFile(pCfgIndex)
+                indx, pCfgName, pCfgContents = self._client.clientRespPartionCfgFile()
+                if indx != pCfgIndex:
+                    self.success = False
+                    raise RuntimeError("Client got wrong pCfgIndex=", pCfgIndex,
+                                       "indx=", indx, pCfgName)
+                print("&&& pCfgName=", pCfgName, "~")
+                if not pCfgName == "":
+                    pCfgDict[pCfgIndex] = (pCfgName, pCfgContents)
+                pCfgIndex += 1
+            # Write those files to the partitioner config directory
+            pCfgDir = os.path.join(self._targetDir, self._partionCfgDir)
+            for it in pCfgDict.items():
+                pCfgName = os.path.join(pCfgDir, it[1][0])
+                print("writing ", it[0], "name=", pCfgName)
+                with open(pCfgName, "w") as fw:
+                    fw.write(it[1][1])
             while self._loop:
                 self._client.clientReqChunks(self._chunksPerReq)
                 chunkListRecv, problem = self._client.clientRecvChunks()

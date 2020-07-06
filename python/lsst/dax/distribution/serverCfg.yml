@@ -7,3 +7,6 @@ fakeDataGenerator:
   arguments: '--visits 30 --objects 1000'
   cfgFileName: fakeGenSpec.py
 
+partitioner:
+  cfgDir: fakePartitionerCfgs
+
