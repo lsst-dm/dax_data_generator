@@ -184,7 +184,7 @@ class DataGenServer:
                 ext = os.path.splitext(e)[1]
                 if ext == '.cfg':
                     files.append(os.path.basename(e))
-        print("&&& partitionCfg files=", files, entries)
+        print("partitionCfg files=", files, entries)
         fileDict = dict()
         index = 0
         for f in files:
@@ -193,7 +193,7 @@ class DataGenServer:
                 fileData = file.read()
                 fileDict[index] = (f, fileData)
                 index += 1
-        print("&&& fileDict", fileDict)
+        print("fileDict", fileDict)
         return fileDict
 
     def _servAccept(self):
@@ -259,14 +259,11 @@ class DataGenServer:
             pCfgDone = False
             while not pCfgDone:
                 pCfgIndex = serv.servRespPartitionCfgFile()
-                print("&&& pCfgIndex=", pCfgIndex)
                 if pCfgIndex in self._partionerCfgDict:
-                    print("&&& pCfgIndex=", pCfgIndex, " in ", self._partionerCfgDict)
                     pCfgTpl = self._partionerCfgDict[pCfgIndex]
                     pCfgName = pCfgTpl[0]
                     pCfgContents = pCfgTpl[1]
                 else:
-                    print("&&& pCfgIndex=", pCfgIndex, " not in ", self._partionerCfgDict)
                     pCfgName = ""
                     pCfgContents = ""
                     pCfgDone = True
@@ -361,7 +358,8 @@ class DataGenServer:
 
 def testA():
     testChunkInfo()
-    dgServ = DataGenServer("serverCfg.yml", 0, 50000)
+    #dgServ = DataGenServer("serverCfg.yml", 0, 50000) &&& restore
+    dgServ = DataGenServer("serverCfg.yml", 0, 5000)
     dgServ.start()
 
 if __name__ == "__main__":
