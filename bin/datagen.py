@@ -6,16 +6,15 @@ from lsst.dax.data_generator import DataGenerator
 # original data generation:
 #   python bin/datagen.py --chunk 3525 --visits 30 --objects 1000 example_spec.py
 # edge first complete chunk:
-#   python bin/datagen.py --edgefirst --chunk 3525 --visits 30 --objects 1000 example_spec_ef.py
+#   python bin/datagen.py  --chunk 3525 --visits 30 --objects 1000 example_spec.py
 # edge first only the edge:
-#   python bin/datagen.py --edgefirst --edgeonly --chunk 3525 --visits 30 --objects 1000 example_spec_ef.py
+#   python bin/datagen.py --edgeonly --chunk 3525 --visits 30 --objects 1000 example_spec.py
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--chunk", type=int, required=True)
     parser.add_argument("--objects", type=int, required=True)
     parser.add_argument("--visits", type=int, required=True)
-    parser.add_argument("--edgefirst", action="count", default=0)
     parser.add_argument("--edgeonly", action="count", default=0)
     parser.add_argument("specification", type=str)
     args = parser.parse_args()
@@ -37,17 +36,12 @@ if __name__ == "__main__":
     if("ForcedSource" in spec):
         row_counts["ForcedSource"] = None
 
-    if args.edgefirst > 0:
-        seed = 1
-        edgeWidth = 0.018 # degrees
-        tables = dataGen.make_chunkEF(chunk_id, num_rows=row_counts, seed=seed,
-                                      edgeWidth=edgeWidth, edgeOnly=edgeOnly)
-    else:
-        tables = dataGen.make_chunk(chunk_id, num_rows=row_counts)
+    seed = 1
+    edgeWidth = 0.018 # degrees
+    tables = dataGen.make_chunk(chunk_id, num_rows=row_counts, seed=seed,
+                                edgeWidth=edgeWidth, edgeOnly=edgeOnly)
 
-    print("visits:\n", tables["CcdVisit"])
-    print("forced:\n", tables["ForcedSource"])
-    print("object:\n", tables["Object"])
+    print("tables=", tables)
 
     for table_name, table in tables.items():
         edgeType = "CT"  # complete

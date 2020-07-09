@@ -20,13 +20,13 @@ def edgeOnlyContainedInComplete(chunk_id, objectCount, visitCount, spec):
     # ForcedSource count is defined by visits and objects.
     if("ForcedSource" in spec):
         row_counts["ForcedSource"] = None
-    tablesComplete = dataGen.make_chunkEF(chunk_id, num_rows=row_counts, seed=seed,
+    tablesComplete = dataGen.make_chunk(chunk_id, num_rows=row_counts, seed=seed,
                                           edgeWidth=edgeWidth, edgeOnly=False)
 
     row_counts = {"CcdVisit": visitCount, "Object": objectCount}
     if("ForcedSource" in spec):
         row_counts["ForcedSource"] = None
-    tablesEdgeOnly = dataGen.make_chunkEF(chunk_id, num_rows=row_counts, seed=seed,
+    tablesEdgeOnly = dataGen.make_chunk(chunk_id, num_rows=row_counts, seed=seed,
                                           edgeWidth=edgeWidth, edgeOnly=True)
 
 
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     parser.add_argument("--chunk", type=int, default=3525)
     parser.add_argument("--objects", type=int, default=1000)
     parser.add_argument("--visits", type=int, default=30)
-    parser.add_argument("--spec", type=str, default="example_spec_ef.py")
+    parser.add_argument("--spec", type=str, default="example_spec.py")
     args = parser.parse_args()
 
     success = None
@@ -93,9 +93,7 @@ if __name__ == "__main__":
             success = False
         if not columns.tst_mergeBlocks():
             success = False
-        #if not tst_CcdVisitGeneratorEF():
-        #    success = False
-        if not columns.tst_RaDecGeneratorEF():
+        if not columns.tst_RaDecGenerator():
             success = False
 
 

@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+
 import itertools
 import os
 import socket
@@ -50,73 +51,79 @@ class ChunkInfo:
 
     Parameters
     ----------
-    chunkId : integer chunk ID
+    chunk_id : int
+        The chunk id number
+
+    Members
+    -------
+    gen_stage : enum class
+        This indactes how far along the chunk is in the generation process.
+    client_id : int
+        The id of the client program generating the chunk.
+    client_addr : string
+        The IP address of the client generating the chunk.
     """
 
-    def __init__(self, chunkId):
-        self.chunkId = chunkId
-        # `GenerationStage` of the chunk
-        self.genStage = GenerationStage(GenerationStage.UNASSIGNED)
-        # The client id of the client assigned to generate chunkId.
-        self.clientId = '-1'
-        # IP address of the client
-        self.clientAddr = None
+    def __init__(self, chunk_id):
+        self.chunk_id = chunk_id
+        self.gen_stage = GenerationStage(GenerationStage.UNASSIGNED)
+        self.client_id = '-1'
+        self.client_addr = None
 
     def __repr__(self):
-        return ("ChunkInfo " + str(self.chunkId) + ' ' + self.clientId +
-                ' ' + str(self.clientAddr) + ' ' + str(self.genStage))
-
-def testChunkInfo():
-    """Test that __repr__ doesn't crash"""
-    cInfo = ChunkInfo(9876)
-    print("cInfo=", cInfo)
+        return ("ChunkInfo " + str(self.chunk_id) + ' ' + self.client_id +
+                ' ' + str(self.client_addr) + ' ' + str(self.gen_stage))
 
 
 class DataGenServer:
-    """This class is meant to provide clients with names, fake data configuration,
-    and chunks that need to be generated, while keeping track of what has been
-    generated where. The replicator should be able to identify duplicate chunks
-    and mismatching chunks, so this process will not be concerned with that.
-    """
+    """This class is meant to provide clients with the information needed
+    to generate chunks.
 
-    def __init__(self, cfgFileName, minChunkNum, maxChunkNum):
-        """cfgFileName contains our port number and command line arguments
-        to be sent to the fake data generating program. The contents of
-        fakeCfgFileName will be copied to the clients and passed
-        to the fake data genrating program. Failures creating this object
-        should terminate the program.
-
-        Parameters
-        ----------
-        cfgFileName : The name of the server configuration file
-        minChunkNum : The bottom end of the range of chunkIds to generate.
-        maxChunkNum : The top end of the range of chunks to generate.
-            TODO: Both minChunkNum and maxChunkNum should be replaced by a file
+    Parameters
+    ----------
+    cfg_file_name : string
+        The name of the server configuration file
+    min_chunk_num : int
+        The bottom end of the range of chunkIds to generate.
+    max_chunk_num : int
+        The top end of the range of chunks to generate.
+        TODO: Both min_chunk_num and max_chunk_num should be replaced by a file
             containing chunkIds to generate with a format like:
             "50-99, 105, 110, 140-300", that accepts ranges and
             individual chunkIds. This progam can then generate a file in this
             format containing failed chunkIds, which can then be fed back to
             the program.
+    Notes
+    -----
+    This class is meant to provide clients with names, fake data configuration,
+    and chunks that need to be generated. While also keeping track of what has
+    been generated where. The replicator should be able to identify duplicate
+    chunks and mismatching chunks, so this process will not be concerned
+    with that.
 
-        """
+    cfg_file_name contains our port number and the command line arguments
+    to be sent to the fake data generating program. The contents of
+    fake_cfg_file_name will be copied to the clients and passed
+    to the fake data genrating program. Failures creating this object
+    should terminate the program.
+    """
 
-        self._cfgFileName = cfgFileName
+    def __init__(self, cfg_file_name, min_chunk_num, max_chunk_num):
+        self._cfgFileName = cfg_file_name
         # Set of all chunkIds to generate. sphgeom::Chunker is used to limit
         # the list to valid chunks.
-        totalChunks = set(range(minChunkNum, maxChunkNum))
-
+        total_chunks = set(range(min_chunk_num, max_chunk_num))
         # Set to false to stop accepting and end the program
         self._loop = True
         # Sequence count, incremented to provide unique client names
         self._sequence = 1
         # lock to protect _sequence, _clients
-        self._clientLock = threading.Lock()
-        # lock to protect _totalGeneratedChunks, _chunksToSend,
+        self._client_lock = threading.Lock()
+        # lock to protect _total_generated_chunks, _chunksToSend,
         # _chunksToSendSet
-        self._listLock = threading.Lock()
-        # TODO: possibly use a file to set totalChunks
+        self._list_lock = threading.Lock()
         # All the chunks generated so far
-        self._totalGeneratedChunks = set()
+        self._total_generated_chunks = set()
 
         # Read configuration to set other values.
         with open(self._cfgFileName, 'r') as cfgFile:
@@ -126,23 +133,23 @@ class DataGenServer:
         self._port = self._cfg['server']['port']
         # The arguments that will be passed from server to
         # clients to dax_data_generator/bin/datagen.py.
-        self._cfgFakeArgs = self._cfg['fakeDataGenerator']['arguments']
-        print("port=", self._port, self._cfgFakeArgs)
+        self._cfg_fake_args = self._cfg['fakeDataGenerator']['arguments']
+        print("port=", self._port, self._cfg_fake_args)
         # The name and contents of the configuration file that will be passed
         # from server to clients to dax_data_generator/bin/datagen.py.
-        fakeCfgFileName = self._cfg['fakeDataGenerator']['cfgFileName']
-        print("fakeCfgFileName", fakeCfgFileName)
-        with open(fakeCfgFileName, 'r') as file:
+        fake_cfg_file_name = self._cfg['fakeDataGenerator']['cfgFileName']
+        print("fake_cfg_file_name", fake_cfg_file_name)
+        with open(fake_cfg_file_name, 'r') as file:
             self._fakeCfgData = file.read()
-        print("fakeCfgData=", self._fakeCfgData)
+        print("fake_cfg_data=", self._fakeCfgData)  #&&& rename self._fakeCfgData
         # Get the directory containing partioner configuration files.
-        partionerCfgDir = self._cfg['partitioner']['cfgDir']
-        print("partionerCfgDir=", partionerCfgDir)
+        partioner_cfg_dir = self._cfg['partitioner']['cfgDir']
+        print("partioner_cfg_dir=", partioner_cfg_dir)
         # Read all the files in that directory and their contents.
-        self._partionerCfgDict = self._readPartionerCfgDir(partionerCfgDir)
+        self._partioner_cfg_dict = self._readPartionerCfgDir(partioner_cfg_dir)
 
         # List of client connection threads
-        self._clientThreads = list()
+        self._client_threads = list()
         # Dictionary of clients by clientId
         self._clients = dict()
 
@@ -153,52 +160,70 @@ class DataGenServer:
         assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
         assert 'chunker' in spec_globals, "Specification file must define a variable 'chunker'."
         chunker = spec_globals['chunker']
-        allChunks = chunker.getAllChunks()
-        self._chunksToSend = dict() # Dictionary of information on chunks to send
-        # Set of chunks to send, desirable to have in order
-        self._chunksToSendSet = set()
+        all_chunks = chunker.getAllChunks()
+        self._chunks_to_send = dict() # Dictionary of information on chunks to send
+        # Set of chunks to send, desirable to have in order but not essential.
+        self._chunks_to_send_set = set()
         print("Finding valid chunk numbers...")
-        for chunk in totalChunks:
-            if chunk in allChunks:
-                chunkInfo = ChunkInfo(chunk)
-                self._chunksToSend[chunk] = chunkInfo
-                self._chunksToSendSet.add(chunk)
-        print("len(totalChunks)=", len(totalChunks),
-              "len(self._chunksToSendSet)=", len(self._chunksToSendSet))
+        for chunk in total_chunks:
+            if chunk in all_chunks:
+                chunk_info = ChunkInfo(chunk)
+                self._chunks_to_send[chunk] = chunk_info
+                self._chunks_to_send_set.add(chunk)
+        print("&&& chunksToSend=", self._chunks_to_send_set)
+        print("len(totalChunks)=", len(total_chunks),
+              "len(self._chunksToSendSet)=", len(self._chunks_to_send_set))
 
         # Track all client connections so it is possible to
         # determine when the server's job is finished.
-        self._activeClientCount = 0
-        self._activeClientMtx = threading.Lock()
+        self._active_client_count = 0
+        self._active_client_mtx = threading.Lock()
 
-    def _readPartionerCfgDir(self, partionerCfgDir):
-        """Read all the files ending with cfg in partionerCfgDir and
-        make entries for them in a dictionary with keys indexNum, and
-        values tuple of the file name and file contents. The keys
-        must be sequential and start at 0.
+    def _readPartionerCfgDir(self, partioner_cfg_dir):
+        """Read in all the files ending with cfg in partioner_cfg_dir.
+
+        Parameters
+        ----------
+        partioner_cfg_dir : string
+            The directory containing partioner config files.
+
+        Returns
+        -------
+        dictionary :
+            Keys are sequential integers starting at 0
+            Values are tuples of file name and file contents.
+
+        Note
+        ----
+        All the files ending with '.csv' will be read in and entries
+        for them will be put in a dictionary with integer keys, and
+        values being a tuple of the file name and file contents. The keys
+        must be sequential and start at 0, as the clients ask for them by
+        by number starting at 0.
         """
-        entries = os.listdir(partionerCfgDir)
+        entries = os.listdir(partioner_cfg_dir)
         files = list()
         for e in entries:
-            if os.path.isfile(os.path.join(partionerCfgDir, e)):
+            if os.path.isfile(os.path.join(partioner_cfg_dir, e)):
                 ext = os.path.splitext(e)[1]
                 if ext == '.cfg':
                     files.append(os.path.basename(e))
         print("partitionCfg files=", files, entries)
-        fileDict = dict()
+        file_dict = dict()
         index = 0
         for f in files:
-            fName = os.path.join(partionerCfgDir, f)
+            fName = os.path.join(partioner_cfg_dir, f)
             with open(fName, 'r') as file:
-                fileData = file.read()
-                fileDict[index] = (f, fileData)
+                file_data = file.read()
+                file_dict[index] = (f, file_data)
                 index += 1
-        print("fileDict", fileDict)
-        return fileDict
+        print("file_dict", file_dict)
+        return file_dict
 
     def _servAccept(self):
         """Accept connections from clients, spinning up a new thread
-        to handle each one.
+        to handle each one. This ends when there are no more chunk ids
+        to send and all threads have joined.
         """
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.bind(('127.0.0.1', self._port))
@@ -208,26 +233,39 @@ class DataGenServer:
                 print('Connected by', addr)
                 if self._loop:
                     # start new thread
-                    self._clientLock.acquire()
+                    self._client_lock.acquire()
                     clientName = 'client' + str(self._sequence)
                     self._sequence += 1
-                    self._clientLock.release()
+                    self._client_lock.release()
                     print("starting thread", clientName, conn, addr)
                     thrd = threading.Thread(target=self._servToClient, args=(clientName, conn, addr))
-                    self._clientThreads.append(thrd)
-                    with self._activeClientMtx:
-                        self._activeClientCount += 1
+                    self._client_threads.append(thrd)
+                    with self._active_client_mtx:
+                        self._active_client_count += 1
                     thrd.start()
         print("Accept loop shutting down")
-        for j, thrd in enumerate(self._clientThreads):
+        for j, thrd in enumerate(self._client_threads):
             print("joining thread", j)
             thrd.join()
         print("All threads joined.")
 
     def _servToClient(self, name, conn, addr):
-        """Handle the requests of a single client, which follow the pattern
+        """Handle the requests of a single client.
+
+        Parameters
+        ----------
+        name : string
+            The client's name.
+        conn : socket connection
+            The socket connection to the client.
+        addr : string
+            The IP address of the client.
+
+        Notes
+        -----
+        The request from the client follow the pattern:
         Initialize - provide client with its name, and command line arguments
-            with the configuration file for datagen.py
+            with the configuration files for datagen.py, sph-partition, etc.
         Repeated until the client disconnects-
             Requests for chunkIds to generate -
                 The client will disconnect if the server sends
@@ -235,32 +273,26 @@ class DataGenServer:
             Response with successfully generated chunkIds.
         Any chunkIds assigned to the client but not in the list of
         commpleted chunks are put in LIMBO.
-
-        Parameters
-        ----------
-        name: The client's name.
-        addr: The IP address of the client.
-        conn: The socket connection to the client.
         """
         # Connection and communication exceptions are caught so
         # other connections can continue.
-        outOfChunks = False
+        out_of_chunks = False
         try:
             print('Connected by', addr, name, conn)
             serv = DataGenConnection(conn)
-            with self._clientLock:
+            with self._client_lock:
                 self._clients[name] = addr
             # receive init from client
             serv.servReqInit()
             # server sending back configuration information
-            serv.servRespInit(name, self._cfgFakeArgs, self._fakeCfgData)
+            serv.servRespInit(name, self._cfg_fake_args, self._fakeCfgData)
             # client requests partioner configuration files, starting with
             # pCfgIndex=0 and incrementing it until pCfgName==""
             pCfgDone = False
             while not pCfgDone:
                 pCfgIndex = serv.servRespPartitionCfgFile()
-                if pCfgIndex in self._partionerCfgDict:
-                    pCfgTpl = self._partionerCfgDict[pCfgIndex]
+                if pCfgIndex in self._partioner_cfg_dict:
+                    pCfgTpl = self._partioner_cfg_dict[pCfgIndex]
                     pCfgName = pCfgTpl[0]
                     pCfgContents = pCfgTpl[1]
                 else:
@@ -269,23 +301,23 @@ class DataGenServer:
                     pCfgDone = True
                 serv.servSendPartionCfgFile(pCfgIndex, pCfgName, pCfgContents)
             # client requesting chunk list
-            while self._loop and not outOfChunks:
+            while self._loop and not out_of_chunks:
                 clientReqChunkCount = serv.servRecvReqChunks()
                 chunksForClient = list()
                 # get the first clientReqChunkCount elements of self._chunksToSendSet
-                with self._listLock:
-                    for chunk in itertools.islice(self._chunksToSendSet, clientReqChunkCount):
+                with self._list_lock:
+                    for chunk in itertools.islice(self._chunks_to_send_set, clientReqChunkCount):
                         chunksForClient.append(chunk)
-                        cInfo = self._chunksToSend[chunk]
+                        cInfo = self._chunks_to_send[chunk]
                         cInfo.genStage = GenerationStage.ASSIGNED
                         cInfo.clientId = name
                         cInfo.clientAddr = addr
                     for chunk in chunksForClient:
-                        self._chunksToSendSet.discard(chunk)
+                        self._chunks_to_send_set.discard(chunk)
                 serv.servSendChunks(chunksForClient)
                 if len(chunksForClient) == 0:
                     print("out of chunks to send, nothing more to send")
-                    outOfChunks = True
+                    out_of_chunks = True
                     conn.close()
                 else:
                     # receive completed chunks from client
@@ -296,17 +328,17 @@ class DataGenServer:
                         print("serv got", completedC, finished, problem)
                         completed_chunks.extend(completedC)
                     # Mark completed chunks as finished
-                    with self._listLock:
+                    with self._list_lock:
                         for completed in completed_chunks:
-                            self._totalGeneratedChunks.add(completed)
-                            cInfo = self._chunksToSend[completed]
+                            self._total_generated_chunks.add(completed)
+                            cInfo = self._chunks_to_send[completed]
                             cInfo.genStage = GenerationStage.FINISHED
                     diff = serv.compareChunkLists(completed_chunks, chunksForClient)
                     if len(diff) > 0:
                         # Mark missing chunks as being in limbo.
-                        with self._listLock:
+                        with self._list_lock:
                             for missing in diff:
-                                cInfo = self._chunksToSend[missing]
+                                cInfo = self._chunks_to_send[missing]
                                 cInfo.genStage = GenerationStage.LIMBO
         except socket.gaierror as e:
             print("breaking connection", addr, name, "socket.gaierror:", e)
@@ -318,9 +350,9 @@ class DataGenServer:
         print("_servToClient loop is done", addr, name)
         # Decrement the number of running client connections and
         # possibly end the program.
-        with self._activeClientMtx:
-            self._activeClientCount -= 1
-            if self._activeClientCount == 0 and outOfChunks:
+        with self._active_client_mtx:
+            self._active_client_count -= 1
+            if self._active_client_count == 0 and out_of_chunks:
                 # Connect to our own socket to get past the accept
                 # and break the loop.
                 self._loop = False
@@ -331,35 +363,36 @@ class DataGenServer:
         """Return a list of ChunkInfo where the genStage matches one in
         the provided genState list
         """
-        chunksInState = list()
-        for chk in self._chunksToSend:
-            chkInfo = self._chunksToSend[chk]
-            if chkInfo.genStage in genState:
-                chunksInState.append(chkInfo)
-        return chunksInState
+        chunks_in_state = list()
+        for chk in self._chunks_to_send:
+            chk_info = self._chunks_to_send[chk]
+            if chk_info.genStage in genState:
+                chunks_in_state.append(chk_info)
+        return chunks_in_state
 
 
     def start(self):
+        """Start the server and print the results.
+        """
         print("starting")
         self._servAccept()
-        print("Done, generated ", self._totalGeneratedChunks)
+        print("Done, generated ", self._total_generated_chunks)
         print("chunks failed chunks:", self.chunksInState([GenerationStage.LIMBO, GenerationStage.ASSIGNED]))
-        counts = { GenerationStage.UNASSIGNED:0,
+        counts = {GenerationStage.UNASSIGNED:0,
             GenerationStage.ASSIGNED:0,
             GenerationStage.FINISHED:0,
             GenerationStage.LIMBO:0}
-        for chk in self._chunksToSend:
-            chkInfo = self._chunksToSend[chk]
-            counts[chkInfo.genStage] += 1
+        for chk in self._chunks_to_send:
+            chk_info = self._chunks_to_send[chk]
+            counts[chk_info.genStage] += 1
         print("Chunks generated=", counts[GenerationStage.FINISHED])
         print("Chunks assigned=", counts[GenerationStage.ASSIGNED])
         print("Chunks unassigned=", counts[GenerationStage.UNASSIGNED])
         print("Chunks limbo=", counts[GenerationStage.LIMBO])
 
 def testA():
-    testChunkInfo()
     #dgServ = DataGenServer("serverCfg.yml", 0, 50000) &&& restore
-    dgServ = DataGenServer("serverCfg.yml", 0, 5000)
+    dgServ = DataGenServer("serverCfg.yml", 0, 2000)
     dgServ.start()
 
 if __name__ == "__main__":

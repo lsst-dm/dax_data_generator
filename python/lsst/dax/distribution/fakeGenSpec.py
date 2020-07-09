@@ -7,15 +7,15 @@ chunker = Chunker(0, num_stripes, num_substripes)
 
 spec = {
     "Object": {
-        "columns": {"objectId": columns.ObjIdGeneratorEF(),
-                    "ra,decl": columns.RaDecGeneratorEF(chunker),
-                    "mag_u,mag_g,mag_r,mag_i,mag_z": columns.MagnitudeGeneratorEF(n_mags=5)
+        "columns": {"objectId": columns.ObjIdGenerator(),
+                    "ra,decl": columns.RaDecGenerator(chunker),
+                    "mag_u,mag_g,mag_r,mag_i,mag_z": columns.MagnitudeGenerator(n_mags=5)
                     }
     },
     "CcdVisit": {
-        "columns": {"ccdVisitId": columns.VisitIdGeneratorEF(),
-                    "filterName": columns.FilterGeneratorEF(filters="ugriz"),
-                    "ra,decl": columns.RaDecGeneratorEF(chunker, ignoreEdgeOnly=True)
+        "columns": {"ccdVisitId": columns.VisitIdGenerator(),
+                    "filterName": columns.FilterGenerator(filters="ugriz"),
+                    "ra,decl": columns.RaDecGenerator(chunker, ignore_edge_only=True)
                     }
     },
     "ForcedSource": {
@@ -23,7 +23,7 @@ spec = {
         "prereq_tables": ["CcdVisit"],
         "columns": {
             "objectId,ccdVisitId,psFlux,psFlux_Sigma":
-                columns.ForcedSourceGeneratorEF(visit_radius=1.4, filters="ugriz"),
+                columns.ForcedSourceGenerator(visit_radius=1.4, filters="ugriz"),
         },
     }
 }

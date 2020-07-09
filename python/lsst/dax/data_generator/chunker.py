@@ -78,7 +78,6 @@ class Chunker:
         # Increase the bounds of the box by the overlapWidth
         overlapWRads = overlapWidth * (math.pi/180.0)
         box = self.getChunkBounds(chunkId)
-        print("&&&!!chunkId=", chunkId, " box=", box, " overlapWRads=", overlapWRads)
         # Increase Latitude by overlapWRads in both directions
         # cap values at PI/2 and -PI/2.
         latA = box.getLat().getA().asRadians()
@@ -109,13 +108,9 @@ class Chunker:
         lonB = lonB + overlapLon
 
         biggerBox = sphgeom.Box.fromRadians(lonA, latA, lonB, latB)
-        print("&&& lonA=", lonA, "latA=", latA, "lonB=", lonB, "latB=", latB)
-        print("&&& box=", boxStrDeg(box))
-        print("&&& big=", boxStrDeg(biggerBox))
 
         # Use
         chunks = self.getChunksIntersecting(biggerBox)
-        # &&& chunks = self.getChunksIntersecting(box)
         self.printChunkBoundsDegrees(chunkId)
         for ch in chunks: self.printChunkBoundsDegrees(ch)
         return chunks

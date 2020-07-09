@@ -1,11 +1,29 @@
+#!/usr/bin/env python3
+
+# Developed for the LSST Data Management System.
+# This product includes software developed by the LSST Project
+# (http://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 
 import numpy as np
 import pandas as pd
 
 from collections import defaultdict
-
-#import lsst.dax.data_generator.columns as columns
-#from lsst.dax.data_generator import columns
 from . import columns
 
 __all__ = ["DataGenerator"]
@@ -23,17 +41,17 @@ class TableColumnInfo:
               + " generator:" + str(self.generator) + ' block:' + str(self.block))
 
 class DataGenerator:
+    """Create a DataGenerator based on a specification dictionary.
+    The specification dictionary describes all of the tables and their
+    constituent columns to generate. Nothing is generated at
+    initialization; calls must be made to DataGenerator.make_chunk() to
+    synthesize data.
+
+    No validation is performed on the generator specification.
+    """
 
     def __init__(self, spec):
-        """Create a DataGenerator based on a specification dictionary.
 
-        The specification dictionary describes all of the tables and their
-        constituent columns to generate. Nothing is generated at
-        initialization; calls must be made to DataGenerator.make_chunk() to
-        synthesize data.
-
-        No validation is performed on the generator specification.
-        """
         self.spec = spec
         self.tables = spec.keys()
 
@@ -48,7 +66,6 @@ class DataGenerator:
 
         There is no guarantee against circular, and thus impossible to
         construct, references.
-
         """
         all_tables = list(spec.keys())
         prereqs = []
@@ -91,78 +108,23 @@ class DataGenerator:
                 assert ValueError, ("Column name implies multiple returns, "
                                     "but generator only returned one")
 
-    def make_chunk(self, chunk_id, num_rows=None):
+    def make_chunk(self, chunk_id, num_rows=None, seed=1, edge_width=0.018, edgeOnly=False):
         """Generate synthetic data for one chunk.
 
         Parameters
         ----------
         chunk_id : int
-                  ID of the chunk to generate.
+            ID of the chunk to generate.
         num_rows : int or dict
-                  Generate the specified number of rows. Can either be a
-                  scalar, or a dictionary of the form {table_name: num_rows}.
-
-        Returns
-        -------
-        dictionary of pandas.DataFrames
-            The output dictionary contains each generated table as a
-            pandas.DataFrame.
-
-        """
-
-        output_tables = {}
-        if isinstance(num_rows, dict):
-            rows_per_table = dict(num_rows)
-        else:
-            rows_per_table = defaultdict(lambda: num_rows)
-
-        for table in self._resolve_table_order(self.spec):
-            column_generators = self.spec[table]["columns"]
-            prereq_rows = self.spec[table].get("prereq_row", None)
-            prereq_tables = self.spec[table].get("prereq_tables", [])
-            output_columns = {}
-            for column_name, column_generator in column_generators.items():
-
-                split_column_names = column_name.split(",")
-                for name in split_column_names:
-                    output_columns[name] = []
-
-                if prereq_rows is None:
-                    individual_obj = column_generator(
-                        chunk_id, rows_per_table[table],
-                        prereq_tables={t: output_tables[t] for t in prereq_tables})
-                    self._add_to_list(individual_obj, output_columns, split_column_names)
-                else:
-                    prereq_table_contents = {t: output_tables[t] for t in prereq_tables}
-                    for n in range(len(output_tables[prereq_rows])):
-                        individual_obj = column_generator(
-                            chunk_id, rows_per_table[table],
-                            prereq_row=output_tables[prereq_rows].iloc[n],
-                            prereq_tables=prereq_table_contents)
-                        self._add_to_list(individual_obj, output_columns, split_column_names)
-
-            for name in output_columns.keys():
-                temp = np.concatenate(output_columns[name])
-                output_columns[name] = temp
-
-            output_tables[table] = pd.DataFrame(output_columns)
-
-        return output_tables
-
-    def make_chunkEF(self, chunk_id, num_rows=None, seed=1, edgeWidth=0.018, edgeOnly=False):
-        """Generate synthetic data for one chunk.
-
-        Parameters
-        ----------
-        chunk_id : int
-                  ID of the chunk to generate.
-        num_rows : int or dict
-                  Generate the specified number of rows. Can either be a
-                  scalar, or a dictionary of the form {table_name: num_rows}.
-        seed     : int
-                  Random number seed
-        edgeWidth :
-                  Width/height of the edge in degrees
+            Generate the specified number of rows. Can either be a
+            scalar, or a dictionary of the form {table_name: num_rows}.
+        seed : int
+            Random number seed
+        edge_width : float
+            Width/height of the edge in degrees
+        edge_only : bool
+            When True, only generate objects within edge_width of the edge
+            of the chunk. When False, create all objects in the chunk.
 
         Returns
         -------
@@ -192,10 +154,10 @@ class DataGenerator:
                 colNames = col
                 colInfo = TableColumnInfo(colNames, generator, position)
                 position += 1
-                # RaDecGeneratorEF needs to run first to determine the
+                # RaDecGenerator needs to run first to determine the
                 # length of the table.
-                if isinstance(generator, columns.RaDecGeneratorEF):
-                    colInfo.block = colInfo.generator(chunk_id, tableLength, seed, edgeWidth, edgeOnly)
+                if isinstance(generator, columns.RaDecGenerator):
+                    colInfo.block = colInfo.generator(chunk_id, tableLength, seed, edge_width, edgeOnly)
                     blockLength = len(colInfo.block[0])
                     if tableLength != blockLength:
                         # Reducing length to what was generated for RA and Dec
