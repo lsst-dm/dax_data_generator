@@ -190,6 +190,16 @@ class DataIngest():
             raise RuntimeError("ERROR sendChunkToTarget cmd=" + cmd + " out=" + str(out_str))
         return process.returncode, out_str
 
+    def publishDatabase(self, db_name):
+        """Once all the chunks have been ingested, publish the database.
+        &&& curl 'http://localhost:25080/ingest/database/test101' -X PUT -H "Content-Type: application/json" -d '{"auth_key":""}'
+        """
+        success = False
+        cmd = 'ingest/database/' + db_name
+        success, status, content = self._putToIngest(cmd, {'auth_key':self._auth_key})
+        if not success:
+            print("ERROR publishing", db_name, "status=", status, "content=", content)
+        return success, status, content
 
 class IngestTransaction():
     """RAII object to make sure transactions are closed.
@@ -217,13 +227,17 @@ class IngestTransaction():
     def __exit__(self, e_type, e_value, e_traceback):
         success = False
         if e_type:
-            print("exception=", e_type, "val=", e_value, "trace=", e_traceback)
-
+            print("__exit__ exception=", e_type, "val=", e_value, "trace=", e_traceback)
+            return False
+        content = None
+        status = -1
         if self._id > -1:
-            success, r_json = self._data_ingest.endTransaction(self._db_name, self._id)
+            success, status, content = self._data_ingest.endTransaction(self._db_name, self._id)
         if not success:
-            print("ERROR Transaction end failed ", self._db_name, self._id, " json=", r_json)
-            raise RuntimeError('Transaction failed ', self._db_name, self._id, r_json)
+            print("ERROR Transaction end failed ", self._db_name, self._id, status, content)
+            raise RuntimeError('Transaction failed ' + self._db_name + " trans_id="+ str(self._id)
+                                + " status=" + str(status) + " content=" + str(content))
+        return True
 
 
 
@@ -231,35 +245,41 @@ class IngestTransaction():
 
 if __name__ == "__main__":
     ingest = DataIngest('localhost', 25080)
+    # No point in continuing if the ingest system can't be contacted.
     if not ingest.isIngestAlive():
         print("ERROR ingest server not responding.")
         exit(1)
+    # Try sending the database. This will fail if the database already exists.
     if not ingest.sendDatabase("fakeIngestCfgsTest/test102.json"):
         print("ERROR failed to send database configuration to ingest.")
-        # &&& requires database wipe to test.
-        # exit(1)
+    # Ingest the test Object tables schema. This will fail if the
+    # database already exists.
     if not ingest.sendTableSchema("fakeIngestCfgsTest/test102_Object.json"):
         print("ERROR failed to send Object table schema")
-        # &&& requires database wipe to test.
-        # exit(1)
+    # Start a transaction
     i_transaction = IngestTransaction(ingest, 'test102')
     transaction_status = None
     try:
         with i_transaction as t_id:
             chunk_id = 0
+            # Get address of worker to handle this chunk.
             host, port = ingest.getChunkTargetAddr(t_id, chunk_id)
+            # Send the chunk to the target worker
             table = 'Object'
             f_path = 'fakeIngestCfgsTest/chunk_0.txt'
             r_code, out_str = ingest.sendChunkToTarget(host, port, t_id, table, f_path)
             print('host=', host, 'port=', port, "")
+            # Transaction ends
         transaction_status = True
     except RuntimeError as err:
         transaction_status = False
         print("Transaction Failed ", i_transaction, "err=", err)
         exit(1)
-
-
-    # &&& code to publish
+    # code to publish
+    success, status, content = ingest.publishDatabase('test102')
+    if not success:
+        print("Failed to publish")
+        exit(1)
     print("Success")
 
 
