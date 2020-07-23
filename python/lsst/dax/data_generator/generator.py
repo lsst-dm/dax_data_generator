@@ -108,7 +108,7 @@ class DataGenerator:
                 assert ValueError, ("Column name implies multiple returns, "
                                     "but generator only returned one")
 
-    def make_chunk(self, chunk_id, num_rows=None, seed=1, edge_width=0.018, edgeOnly=False):
+    def make_chunk(self, chunk_id, num_rows=None, seed=1, edge_width=0.018, edge_only=False):
         """Generate synthetic data for one chunk.
 
         Parameters
@@ -157,7 +157,7 @@ class DataGenerator:
                 # RaDecGenerator needs to run first to determine the
                 # length of the table.
                 if isinstance(generator, columns.RaDecGenerator):
-                    colInfo.block = colInfo.generator(chunk_id, tableLength, seed, edge_width, edgeOnly)
+                    colInfo.block = colInfo.generator(chunk_id, tableLength, seed, edge_width, edge_only)
                     blockLength = len(colInfo.block[0])
                     if tableLength != blockLength:
                         # Reducing length to what was generated for RA and Dec

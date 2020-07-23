@@ -34,17 +34,36 @@ Multiple clients can run on the same host, but they must have different
 working directories or there are posible conflicts with incomplete
 files as well as complete vs edge only csv files.
 
-The client needs the following setup to run dax_data_generator/bin/datagen.py
-as well as the partitioner
-cd stack
-. loadLSST.bash
-cd <development directory containing directories for sphgeom(branch u/ctslater/getchunk), dax_data_generator>
-cd sphgeom
-setup -r .
-cd ../partition
-setup -k -r .
-cd ../dax_data_generator
-setup.py develop
+Replace 'work' with the appropriate development directory.
+
+Starting distribution server:
+  cd ~/stack
+  . loadLSST.bash
+  cd ~/work/qserv
+  setup -r . -t qserv-dev
+  cd ../sphgeom/
+  setup -k -r . -t qserv-dev
+  cd ../dax_data_generator/
+  python setup.py develop
+  cd ./python/lsst/dax/distribution/
+  python DataGenServer.py
+
+starting distribution client:
+  cd ~/stack/
+  . loadLSST.bash
+  cd ~/work/qserv
+  setup -r . -t qserv-dev
+  cd ../sphgeom/
+  setup -k -r . -t qserv-dev
+  cd ../partition
+  setup -k -r . -t qserv-dev
+  cd ../parquet_tools
+  python setup.py develop
+  cd ../dax_data_generator/
+  python setup.py develop
+  cd ./python/lsst/dax/distribution/
+  python DataGenClient.py
+
 
 
 These may be needed by the client as well
