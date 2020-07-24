@@ -10,3 +10,12 @@ fakeDataGenerator:
 partitioner:
   cfgDir: fakePartitionerCfgs
 
+ingest:
+  host: localhost
+  port: 25080
+  user:
+  authKey:
+  dbName: fakedb
+  cfgDir: fakeIngestCfgs
+
+

@@ -19,10 +19,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
+import getopt
 import itertools
 import os
 import socket
+import sys
 import threading
 import yaml
 
@@ -30,6 +31,7 @@ from enum import Enum
 
 from DataGenConnection import DataGenConnection
 from DataGenConnection import DataGenError
+from DataIngest import DataIngest
 
 class GenerationStage(Enum):
     """This class is used to indicate where a chunk is in the process
@@ -93,6 +95,11 @@ class DataGenServer:
             individual chunkIds. This progam can then generate a file in this
             format containing failed chunkIds, which can then be fed back to
             the program.
+    skip_ingest : bool
+        When true, do not try to pass generated files to the ingest system.
+    skip_schema : bool
+        When true, expect attempts to send schemas to ingest to fail.
+
     Notes
     -----
     This class is meant to provide clients with names, fake data configuration,
@@ -108,11 +115,14 @@ class DataGenServer:
     should terminate the program.
     """
 
-    def __init__(self, cfg_file_name, min_chunk_num, max_chunk_num):
+    def __init__(self, cfg_file_name, min_chunk_num, max_chunk_num,
+                 skip_ingest, skip_schema):
         self._cfgFileName = cfg_file_name
         # Set of all chunkIds to generate. sphgeom::Chunker is used to limit
         # the list to valid chunks.
         total_chunks = set(range(min_chunk_num, max_chunk_num))
+        self._skip_ingest = skip_ingest
+        self._skip_schema = skip_schema
         # Set to false to stop accepting and end the program
         self._loop = True
         # Sequence count, incremented to provide unique client names
@@ -142,11 +152,23 @@ class DataGenServer:
         with open(fake_cfg_file_name, 'r') as file:
             self._fakeCfgData = file.read()
         print("fake_cfg_data=", self._fakeCfgData)  #&&& rename self._fakeCfgData
+
         # Get the directory containing partioner configuration files.
-        partioner_cfg_dir = self._cfg['partitioner']['cfgDir']
+        partioner_cfg_dir = os.path.abspath(self._cfg['partitioner']['cfgDir'])
         print("partioner_cfg_dir=", partioner_cfg_dir)
         # Read all the files in that directory and their contents.
         self._partioner_cfg_dict = self._readPartionerCfgDir(partioner_cfg_dir)
+
+        # Get ingest sytem information
+        self._db_name = self._cfg['ingest']['dbName']
+        ingest_host = self._cfg['ingest']['host']
+        ingest_port = self._cfg['ingest']['port']
+        ingest_user = self._cfg['ingest']['user']
+        ingest_auth_key = self._cfg['ingest']['authKey']
+        self._ingest_cfg_dir = os.path.abspath(self._cfg['ingest']['cfgDir'])
+        print("ingest addr=", ingest_host, ":", ingest_port, " user=", ingest_user)
+        print("ingest cfg dir=", self._ingest_cfg_dir)
+        self._ingest = DataIngest(ingest_host, ingest_port, ingest_user, ingest_auth_key)
 
         # List of client connection threads
         self._client_threads = list()
@@ -170,7 +192,6 @@ class DataGenServer:
                 chunk_info = ChunkInfo(chunk)
                 self._chunks_to_send[chunk] = chunk_info
                 self._chunks_to_send_set.add(chunk)
-        print("&&& chunksToSend=", self._chunks_to_send_set)
         print("len(totalChunks)=", len(total_chunks),
               "len(self._chunksToSendSet)=", len(self._chunks_to_send_set))
 
@@ -370,10 +391,47 @@ class DataGenServer:
                 chunks_in_state.append(chk_info)
         return chunks_in_state
 
+    def connectToIngest(self):
+        """Test if ingest is available and send database info if it is.
+        """
+        if self._skip_ingest:
+            print("Skipping ingest connect")
+            return True
+        if not self._ingest.isIngestAlive():
+            raise RuntimeError("Failed to contact ingest", self._ingest)
+
+        if self._skip_schema:
+            print("Skipping database and schema file ingest.")
+            return True
+        db_jfile = self._db_name + ".json"
+        db_jpath = os.path.join(self._ingest_cfg_dir, db_jfile)
+        print("sending db config to ingest", db_jpath)
+        if not self._ingest.sendDatabase(db_jpath):
+            raise RuntimeError("Failed to send databse to ingest.", db_jpath, self._ingest)
+        # Find all of the schema files in self._ingest_cfg_dir while
+        # ignoring the database config file.
+        entries = os.listdir(self._ingest_cfg_dir)
+        files = list()
+        for e in entries:
+            full_path = os.path.join(self._ingest_cfg_dir, e)
+            if os.path.isfile(full_path):
+                ext = os.path.splitext(e)[1]
+                if ext == '.json':
+                    fname = os.path.basename(e)
+                    if not fname == db_jfile:
+                        files.append(full_path)
+        # Send each config file to ingest
+        for f in files:
+            print("Sending schema file to ingest", f)
+            if not self._ingest.sendTableSchema(f):
+                raise RuntimeError("Failed to send schema file to ingest", f)
+        return True
 
     def start(self):
         """Start the server and print the results.
         """
+        print("Registering database and schema with ingest system.")
+        self.connectToIngest()
         print("starting")
         self._servAccept()
         print("Done, generated ", self._total_generated_chunks)
@@ -391,8 +449,32 @@ class DataGenServer:
         print("Chunks limbo=", counts[GenerationStage.LIMBO])
 
 def testA():
-    #dgServ = DataGenServer("serverCfg.yml", 0, 50000) &&& restore
-    dgServ = DataGenServer("serverCfg.yml", 0, 2000)
+    argumentList = sys.argv[1:]
+    print("&&& argumentList=", argumentList)
+    options = "hksi:"
+    long_options = ["help", "skipIngest", "skipSchema", "ingestCfg"]
+    skip_ingest = False
+    skip_schema = False
+    try:
+        arguments, values = getopt.getopt(argumentList, options, long_options)
+        print("&&& arguments=", arguments)
+        for arg, val in arguments:
+            print("&&& arg=", arg)
+            if arg in ("-h", "--help"):
+                print("-h, --help  help")
+                print("-k, --skipIngest  skip sending ingest and schema")
+                print("-s, --skipSchema  skip sending schema")
+                return False
+            elif arg in ("-k", "--skipIngest"):
+                skip_ingest = True
+            elif arg in ("-s", "--skipSchema"):
+                skip_schema = True
+    except getopt.error as err:
+        print (str(err))
+        exit(1)
+    print("&&&skip_ingest=", skip_ingest, "skip_schema=", skip_schema, "values=", values)
+    #dgServ = DataGenServer("serverCfg.yml", 0, 50000, skip_ingest, skip_schema) &&& restore
+    dgServ = DataGenServer("serverCfg.yml", 0, 2000, skip_ingest, skip_schema)
     dgServ.start()
 
 if __name__ == "__main__":
