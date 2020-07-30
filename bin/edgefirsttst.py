@@ -14,20 +14,20 @@ def edgeOnlyContainedInComplete(chunk_id, objectCount, visitCount, spec):
     dataGen = DataGenerator(spec)
 
     seed = 1
-    edgeWidth = 0.018 # degrees
+    edge_width = 0.018 # degrees
 
     row_counts = {"CcdVisit": visitCount, "Object": objectCount}
     # ForcedSource count is defined by visits and objects.
     if("ForcedSource" in spec):
         row_counts["ForcedSource"] = None
     tablesComplete = dataGen.make_chunk(chunk_id, num_rows=row_counts, seed=seed,
-                                          edgeWidth=edgeWidth, edgeOnly=False)
+                                          edge_width=edge_width, edge_only=False)
 
     row_counts = {"CcdVisit": visitCount, "Object": objectCount}
     if("ForcedSource" in spec):
         row_counts["ForcedSource"] = None
     tablesEdgeOnly = dataGen.make_chunk(chunk_id, num_rows=row_counts, seed=seed,
-                                          edgeWidth=edgeWidth, edgeOnly=True)
+                                          edge_width=edge_width, edge_only=True)
 
 
     print("visits len:", len(tablesComplete["CcdVisit"]))

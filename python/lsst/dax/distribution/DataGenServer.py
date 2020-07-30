@@ -106,7 +106,7 @@ class DataGenServer:
     and chunks that need to be generated. While also keeping track of what has
     been generated where. The replicator should be able to identify duplicate
     chunks and mismatching chunks, so this process will not be concerned
-    with that.
+    with that, but will avoid generating duplicates when possible.
 
     cfg_file_name contains our port number and the command line arguments
     to be sent to the fake data generating program. The contents of
@@ -293,7 +293,7 @@ class DataGenServer:
             Requests for chunkIds to generate -
                 The client will disconnect if the server sends
                 it an empty list of chunkIds.
-            Response with successfully generated chunkIds.
+            Client responds with successfully generated chunkIds.
         Any chunkIds assigned to the client but not in the list of
         commpleted chunks are put in LIMBO.
         """
@@ -396,6 +396,13 @@ class DataGenServer:
 
     def connectToIngest(self):
         """Test if ingest is available and send database info if it is.
+
+        Return
+        ------
+        success : bool
+            False if required information could not be sent to ingest.
+            _skip_ingest and _skip_schema can reduce or eliminate
+            the information that needs to be sent.
         """
         if self._skip_ingest:
             print("Skipping ingest connect")
@@ -468,8 +475,10 @@ class DataGenServer:
 
 
 def testA():
+    """Temporary main function call
+    """
     argumentList = sys.argv[1:]
-    print("&&& argumentList=", argumentList)
+    print("argumentList=", argumentList)
     options = "hksi:"
     long_options = ["help", "skipIngest", "skipSchema", "ingestCfg"]
     skip_ingest = False
@@ -493,7 +502,7 @@ def testA():
         exit(1)
     print("&&&skip_ingest=", skip_ingest, "skip_schema=", skip_schema, "values=", values)
     #dgServ = DataGenServer("serverCfg.yml", 0, 50000, skip_ingest, skip_schema) &&& restore
-    dgServ = DataGenServer("serverCfg.yml", 0, 1000, skip_ingest, skip_schema)
+    dgServ = DataGenServer("serverCfg.yml", 0, 5000, skip_ingest, skip_schema)
     dgServ.start()
 
 if __name__ == "__main__":

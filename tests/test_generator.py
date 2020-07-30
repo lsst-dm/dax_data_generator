@@ -29,7 +29,7 @@ class TestDataGenerator(unittest.TestCase):
         seed = 1
         edge_width = 0.018 # degrees
         data = generator.make_chunk(chunk_id, num_rows=50, seed=seed,
-                                  edgeWidth=edge_width, edgeOnly=False)
+                                    edge_width=edge_width, edge_only=False)
         self.assertIn('Object', data.keys())
         self.assertEqual(len(data['Object']), 50)
 
@@ -62,7 +62,7 @@ class TestDataGenerator(unittest.TestCase):
         generator = DataGenerator(generator_spec)
         #&&& chunk_table = generator.make_chunk(chunk_id, 50)
         chunk_table = generator.make_chunk(chunk_id, num_rows=50, seed=seed,
-                                           edgeWidth=edge_width, edgeOnly=False)
+                                           edge_width=edge_width, edge_only=False)
         self.assertIn("CcdVisit", chunk_table.keys())
         self.assertEqual(len(chunk_table["CcdVisit"]), 50)
 
@@ -99,7 +99,7 @@ class TestDataGenerator(unittest.TestCase):
         seed = 1
         edge_width = 0.018 # degrees
         chunk_tables = generator.make_chunk(chunk_id, num_rows=50, seed=seed,
-                                            edgeWidth=edge_width, edgeOnly=False)
+                                            edge_width=edge_width, edge_only=False)
         self.assertIn("ForcedSource", chunk_tables.keys())
         self.assertIn("Object", chunk_tables.keys())
         self.assertIn("CcdVisit", chunk_tables.keys())
