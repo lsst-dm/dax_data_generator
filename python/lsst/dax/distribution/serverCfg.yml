@@ -13,8 +13,8 @@ partitioner:
 ingest:
   host: localhost
   port: 25080
-  user:
-  authKey:
+  user: ''
+  authKey: ''
   dbName: fakedb
   cfgDir: fakeIngestCfgs
 

@@ -164,11 +164,13 @@ class DataGenServer:
         ingest_host = self._cfg['ingest']['host']
         ingest_port = self._cfg['ingest']['port']
         ingest_user = self._cfg['ingest']['user']
-        ingest_auth_key = self._cfg['ingest']['authKey']
+        ingest_auth = self._cfg['ingest']['authKey']
+        self._ingest_dict = {'host':ingest_host, 'port':ingest_port, 'user':ingest_user, 'auth':ingest_auth,
+                            'db':self._db_name, 'skip':self._skip_ingest}
         self._ingest_cfg_dir = os.path.abspath(self._cfg['ingest']['cfgDir'])
         print("ingest addr=", ingest_host, ":", ingest_port, " user=", ingest_user)
         print("ingest cfg dir=", self._ingest_cfg_dir)
-        self._ingest = DataIngest(ingest_host, ingest_port, ingest_user, ingest_auth_key)
+        self._ingest = DataIngest(ingest_host, ingest_port, ingest_user, ingest_auth)
 
         # List of client connection threads
         self._client_threads = list()
@@ -306,7 +308,8 @@ class DataGenServer:
             # receive init from client
             serv.servReqInit()
             # server sending back configuration information
-            serv.servRespInit(name, self._cfg_fake_args, self._fakeCfgData)
+            print("&&& ingest_dict=", self._ingest_dict)
+            serv.servRespInit(name, self._cfg_fake_args, self._fakeCfgData, self._ingest_dict)
             # client requests partioner configuration files, starting with
             # pCfgIndex=0 and incrementing it until pCfgName==""
             pCfgDone = False
@@ -447,6 +450,22 @@ class DataGenServer:
         print("Chunks assigned=", counts[GenerationStage.ASSIGNED])
         print("Chunks unassigned=", counts[GenerationStage.UNASSIGNED])
         print("Chunks limbo=", counts[GenerationStage.LIMBO])
+        # Publish database if all chunks were generated.
+        if self._skip_ingest:
+            print("skipping publishing")
+            return
+        incompleteCount = (counts[GenerationStage.ASSIGNED]
+            + counts[GenerationStage.UNASSIGNED] + counts[GenerationStage.LIMBO])
+        if counts[GenerationStage.FINISHED] > 0 and incompleteCount == 0:
+            print("All chunks generated and ingested, publishing", self._db_name)
+            success, status, r_json = self._ingest.publishDatabase(self._db_name)
+            if success:
+                print("Published", self._db_name)
+            else:
+                print("ERROR failed to publish", self._db_name, status, r_json)
+        else:
+            print("Not publishing due to incomplete data/creation/ingestion")
+
 
 def testA():
     argumentList = sys.argv[1:]
@@ -462,8 +481,8 @@ def testA():
             print("&&& arg=", arg)
             if arg in ("-h", "--help"):
                 print("-h, --help  help")
-                print("-k, --skipIngest  skip sending ingest and schema")
-                print("-s, --skipSchema  skip sending schema")
+                print("-k, --skipIngest  skip trying to ingest anything")
+                print("-s, --skipSchema  skip sending schema, needed when schema was already sent.")
                 return False
             elif arg in ("-k", "--skipIngest"):
                 skip_ingest = True
@@ -474,7 +493,7 @@ def testA():
         exit(1)
     print("&&&skip_ingest=", skip_ingest, "skip_schema=", skip_schema, "values=", values)
     #dgServ = DataGenServer("serverCfg.yml", 0, 50000, skip_ingest, skip_schema) &&& restore
-    dgServ = DataGenServer("serverCfg.yml", 0, 2000, skip_ingest, skip_schema)
+    dgServ = DataGenServer("serverCfg.yml", 0, 1000, skip_ingest, skip_schema)
     dgServ.start()
 
 if __name__ == "__main__":

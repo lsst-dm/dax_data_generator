@@ -159,6 +159,9 @@ class SimpleBox:
         return ('{raA=' + str(self.raA) + ' raB=' + str(self.raB) +
                ' decA=' + str(self.decA) + ' decB=' + str(self.decB) + '}')
 
+    def __str__(self):
+        return self.__repr__()
+
     def area(self):
         """
         Return
@@ -242,10 +245,17 @@ class RaDecGenerator(ColumnGenerator):
         dec_delta = simple_box.decB - simple_box.decA
         ra_centers = np.random.random(length)*ra_delta + ra_min
         dec_centers = np.random.random(length)*dec_delta + dec_min
-        return (ra_centers, dec_centers)
+        ra_out = list()
+        for ra in ra_centers:
+            while ra < 0.0:
+                ra += 360.0
+            while ra >= 360.0:
+                ra -= 360.0
+            ra_out.append(ra)
+        return (ra_out, dec_centers)
 
     def __call__(self, chunk_id, length, seed, edge_width, edge_only, prereq_tables=None, **kwargs):
-        """ &&& fix doc
+        """
         Parameters
         ----------
         chunk_id : int
@@ -290,6 +300,7 @@ class RaDecGenerator(ColumnGenerator):
         boxes = dict()
         entire_box = SimpleBox(raA, raB, decA, decB)
         boxes["entire"] = entire_box
+        print("chunk=", chunk_id, "bbox=", entire_box.__repr__())
 
         if edge_width > 0.0:
             # Correct the edge_width for declination so there is at least
@@ -472,6 +483,8 @@ class ForcedSourceGenerator(ColumnGenerator):
         visit_table = prereq_tables['CcdVisit']
         object_record = prereq_row
 
+        # TODO: &&& The RA values need to be within +/-180 of each other or it'll
+        # have the wrong values.
         dists_to_visit_center_sq = ((visit_table['ra'] - object_record['ra'])**2
                                   + (visit_table['decl'] - object_record['decl'])**2)
         visit_radius_sq = self.visit_radius**2

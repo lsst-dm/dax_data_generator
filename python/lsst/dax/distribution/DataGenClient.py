@@ -28,6 +28,8 @@ import socket
 import subprocess
 
 from DataGenConnection import DataGenConnection
+from DataIngest import DataIngest
+
 
 
 class DataGenClient:
@@ -67,11 +69,39 @@ class DataGenClient:
         self._overlap = 0.018 # overlap in degrees, about 1 arcmin. TODO: This should be put
                               # in the cfg_file from the server as changing it will change
                               # the chunk contents.
-        self._datagenpy = '~/work/dax_data_generator/bin/datagen.py' # TODO: this has to go
+        self._datagenpy = '~/work/dax_data_generator/bin/datagen.py' # TODO: this has to go &&&
         self._pt_cfg_dir = 'partitionCfgs' # sub-dir of _targetDir for partitioner configs
         self._pt_cfg_dict = None # Dictionary that stores partioner config files.
         self.makeDir(self._target_dir)
         self.makeDir(os.path.join(self._target_dir, self._pt_cfg_dir))
+
+        self._ingest = None
+        self._skip_ingest = True
+        self._db_name = ''
+        self._transaction_id = -1
+
+    def _setIngest(self, ingest_dict):
+        """Create ingest object from ingest_dict values.
+
+        Parameters
+        ----------
+        ingest_dict : dictionary
+            Dictionary containing information about the ingest system.
+            'host' : str, ingest system host name.
+            'port' : int, ingest port number.
+            'user' : str, ingest user name.
+            'auth' : str, ingest user name.
+            'db'   : str, name of the databse being created
+            'skip  : bool, true if ingest is being skipped.
+
+        Note
+        ----
+        The keys in ingest_dict should match those in servRespInit and clientRespInit.
+        """
+        ingd = ingest_dict
+        self._ingest = DataIngest(ingd['host'], ingd['port'], ingd['user'], ingd['auth'])
+        self._skip_ingest = ingd['skip']
+        self._db_name = ingd['db']
 
     def createFileName(self, chunk_id, table_name, ext, edge_only=False, use_targ_path=False):
         """Create a consistent file name given the input parameters.
@@ -409,6 +439,7 @@ class DataGenClient:
         # sph-partition -c (cfgdir)/Object.cfg --mr.num-workers 1 --out.dir outdir --in chunk0_CT_Object.csv
         # --in chunk402_CT_Object.csv --in chunk401_CT_Object.csv --in chunk400_CT_Object.csv
         # --in chunk404_EO_Object.csv --in chunk403_CT_Object.csv
+        info_list = list() # A list of tuples (tblName, fullPathFile)
         for cfg in self._pt_cfg_dict.items():
             # Determine the table name from the config file name.
             cfgFName = cfg[1][0]
@@ -438,20 +469,71 @@ class DataGenClient:
             reg = re.compile(r"^chunk_" + str(chunkId) + r"(_overlap)?\.txt$")
             for ent in entries:
                 fn = os.path.basename(ent)
+                full_path = os.path.join(outDir, ent)
                 m = reg.match(fn)
                 if m:
-                    print("keeping ", fn)
+                    print("keeping ", fn, tblName, full_path)
+                    info_list.append((tblName, full_path))
                 else:
-                    os.remove(os.path.join(outDir, ent))
-            return True
+                    os.remove(full_path)
+        for info in info_list:
+            print("&&& info=", info, "0=", info[0], "1=", info[1])
+            self._addChunkToTransaction(chunkId, table=info[0], f_path=info[1])
+        return True
+
+    def _startTransaction(self):
+        """ Start a transaction or raise a RuntimeException
+        """
+        if self._skip_ingest:
+            # Return an invalid id
+            print("skipping ingest")
+            self._transaction_id = -1
+            return
+        success, id = self._ingest.startTransaction(self._db_name)
+        if not success:
+            print("ERROR Failed to start transaction ", self._db_name)
+            raise RuntimeError("ERROR failed to start transaction ", self._db_name)
+        self._transaction_id = id
+        print("-----------------------------------------------")
+        print("Transaction started ", self._db_name, "id=", id)
+        print("-----------------------------------------------")
+        return
+
+    def _addChunkToTransaction(self, chunk_id, table, f_path):
+        """ Add chunk to the transaction represented by trans_id or raise RuntimeError
+        """
+        if self._skip_ingest:
+            print("skipping ingest", chunk_id, table, f_path)
+            return 0, 'skip'
+        t_id = self._transaction_id
+        host, port = self._ingest.getChunkTargetAddr(t_id, chunk_id)
+        print("Sending to", host, ":", port, "info", t_id, table, chunk_id, f_path)
+        r_code, out_str =self._ingest.sendChunkToTarget(host, port, t_id, table, f_path)
+        print("Added to Transaction ", host, ":", port, "info", r_code, out_str)
+        return r_code, out_str
+
+    def _endTransaction(self, abort):
+        """End the transaction, aborting if indicated.
+        """
+        print("Transaction end abort=", abort)
+        t_id = self._transaction_id
+        self._transaction_id = -1
+        if t_id == -1:
+            print("No active transaction to end")
+            return
+        success, status, content = self._ingest.endTransaction(t_id, abort)
+        return success, status, content
 
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((self._host, self._port))
             self._client = DataGenConnection(s)
             self._client.clientReqInit()
-            self._name, self._gen_arg_str, self._cfg_file_contents = self._client.clientRespInit()
+            self._name, self._gen_arg_str, self._cfg_file_contents, ingest_dict = self._client.clientRespInit()
+            print("&&&&&&&&&& ingest_dict=", ingest_dict)
+            self._setIngest(ingest_dict)
             print("name=", self._name, self._gen_arg_str, ":\n", self._cfg_file_contents)
+            print("skip_ingest=", self._skip_ingest)
             # Read the datagen config file to get access to an identical chunker and spec.
             self._readDatagenConfig()
             # Write the configuration file
@@ -475,13 +557,14 @@ class DataGenClient:
                 pCfgIndex += 1
             self._pt_cfg_dict = pCfgDict
             # Write those files to the partitioner config directory
-            # (mostly for diagnostic purposes)
             pCfgDir = os.path.join(self._target_dir, self._pt_cfg_dir)
             for it in pCfgDict.items():
                 pCfgName = os.path.join(pCfgDir, it[1][0])
                 print("writing ", it[0], "name=", pCfgName)
                 with open(pCfgName, "w") as fw:
                     fw.write(it[1][1])
+
+            # Start creating and ingesting chunks.
             while self._loop:
                 self._client.clientReqChunks(self._chunksPerReq)
                 chunkListRecv, problem = self._client.clientRecvChunks()
@@ -529,21 +612,29 @@ class DataGenClient:
                             if self._fillChunkDir(chunk, neighborChunks):
                                 haveAllCsvChunks.append(chunk)
                     # Generate overlap tables and files for ingest.
-                    for chunk in haveAllCsvChunks:
-                        if self._createOverlapTables(chunk):
-                            print("created overlap for chunk", chunk)
-                            withOverlapChunks.append(chunk)
-                        else:
-                            print("ERROR failed to create overlap for chunk", chunk)
-                    # TODO: Maybe report withOverlapChunks to server. Chunks that get this far
-                    #       but do not get reported as ingested would be easier to track down
-                    #       and examine.
-                    # TODO: Register with ingest. &&& It looks like this is probably easier to do
-                    #                                 when generating the overlaps.
-                    for chunk in withOverlapChunks:
-                        # TODO: MUST ingest chunks with overlaps &&&
-                        ingestedChunks.append(chunk)
-
+                    # Start the transaction
+                    abort = False
+                    if len(haveAllCsvChunks):
+                        self._startTransaction()
+                    try:
+                        for chunk in haveAllCsvChunks:
+                            if self._createOverlapTables(chunk):
+                                print("created overlap for chunk", chunk)
+                                withOverlapChunks.append(chunk)
+                            else:
+                                print("ERROR failed to create overlap for chunk", chunk)
+                    except Exception as exc:
+                        # Abort the transaction if possible.
+                        print("ERROR transaction failed ", exc)
+                        abort = True
+                    # TODO: It may be better to have the server end the transaction as
+                    # it would give a better record of which chunks got ingested.
+                    success, status, content = self._endTransaction(abort)
+                    if success and not abort:
+                        for chunk in withOverlapChunks:
+                            ingestedChunks.append(chunk)
+                    else:
+                        print("Failed ingest, transaction failed or aborted ", status, content)
                     # If no chunks were created, likely fatal error. Asking for more
                     # chunks to create would just cause more problems.
                     if len(ingestedChunks) == 0:

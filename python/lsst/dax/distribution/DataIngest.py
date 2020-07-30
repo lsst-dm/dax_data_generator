@@ -48,7 +48,7 @@ class DataIngest():
         print("base_url=", self._base_url)
 
     def __repr__(self):
-        out = ("host=" + self._host + ":" + str(self._port) + " db=" + self._db_name
+        out = ("host=" + self._host + ":" + str(self._port)
              + " user=" + self._user + "auth_key:****")
         return out
 
@@ -56,6 +56,7 @@ class DataIngest():
         """Test if ingest system is alive.
         """
         url = self._base_url + 'meta/version'
+        print("&&& url=", url)
         response = requests.get(url)
         r_json = response.json()
         if not r_json['success']:
@@ -82,22 +83,35 @@ class DataIngest():
 
     def _putToIngest(self, ingest_cmd, data_json):
         """Send the data_json to the ingest system and return
-        a json result
+        Return
+        ------
+        success : bool
+            True indicates operation was successful
+        status_code : int
+            Status code value from put request.
+        r_json : json or None
+            If the status code was not 200, this will be None.
+            Otherwise it is a json object with information about the request.
         """
         url = self._base_url + ingest_cmd
         print('&&& url=', url, " data=", data_json)
         response = requests.put(url, json=data_json)
         print("&&& response=", response)
         status_code = response.status_code
-        content = response.content
-        print("&&& status=", status_code, " content=", content)
         success = True
-        # 200 success code
-        if not status_code == 200:
-            print('ERROR put url=', url, "data=", data_json,
-                'status=', status_code, "content=", content)
+        # 200 means the put request was at least well formed.
+        if status_code != 200:
+            print('ERROR put url=', url, "data=", data_json, 'status=', status_code)
             success = False
-        return success, status_code, content
+            return success, status_code, None
+        #content = response.content
+        r_json = response.json()
+        print("&&& status=", status_code, " r_json=", r_json)
+        if not r_json['success']:
+            print('ERROR put url=', url, 'status=', status_code, 'data=', data_json,
+                  'r_json=', r_json)
+            success = False
+        return success, status_code, r_json
 
     def sendDatabase(self, db_file_path):
         """ Send the database description to the ingest system.
@@ -131,15 +145,6 @@ class DataIngest():
         id : int
             Ingest super transaction id number.
         """
-        # &&&
-        #url = 'http://localhost:25080/ingest/trans'
-        #response = requests.post(url, json={'database':'test101','auth_key':''})
-        #responseJson = response.json()
-        #if not responseJson['success']:
-        #    print('error: ' + responseJson['error'])
-        #    sys.exit(1)
-        #print('transaction id:' + responseJson['databases']['test101']['transactions'][0]['id']
-
         success, r_json = self._postToIngest('ingest/trans', {'database':db_name,'auth_key':''})
         if not success:
             print('ERROR when starting transaction ', db_name, "r_json=", r_json)
@@ -149,19 +154,17 @@ class DataIngest():
         print("&&& transaction id=", id, " r_json=", r_json)
         return True, id
 
-    def endTransaction(self, db_name, transaction_id, abort=False):
-        #&&&
-        #curl 'http://localhost:25080/ingest/trans/1?abort=0' -X PUT -H "Content-Type: application/json" -d '{"auth_key":""}'
+    def endTransaction(self, transaction_id, abort):
         cmd = 'ingest/trans/' + str(transaction_id) + '?abort='
         if abort:
             cmd += '1'
         else:
             cmd += '0'
-        success, status, content = self._putToIngest(cmd, {'database':db_name,'auth_key':self._auth_key})
+        success, status, r_json = self._putToIngest(cmd, {'auth_key':self._auth_key})
         if not success:
             print("ERROR ending transaction id=", transaction_id, "abort=", abort, "status=", status,
-                  "content=", content)
-        return success, status, content
+                  "r_json=", r_json)
+        return success, status, r_json
 
     def getChunkTargetAddr(self, transaction_id, chunk_id):
         """ &&& curl http://localhost:25080/ingest/chunk -X POST -H "Content-Type: application/json" -d'{"transaction_id":1,"chunk":0,"auth_key":""}'
@@ -181,7 +184,7 @@ class DataIngest():
         """ &&& qserv-replica-file-ingest FILE localhost 25002 1 Object P chunk_0.txt --verbose
         """
         cmd = ('qserv-replica-file-ingest FILE ' + host + ' ' + str(port) + ' '
-            + str(transaction_id) + ' ' + table + ' P ' + f_path + ' --verbose')
+            + str(transaction_id) + ' ' + table + ' P ' + f_path + ' --verbose --columns-separator=TAB')
         print("&&& cmd=", cmd)
         process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         out_str = process.communicate()
@@ -197,23 +200,26 @@ class DataIngest():
         """
         success = False
         cmd = 'ingest/database/' + db_name
-        success, status, content = self._putToIngest(cmd, {'auth_key':self._auth_key})
+        success, status, r_json = self._putToIngest(cmd, {'auth_key':self._auth_key})
         if not success:
-            print("ERROR publishing", db_name, "status=", status, "content=", content)
-        return success, status, content
+            print("ERROR publishing", db_name, "status=", status, "r_json=", r_json)
+        return success, status, r_json
 
 class IngestTransaction():
     """RAII object to make sure transactions are closed.
     Throws RunTimeError if transaction cannot be started or closed.
+    self.abort needs to be set to False if the elements of the
+    transaction are successful before __exit__ is called.
     """
 
     def __init__(self, data_ingest, db_name):
         self._data_ingest = data_ingest
         self._db_name = db_name
         self._id = -1
+        self.abort = True
 
     def __repr__(self):
-        out = 'data_ingest(' + self._data_ingest + ") db=" +self._db_name + " id=" + self._id
+        out = 'data_ingest(' + str(self._data_ingest) + ") db=" + self._db_name + " id=" + str(self._id)
         return out
 
     def __enter__(self):
@@ -233,7 +239,7 @@ class IngestTransaction():
         content = None
         status = -1
         if self._id > -1:
-            success, status, content = self._data_ingest.endTransaction(self._db_name, self._id)
+            success, status, content = self._data_ingest.endTransaction(self._id, abort=False)
         if not success:
             print("ERROR Transaction end failed ", self._db_name, self._id, status, content)
             raise RuntimeError('Transaction failed ' + self._db_name + " trans_id="+ str(self._id)
@@ -270,6 +276,7 @@ if __name__ == "__main__":
             f_path = 'fakeIngestCfgsTest/chunk_0.txt'
             r_code, out_str = ingest.sendChunkToTarget(host, port, t_id, table, f_path)
             print('host=', host, 'port=', port, "")
+            i_transaction.abort = False
             # Transaction ends
         transaction_status = True
     except RuntimeError as err:

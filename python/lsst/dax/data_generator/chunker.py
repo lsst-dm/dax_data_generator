@@ -28,7 +28,8 @@ def boxStrDeg(box):
     bLonBDeg = str(box.getLon().getB().asDegrees())
     bLatADeg = str(box.getLat().getA().asDegrees())
     bLatBDeg = str(box.getLat().getB().asDegrees())
-    s = "ra[" + bLonADeg + bLonBDeg + "], dec[" + bLatADeg + bLatBDeg + "]"
+    s = ("ra[" + bLonADeg + ", " +  bLonBDeg
+       + "], dec[" + bLatADeg + ", " + bLatBDeg + "]")
     return s
 
 
