@@ -151,7 +151,7 @@ class DataGenServer:
         print("fake_cfg_file_name", fake_cfg_file_name)
         with open(fake_cfg_file_name, 'r') as file:
             self._fakeCfgData = file.read()
-        print("fake_cfg_data=", self._fakeCfgData)  #&&& rename self._fakeCfgData
+        print("fake_cfg_data=", self._fakeCfgData)
 
         # Get the directory containing partioner configuration files.
         partioner_cfg_dir = os.path.abspath(self._cfg['partitioner']['cfgDir'])
@@ -308,7 +308,6 @@ class DataGenServer:
             # receive init from client
             serv.servReqInit()
             # server sending back configuration information
-            print("&&& ingest_dict=", self._ingest_dict)
             serv.servRespInit(name, self._cfg_fake_args, self._fakeCfgData, self._ingest_dict)
             # client requests partioner configuration files, starting with
             # pCfgIndex=0 and incrementing it until pCfgName==""
@@ -330,6 +329,7 @@ class DataGenServer:
                 chunksForClient = list()
                 # get the first clientReqChunkCount elements of self._chunksToSendSet
                 with self._list_lock:
+                    print("Chunks left=", len(self._chunks_to_send_set))
                     for chunk in itertools.islice(self._chunks_to_send_set, clientReqChunkCount):
                         chunksForClient.append(chunk)
                         cInfo = self._chunks_to_send[chunk]
@@ -475,7 +475,12 @@ class DataGenServer:
 
 
 def testA():
-    """Temporary main function call
+    """Temporary main function call.
+    TODO: The next step is to have the chunks to be created read in from files
+    and have this program produce a files of that format for created chunks
+    and chunks that should be created. That way, after the server runs
+    the output from the server can be examined and the server can be run
+    again with the output files to fill in the gaps.
     """
     argumentList = sys.argv[1:]
     print("argumentList=", argumentList)
@@ -485,9 +490,8 @@ def testA():
     skip_schema = False
     try:
         arguments, values = getopt.getopt(argumentList, options, long_options)
-        print("&&& arguments=", arguments)
+        print("arguments=", arguments)
         for arg, val in arguments:
-            print("&&& arg=", arg)
             if arg in ("-h", "--help"):
                 print("-h, --help  help")
                 print("-k, --skipIngest  skip trying to ingest anything")
@@ -500,9 +504,9 @@ def testA():
     except getopt.error as err:
         print (str(err))
         exit(1)
-    print("&&&skip_ingest=", skip_ingest, "skip_schema=", skip_schema, "values=", values)
-    #dgServ = DataGenServer("serverCfg.yml", 0, 50000, skip_ingest, skip_schema) &&& restore
-    dgServ = DataGenServer("serverCfg.yml", 0, 5000, skip_ingest, skip_schema)
+    print("skip_ingest=", skip_ingest, "skip_schema=", skip_schema, "values=", values)
+    # 0-50000 would be all chunks for stripes = 200 substripes = 5
+    dgServ = DataGenServer("serverCfg.yml", 0, 2000, skip_ingest, skip_schema)
     dgServ.start()
 
 if __name__ == "__main__":

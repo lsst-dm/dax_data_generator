@@ -4,7 +4,11 @@ import numpy as np
 from abc import ABC
 import healpy
 
+from astropy.coordinates import SkyCoord
+
 from .chunker import Chunker
+
+
 
 
 __all__ = ["ColumnGenerator", "ObjIdGenerator", "FilterGenerator",
@@ -326,7 +330,7 @@ class RaDecGenerator(ColumnGenerator):
 
         ratio_edge_to_entire = edge_area/entire_area
         blocks = dict()
-        # TODO: &&& replace 10 with minLength and 0.90 with maxRatioEdgeToEntire
+        # TODO: replace 10 with minLength and 0.90 with maxRatioEdgeToEntire
         if (not edge_width > 0.0) or ratio_edge_to_entire > 0.90 or length < 10:
             # Just generate the entire block
             blocks["entire"] = self._generateBlock(chunk_id, boxes["entire"], length)
@@ -361,8 +365,8 @@ class ObjIdGenerator(ColumnGenerator):
             Array containing unique IDs for each object
         """
 
-        # &&& more than 100k objects in a chunk will cause issues
-        # &&& Replace 100000 with max_objects_per_chunk?
+        # TODO: more than 100k objects in a chunk will cause issues
+        #       Replace 100000 with max_objects_per_chunk?
         return (chunk_id * 100000) + np.arange(length)
 
 
@@ -376,8 +380,8 @@ class VisitIdGenerator(ColumnGenerator):
             Array containing unique IDs for each visit
         """
 
-        # &&& This shouldn't have the same issue as objects/chunk
-        # &&& but maybe replace 100000 with max_objects_per_chunk?
+        # TODO: This shouldn't have the same issue as objects/chunk
+        #       but maybe replace 100000 with max_objects_per_chunk?
         return 10000000000 + (chunk_id * 100000) + np.arange(length)
 
 
@@ -483,12 +487,11 @@ class ForcedSourceGenerator(ColumnGenerator):
         visit_table = prereq_tables['CcdVisit']
         object_record = prereq_row
 
-        # TODO: &&& The RA values need to be within +/-180 of each other or it'll
-        # have the wrong values.
-        dists_to_visit_center_sq = ((visit_table['ra'] - object_record['ra'])**2
-                                  + (visit_table['decl'] - object_record['decl'])**2)
-        visit_radius_sq = self.visit_radius**2
-        n_matching_visits = np.sum(dists_to_visit_center_sq < visit_radius_sq)
+        # deltas - distance between 2 points on the sphere for everything in the table
+        deltas = (SkyCoord(ra=visit_table['ra'], dec=visit_table['decl'], unit="deg")
+                .separation(SkyCoord(ra=object_record['ra'], dec=object_record['decl'], unit="deg")).degree)
+        n_matching_visits = np.sum(deltas < self.visit_radius)
+
 
         objectId = np.zeros(n_matching_visits, dtype=int) + int(object_record['objectId'])
         psFlux = np.random.randn(n_matching_visits)
@@ -498,7 +501,7 @@ class ForcedSourceGenerator(ColumnGenerator):
         index_position = 0
         for filter_name in self.filters:
             sel, = np.where((visit_table['filterName'] == filter_name) &
-                            (dists_to_visit_center_sq < visit_radius_sq))
+                            (deltas < self.visit_radius))
 
             matching_filter_visitIds = visit_table['ccdVisitId'][sel]
 

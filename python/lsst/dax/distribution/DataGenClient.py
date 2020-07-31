@@ -69,7 +69,7 @@ class DataGenClient:
         self._overlap = 0.018 # overlap in degrees, about 1 arcmin. TODO: This should be put
                               # in the cfg_file from the server as changing it will change
                               # the chunk contents.
-        self._datagenpy = '~/work/dax_data_generator/bin/datagen.py' # TODO: this has to go &&&
+        self._datagenpy = '~/work/dax_data_generator/bin/datagen.py' # TODO: MUST stop hard coding this
         self._pt_cfg_dir = 'partitionCfgs' # sub-dir of _targetDir for partitioner configs
         self._pt_cfg_dict = None # Dictionary that stores partioner config files.
         self.makeDir(self._target_dir)
@@ -568,7 +568,7 @@ class DataGenClient:
                 else:
                     os.remove(full_path)
         for info in info_list:
-            print("&&& info=", info, "0=", info[0], "1=", info[1])
+            print("info=", info, "0=", info[0], "1=", info[1])
             self._addChunkToTransaction(chunkId, table=info[0], f_path=info[1])
         return True
 

@@ -56,7 +56,7 @@ class DataIngest():
         """Test if ingest system is alive.
         """
         url = self._base_url + 'meta/version'
-        print("&&& url=", url)
+        print("ingest url=", url)
         response = requests.get(url)
         r_json = response.json()
         if not r_json['success']:
@@ -70,9 +70,8 @@ class DataIngest():
         a json result
         """
         url = self._base_url + ingest_cmd
-        print('&&& url=', url, " data=", data_json)
+        print('url=', url, " data=", data_json)
         response = requests.post(url, json=data_json)
-        print("&&& response=", response)
         r_json = response.json()
         success = True
         if not r_json['success']:
@@ -94,9 +93,8 @@ class DataIngest():
             Otherwise it is a json object with information about the request.
         """
         url = self._base_url + ingest_cmd
-        print('&&& url=', url, " data=", data_json)
+        print('url=', url, " data=", data_json)
         response = requests.put(url, json=data_json)
-        print("&&& response=", response)
         status_code = response.status_code
         success = True
         # 200 means the put request was at least well formed.
@@ -104,9 +102,7 @@ class DataIngest():
             print('ERROR put url=', url, "data=", data_json, 'status=', status_code)
             success = False
             return success, status_code, None
-        #content = response.content
         r_json = response.json()
-        print("&&& status=", status_code, " r_json=", r_json)
         if not r_json['success']:
             print('ERROR put url=', url, 'status=', status_code, 'data=', data_json,
                   'r_json=', r_json)
@@ -149,12 +145,29 @@ class DataIngest():
         if not success:
             print('ERROR when starting transaction ', db_name, "r_json=", r_json)
             return False, -1
-        print("&&& r_json=", r_json)
         id = r_json['databases'][db_name]['transactions'][0]['id']
-        print("&&& transaction id=", id, " r_json=", r_json)
+        print("transaction id=", id, " r_json=", r_json)
         return True, id
 
     def endTransaction(self, transaction_id, abort):
+        """ End the ingest transaction
+
+        Parameters
+        ----------
+        transaction_id : int
+            The transaction id number.
+        abort : bool
+            True if the transaction should be rolled back.
+
+        Return
+        ------
+        success : bool
+            True if the operation was successful.
+        status : int
+            Status code from the put operation.
+        r_json : json or None
+            json data from the put operation if status was 200.
+        """
         cmd = 'ingest/trans/' + str(transaction_id) + '?abort='
         if abort:
             cmd += '1'
@@ -167,7 +180,21 @@ class DataIngest():
         return success, status, r_json
 
     def getChunkTargetAddr(self, transaction_id, chunk_id):
-        """ &&& curl http://localhost:25080/ingest/chunk -X POST -H "Content-Type: application/json" -d'{"transaction_id":1,"chunk":0,"auth_key":""}'
+        """ Get the host and port number of the ingest worker for this chunk.
+
+        Parameters
+        ----------
+        transaction_id : int
+            Ingest transaction id number.
+        chunk_id : int
+            Chunk id number.
+
+        Return
+        ------
+        host : str
+            Host name of the ingest worker.
+        port : int
+            Port number of the ingest worker.
         """
         cmd = 'ingest/chunk'
         jdata = {"transaction_id":transaction_id,"chunk":chunk_id,"auth_key":self._auth_key}
@@ -181,11 +208,29 @@ class DataIngest():
         return host, port
 
     def sendChunkToTarget(self, host, port, transaction_id, table, f_path):
-        """ &&& qserv-replica-file-ingest FILE localhost 25002 1 Object P chunk_0.txt --verbose
+        """ Send the file to the ingest worker.
+
+        Parameters
+        ----------
+        host : str
+            Host name for the ingest worker.
+        port : int
+            Port number for the ingest worker.
+        transation_id : int
+            Ingest transaction id number.
+        table : str
+            The name of the table that f_path data should be added to.
+        f_path : str
+            Full path to the file to ingest.
+
+        Note
+        ----
+        This calls the external program 'qserv-replica-file-ingest' to
+        actually send the file.
         """
         cmd = ('qserv-replica-file-ingest FILE ' + host + ' ' + str(port) + ' '
             + str(transaction_id) + ' ' + table + ' P ' + f_path + ' --verbose --columns-separator=TAB')
-        print("&&& cmd=", cmd)
+        print("cmd=", cmd)
         process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         out_str = process.communicate()
         process.wait()
@@ -195,8 +240,12 @@ class DataIngest():
         return process.returncode, out_str
 
     def publishDatabase(self, db_name):
-        """Once all the chunks have been ingested, publish the database.
-        &&& curl 'http://localhost:25080/ingest/database/test101' -X PUT -H "Content-Type: application/json" -d '{"auth_key":""}'
+        """Once all the chunks have been ingested, call this to publish the database.
+
+        Parameters
+        ----------
+        db_name : str
+            Name of the database to be published.
         """
         success = False
         cmd = 'ingest/database/' + db_name

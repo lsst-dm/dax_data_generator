@@ -141,7 +141,6 @@ class DataGenerator:
             rows_per_table = defaultdict(lambda: num_rows)
 
         resolvedOrder = self._resolve_table_order(self.spec)
-        print("&&&resolvedOrder=", resolvedOrder)
         tableColumns = dict()
         newRowsPerTable = dict()
 
@@ -180,8 +179,6 @@ class DataGenerator:
                 if prereq_rows is None:
                     if colInfo.block is None:
                         prereq_tbls = {t: output_tables[t] for t in prereq_tables}
-                        print("&&& colInfo=", colInfo)
-                        print("&&& stuff=", chunk_id, rows_per_table[table], seed, prereq_tbls)
                         colInfo.block = colInfo.generator(
                             chunk_id, rows_per_table[table], seed,
                             prereq_tables=prereq_tbls)
@@ -199,8 +196,7 @@ class DataGenerator:
             for name in output_columns.keys():
                 temp = np.concatenate(output_columns[name])
                 output_columns[name] = temp
-                print("&&& output_colums name=", name, " len=", len(output_columns[name]))
-            print("&&&rows_per_table=", rows_per_table)
+            print("rows_per_table=", rows_per_table)
 
             output_tables[table] = pd.DataFrame(output_columns)
 

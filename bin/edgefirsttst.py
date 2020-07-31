@@ -44,9 +44,6 @@ def edgeOnlyContainedInComplete(chunk_id, objectCount, visitCount, spec):
         colCount = len(tblEO.columns)
         rowCountEO = len(tblEO)
         rowCountComp = len(tblComplete)
-        print("&&& colCount=", colCount, " rowCountEO=", rowCountEO)
-        print("&&& tblEO=", tblEO)
-        print("&&& tblComp=", tblComplete)
         rowsChecked = 0
         for j in range(rowCountEO):
             found = False

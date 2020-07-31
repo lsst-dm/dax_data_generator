@@ -242,7 +242,7 @@ class DataGenConnection():
         Parameters for servRespInit are the return values for clientRespInit.
         """
         sep = self.COMPLEXSEP
-        print("&&& ingest_dict=", ingest_dict)
+        print("ingest_dict=", ingest_dict)
         skip_val = '0'
         if ingest_dict['skip']:
             skip_val = '1'
@@ -627,7 +627,7 @@ class ClientTestThrd(threading.Thread):
             client = DataGenConnection(s)
             client.clientReqInit()
             name, arg_string, cfg_file_contents, ingest_dict = client.clientRespInit()
-            print("&&& ingest_dict=", ingest_dict)
+            print("ingest_dict=", ingest_dict)
             if (name == self.name and arg_string == self.arg_string
                 and cfg_file_contents == self.cfg_file_contents
                 and ingest_dict == self.ingest_dict):

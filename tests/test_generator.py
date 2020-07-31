@@ -25,7 +25,6 @@ class TestDataGenerator(unittest.TestCase):
 
         generator = DataGenerator(generator_spec)
 
-        #&&& data = generator.make_chunk(cell_id, num_rows=50)
         seed = 1
         edge_width = 0.018 # degrees
         data = generator.make_chunk(chunk_id, num_rows=50, seed=seed,
@@ -60,7 +59,6 @@ class TestDataGenerator(unittest.TestCase):
         seed = 1
         edge_width = 0.018 # degrees
         generator = DataGenerator(generator_spec)
-        #&&& chunk_table = generator.make_chunk(chunk_id, 50)
         chunk_table = generator.make_chunk(chunk_id, num_rows=50, seed=seed,
                                            edge_width=edge_width, edge_only=False)
         self.assertIn("CcdVisit", chunk_table.keys())
