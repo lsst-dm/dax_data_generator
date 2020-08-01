@@ -51,8 +51,8 @@ class Chunker:
         -------
         chunk : SphericalBox
         """
-        stripe = self.chunker._getStripe(chunkId)
-        chunkInStripe = self.chunker._getChunk(chunkId, stripe)
+        stripe = self.chunker.getStripe(chunkId)
+        chunkInStripe = self.chunker.getChunk(chunkId, stripe)
         return self.chunker.getChunkBoundingBox(stripe, chunkInStripe)
 
     def locate(self, position):

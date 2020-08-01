@@ -470,7 +470,9 @@ class ForcedSourceGenerator(ColumnGenerator):
     takes forever. Sorting visits by dec may help. It's also wonky in that
     visits with centers in neighboring chunks have no effect as they
     are unknown here. The case where an Object gets no visits may also
-    be possible.
+    be possible. Possibly visits should not be generated per chunk
+    but across the visible sky as 100k visit table could be generated
+    in a second or two and used for tables.
     """
 
     def __init__(self, filters="ugrizy", visit_radius=0.30, column_val=3):
