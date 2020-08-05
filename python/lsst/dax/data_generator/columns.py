@@ -639,7 +639,7 @@ def tst_RaDecGenerator(log_msgs=True, every_nth=75):
         many_chunks.append(allChunks[-1])
     length = 10000
     # a bit more than an arcminute for edge_width.
-    edge_width = 0.018
+    edge_width = 0.017
     col_gen = RaDecGenerator(localChunker)
     seed = 1
     blocksA = dict()

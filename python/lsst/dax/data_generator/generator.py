@@ -108,7 +108,7 @@ class DataGenerator:
                 assert ValueError, ("Column name implies multiple returns, "
                                     "but generator only returned one")
 
-    def make_chunk(self, chunk_id, num_rows=None, seed=1, edge_width=0.018, edge_only=False):
+    def make_chunk(self, chunk_id, num_rows=None, seed=1, edge_width=0.017, edge_only=False):
         """Generate synthetic data for one chunk.
 
         Parameters

@@ -66,7 +66,7 @@ class DataGenClient:
         self._cfg_file_contents = None # contents of the config file.
         self._spec = None # spec from exec(self._cfgFileContents)
         self._chunker = None # chunker from exec(self._cfgFileContents)
-        self._overlap = 0.018 # overlap in degrees, about 1 arcmin. TODO: This should be put
+        self._overlap = 0.017 # overlap in degrees, about 1 arcmin. TODO: This should be put
                               # in the cfg_file from the server as changing it will change
                               # the chunk contents.
         self._datagenpy = '~/work/dax_data_generator/bin/datagen.py' # TODO: MUST stop hard coding this

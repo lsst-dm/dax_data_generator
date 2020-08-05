@@ -8,28 +8,28 @@ __all__ = ["Chunker", "SphericalBox"]
 
 class SphericalBox:
 
-    def __init__(self, lonMin, lonMax, latMin, latMax):
-        self.lonMin = lonMin
-        self.lonMax = lonMax
-        self.latMin = latMin
-        self.latMax = latMax
+    def __init__(self, lon_min, lon_max, lat_min, lat_max):
+        self.lon_min = lon_min
+        self.lon_max = lon_max
+        self.lat_min = lat_min
+        self.lat_max = lat_max
 
     def __repr__(self):
         return self.__str__()
 
     def __str__(self):
         return "SphericalBox({:f},{:f},{:f},{:f})".format(
-            self.lonMin, self.lonMax, self.latMin, self.latMax
+            self.lon_min, self.lon_max, self.lat_min, self.lat_max
         )
 
 
 def boxStrDeg(box):
-    bLonADeg = str(box.getLon().getA().asDegrees())
-    bLonBDeg = str(box.getLon().getB().asDegrees())
-    bLatADeg = str(box.getLat().getA().asDegrees())
-    bLatBDeg = str(box.getLat().getB().asDegrees())
-    s = ("ra[" + bLonADeg + ", " +  bLonBDeg
-       + "], dec[" + bLatADeg + ", " + bLatBDeg + "]")
+    lon_a_deg = str(box.getLon().getA().asDegrees())
+    lon_b_deg = str(box.getLon().getB().asDegrees())
+    lat_a_deg = str(box.getLat().getA().asDegrees())
+    lat_b_deg = str(box.getLat().getB().asDegrees())
+    s = ("ra[" + lon_a_deg + ", " +  lon_b_deg
+       + "], dec[" + lat_a_deg + ", " + lat_b_deg + "]")
     return s
 
 
@@ -39,20 +39,20 @@ class Chunker:
     eliminate this and have other components call sphgeom directly.
     """
 
-    def __init__(self, overlap, numStripes, numSubStripesPerStripe):
+    def __init__(self, overlap, num_stripes, num_sub_stripes_per_stripe):
         self.overlap = overlap
-        self.numStripes = numStripes
-        self.numSubStripesPerStripe = numSubStripesPerStripe
-        self.chunker = sphgeom.Chunker(numStripes, numSubStripesPerStripe)
+        self.num_stripes = num_stripes
+        self.num_sub_stripes_per_stripe = num_sub_stripes_per_stripe
+        self.chunker = sphgeom.Chunker(num_stripes, num_sub_stripes_per_stripe)
 
-    def getChunkBounds(self, chunkId):
+    def getChunkBounds(self, chunk_id):
         """
         Returns
         -------
         chunk : SphericalBox
         """
-        stripe = self.chunker.getStripe(chunkId)
-        chunkInStripe = self.chunker.getChunk(chunkId, stripe)
+        stripe = self.chunker.getStripe(chunk_id)
+        chunkInStripe = self.chunker.getChunk(chunk_id, stripe)
         return self.chunker.getChunkBoundingBox(stripe, chunkInStripe)
 
     def locate(self, position):
@@ -60,7 +60,7 @@ class Chunker:
         Find the non-overlap location of the given position.
         """
         lon, lat = position
-        center = sphgeom.lonLat.LonLat.fromDegrees(lon, lat)
+        center = sphgeom.LonLat.fromDegrees(lon, lat)
         region = sphgeom.Box(center)
         chunks = self.chunker.getChunksIntersecting(region)
         return chunks[0]
@@ -71,53 +71,64 @@ class Chunker:
     def getChunksIntersecting(self, region):
         return self.chunker.getChunksIntersecting(region)
 
-    def getChunksAround(self, chunkId, overlapWidth):
+    def getChunksAround(self, chunk_id, overlap_width):
         """Return a list of chunks surrounding 'chunkId' that
         should allow overlap tables to be created.
-        'overlapWidth' is in degrees.
+
+        Parameters
+        ----------
+        chunk_id : int
+            Chunk id number
+        overlap_width : float
+            Overlap width in degrees.
+
+        Return
+        ------
+        chunks : list of int
+            List of chunk ids around 'chunk_id'. The list includes 'chunk_id'
         """
         # Increase the bounds of the box by the overlapWidth
-        overlapWRads = overlapWidth * (math.pi/180.0)
-        box = self.getChunkBounds(chunkId)
+        overlap_w_rads = overlap_width * (math.pi/180.0)
+        box = self.getChunkBounds(chunk_id)
         # Increase Latitude by overlapWRads in both directions
         # cap values at PI/2 and -PI/2.
-        latA = box.getLat().getA().asRadians()
-        latB = box.getLat().getB().asRadians()
-        if latA > latB:
+        lat_a = box.getLat().getA().asRadians()
+        lat_b = box.getLat().getB().asRadians()
+        if lat_a > lat_b:
             return list()
-        latA = latA - overlapWRads
-        latB = latB + overlapWRads
+        lat_a = lat_a - overlap_w_rads
+        lat_b = lat_b + overlap_w_rads
         halfPi = math.pi/2.0
-        if latA < -halfPi:
-            latA = -halfPi
-        if latB > halfPi:
-            latB = halfPi
+        if lat_a < -halfPi:
+            lat_a = -halfPi
+        if lat_b > halfPi:
+            lat_b = halfPi
 
         # Increase Longitude by overlapWRads. If delta > 2PI shrint
         # increase to make it 2PI
-        lonA = box.getLon().getA().asRadians()
-        lonB = box.getLon().getB().asRadians()
+        lon_a = box.getLon().getA().asRadians()
+        lon_b = box.getLon().getB().asRadians()
         # sphgeom Intervals are supposed to have A always smaller than B,
         # but the AngleIntrvals in Box get normalized to [0, 2PI)
-        twoPi = 2.0*math.pi
-        if (lonA > lonB):
-            lonA -= twoPi
-        overlapLon = overlapWRads
-        if ((lonB - lonA) + 2.0*overlapWRads) > twoPi:
-            overlapLon = (twoPi - (lonB - lonA))/2.0
-        lonA = lonA - overlapLon
-        lonB = lonB + overlapLon
+        two_pi = 2.0*math.pi
+        if (lon_a > lon_b):
+            lon_a -= two_pi
+        overlap_lon = overlap_w_rads
+        if ((lon_b - lon_a) + 2.0*overlap_w_rads) > two_pi:
+            overlap_lon = (two_pi - (lon_b - lon_a))/2.0
+        lon_a = lon_a - overlap_lon
+        lon_b = lon_b + overlap_lon
 
-        biggerBox = sphgeom.Box.fromRadians(lonA, latA, lonB, latB)
+        bigger_box = sphgeom.Box.fromRadians(lon_a, lat_a, lon_b, lat_b)
 
         # Use
-        chunks = self.getChunksIntersecting(biggerBox)
-        self.printChunkBoundsDegrees(chunkId)
+        chunks = self.getChunksIntersecting(bigger_box)
+        self.printChunkBoundsDegrees(chunk_id)
         for ch in chunks: self.printChunkBoundsDegrees(ch)
         return chunks
 
-    def printChunkBoundsDegrees(self, chunkId):
-        box = self.getChunkBounds(chunkId)
+    def printChunkBoundsDegrees(self, chunk_id):
+        box = self.getChunkBounds(chunk_id)
         st = boxStrDeg(box)
-        print("chunk=", chunkId, "box=", st)
+        print("chunk=", chunk_id, "box=", st)
 

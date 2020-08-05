@@ -14,7 +14,7 @@ def edgeOnlyContainedInComplete(chunk_id, objectCount, visitCount, spec):
     dataGen = DataGenerator(spec)
 
     seed = 1
-    edge_width = 0.018 # degrees
+    edge_width = 0.017 # degrees
 
     row_counts = {"CcdVisit": visitCount, "Object": objectCount}
     # ForcedSource count is defined by visits and objects.

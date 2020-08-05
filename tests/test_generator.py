@@ -26,7 +26,7 @@ class TestDataGenerator(unittest.TestCase):
         generator = DataGenerator(generator_spec)
 
         seed = 1
-        edge_width = 0.018 # degrees
+        edge_width = 0.017 # degrees
         data = generator.make_chunk(chunk_id, num_rows=50, seed=seed,
                                     edge_width=edge_width, edge_only=False)
         self.assertIn('Object', data.keys())
@@ -57,7 +57,7 @@ class TestDataGenerator(unittest.TestCase):
         }
         chunk_id = 5000
         seed = 1
-        edge_width = 0.018 # degrees
+        edge_width = 0.017 # degrees
         generator = DataGenerator(generator_spec)
         chunk_table = generator.make_chunk(chunk_id, num_rows=50, seed=seed,
                                            edge_width=edge_width, edge_only=False)
@@ -95,7 +95,7 @@ class TestDataGenerator(unittest.TestCase):
                       "Object": 100,
                       "ForcedSource": 0}
         seed = 1
-        edge_width = 0.018 # degrees
+        edge_width = 0.017 # degrees
         chunk_tables = generator.make_chunk(chunk_id, num_rows=50, seed=seed,
                                             edge_width=edge_width, edge_only=False)
         self.assertIn("ForcedSource", chunk_tables.keys())
