@@ -51,7 +51,7 @@ def mergeBlocks(block_a, block_b):
     Tuple of lists
         Result of merging the two blocks.
     """
-    newList = list()
+    newList = []
     # There's probably a more pythonic way to do this.
     for j in range(len(block_a)):
         newList.append(np.append(block_a[j], block_b[j]))
@@ -78,10 +78,10 @@ def convertBlockToRows(block):
     tuple of lists
         A new block where columns of 'block' are the rows of the output block.
     """
-    rows = list()
+    rows = []
     rows_in_block = len(block[0])
     for j in range(rows_in_block):
-        row = list()
+        row = []
         for x in block:
             if len(x) != rows_in_block:
                 raise IndexError
@@ -249,7 +249,7 @@ class RaDecGenerator(ColumnGenerator):
         dec_delta = simple_box.decB - simple_box.decA
         ra_centers = np.random.random(length)*ra_delta + ra_min
         dec_centers = np.random.random(length)*dec_delta + dec_min
-        ra_out = list()
+        ra_out = []
         for ra in ra_centers:
             while ra < 0.0:
                 ra += 360.0
@@ -419,7 +419,7 @@ class MagnitudeGenerator(ColumnGenerator):
 
         # This needs to be made row by row not column by column, as
         # row by row results in repeatable values when doing edges first.
-        magRows = list()
+        magRows = []
         delta_mag = self.max_mag - self.min_mag
         for j in range(length):
             mag = np.random.rand(self.n_mags)*delta_mag + self.min_mag
@@ -536,7 +536,7 @@ def tst_convertBlockToRows(log_msgs=True):
     vals2 = np.array([309, 308, 307])
     vals3 = np.array([951, 952, 953])
     blockA = (vals1, vals2, vals3)
-    rows_expected = list()
+    rows_expected = []
     rows_expected.append(list([101, 309, 951]))
     rows_expected.append(list([102, 308, 952]))
     rows_expected.append(list([103, 307, 953]))

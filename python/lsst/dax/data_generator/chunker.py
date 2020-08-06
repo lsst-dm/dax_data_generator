@@ -95,7 +95,7 @@ class Chunker:
         lat_a = box.getLat().getA().asRadians()
         lat_b = box.getLat().getB().asRadians()
         if lat_a > lat_b:
-            return list()
+            return []
         lat_a = lat_a - overlap_w_rads
         lat_b = lat_b + overlap_w_rads
         halfPi = math.pi/2.0

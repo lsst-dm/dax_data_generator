@@ -70,7 +70,7 @@ class ChunkInfo:
         self.chunk_id = chunk_id
         self.gen_stage = GenerationStage(GenerationStage.UNASSIGNED)
         self.client_id = '-1'
-        self.client_addr = None
+        self.client_addr = None  # str
 
     def __repr__(self):
         return ("ChunkInfo " + str(self.chunk_id) + ' ' + self.client_id +
@@ -173,8 +173,8 @@ class DataGenServer:
         self._ingest = DataIngest(ingest_host, ingest_port, ingest_user, ingest_auth)
 
         # List of client connection threads
-        self._client_threads = list()
-        # Dictionary of clients by clientId
+        self._client_threads = []
+        # Dictionary of clients by client_id
         self._clients = {}
 
         # Build dictionary of info for chunks to send to workers.
@@ -225,7 +225,7 @@ class DataGenServer:
         by number starting at 0.
         """
         entries = os.listdir(partioner_cfg_dir)
-        files = list()
+        files = []
         for e in entries:
             if os.path.isfile(os.path.join(partioner_cfg_dir, e)):
                 ext = os.path.splitext(e)[1]
@@ -326,16 +326,16 @@ class DataGenServer:
             # client requesting chunk list
             while self._loop and not out_of_chunks:
                 clientReqChunkCount = serv.servRecvReqChunks()
-                chunksForClient = list()
+                chunksForClient = []
                 # get the first clientReqChunkCount elements of self._chunksToSendSet
                 with self._list_lock:
                     print("Chunks left=", len(self._chunks_to_send_set))
                     for chunk in itertools.islice(self._chunks_to_send_set, clientReqChunkCount):
                         chunksForClient.append(chunk)
                         cInfo = self._chunks_to_send[chunk]
-                        cInfo.genStage = GenerationStage.ASSIGNED
-                        cInfo.clientId = name
-                        cInfo.clientAddr = addr
+                        cInfo.gen_stage = GenerationStage.ASSIGNED
+                        cInfo.client_id = name
+                        cInfo.client_addr = addr
                     for chunk in chunksForClient:
                         self._chunks_to_send_set.discard(chunk)
                 serv.servSendChunks(chunksForClient)
@@ -356,14 +356,14 @@ class DataGenServer:
                         for completed in completed_chunks:
                             self._total_generated_chunks.add(completed)
                             cInfo = self._chunks_to_send[completed]
-                            cInfo.genStage = GenerationStage.FINISHED
+                            cInfo.gen_stage = GenerationStage.FINISHED
                     diff = serv.compareChunkLists(completed_chunks, chunksForClient)
                     if len(diff) > 0:
                         # Mark missing chunks as being in limbo.
                         with self._list_lock:
                             for missing in diff:
                                 cInfo = self._chunks_to_send[missing]
-                                cInfo.genStage = GenerationStage.LIMBO
+                                cInfo.gen_stage = GenerationStage.LIMBO
         except socket.gaierror as e:
             print("breaking connection", addr, name, "socket.gaierror:", e)
         except socket.error as e:
@@ -384,13 +384,13 @@ class DataGenServer:
                     termSock.connect(('127.0.0.1', self._port))
 
     def chunksInState(self, genState):
-        """Return a list of ChunkInfo where the genStage matches one in
+        """Return a list of ChunkInfo where the gen_stage matches one in
         the provided genState list
         """
-        chunks_in_state = list()
+        chunks_in_state = []
         for chk in self._chunks_to_send:
             chk_info = self._chunks_to_send[chk]
-            if chk_info.genStage in genState:
+            if chk_info.gen_stage in genState:
                 chunks_in_state.append(chk_info)
         return chunks_in_state
 
@@ -421,7 +421,7 @@ class DataGenServer:
         # Find all of the schema files in self._ingest_cfg_dir while
         # ignoring the database config file.
         entries = os.listdir(self._ingest_cfg_dir)
-        files = list()
+        files = []
         for e in entries:
             full_path = os.path.join(self._ingest_cfg_dir, e)
             if os.path.isfile(full_path):
@@ -452,7 +452,7 @@ class DataGenServer:
             GenerationStage.LIMBO:0}
         for chk in self._chunks_to_send:
             chk_info = self._chunks_to_send[chk]
-            counts[chk_info.genStage] += 1
+            counts[chk_info.gen_stage] += 1
         print("Chunks generated=", counts[GenerationStage.FINISHED])
         print("Chunks assigned=", counts[GenerationStage.ASSIGNED])
         print("Chunks unassigned=", counts[GenerationStage.UNASSIGNED])

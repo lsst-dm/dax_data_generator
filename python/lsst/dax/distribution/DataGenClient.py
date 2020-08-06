@@ -59,9 +59,8 @@ class DataGenClient:
         self._port = port
         self._target_dir = os.path.abspath(target_dir)
         self._chunksPerReq = chunks_per_req
-        self._loop = True # set to false to end the program
         self._gen_arg_str = None # Arguments from the server for the generator.
-        self._client = None # DataGenConnection
+        self._cl_conn = None # DataGenConnection
         self._cfg_file_name = 'gencfg.py' # name of the local config file for the generator
         self._cfg_file_contents = None # contents of the config file.
         self._datagenpy = '~/work/dax_data_generator/bin/datagen.py' # TODO: MUST stop hard coding this
@@ -237,15 +236,15 @@ class DataGenClient:
             or edge only csv files for all of its neighbors.
         """
         success = True
-        foundCsv = list()
-        neededEdgeOnly = list()
+        foundCsv = []
+        neededEdgeOnly = []
         # Find the relevant files in self._targetDir.
         findCsv = self.createFileName(chunk_id, '*', 'csv', use_targ_path=True)
         #TODO: python3 has better version of glob that would make this code cleaner.
         chunkCsvPaths = glob.glob(findCsv)
         print("findCsv=", findCsv, " paths=", chunkCsvPaths)
         # Remove the path and add the files to a list
-        chunkCsvFiles = list()
+        chunkCsvFiles = []
         for fn in chunkCsvPaths:
             chunkCsvFiles.append(os.path.basename(fn))
         print("chunkCsvFiles=", chunkCsvFiles)
@@ -306,7 +305,7 @@ class DataGenClient:
         """
         print("removeFilesForChunk", chunk_id, edge_only, complete)
         for tblName in self._spec:
-            fList = list()
+            fList = []
             if edge_only:
                 fList.append(self.createFileName(chunk_id, tblName, 'csv',
                              edge_only=True, use_targ_path=True))
@@ -321,7 +320,7 @@ class DataGenClient:
                 if os.path.exists(fn):
                     print("removing file", fn)
                     if not self.removeFile(fn):
-                        print("ERROR remove failed", fn, err)
+                        print("ERROR remove failed", fn)
                         return False
         return True
 
@@ -384,7 +383,7 @@ class DataGenClient:
         return True
 
     def _generateChunk(self, chunk_id, edge_only=False):
-        """Generate the parquet files for a chunk.
+        """Generate the csv files for a chunk.
 
         Parameters
         ----------
@@ -393,7 +392,7 @@ class DataGenClient:
                 only chunks will not be created if there is an existing
                 complete chunk.
             False - will cause a complete chunk to be created and will result
-                in existing edge only files for that chunk to be deleted.
+                in existing csv files for that chunk id to be deleted.
 
         Return
         ------
@@ -402,7 +401,6 @@ class DataGenClient:
             'failed'  if a valid version of the chunk could not be made
             'existed' if a valid complete version of the chunk already existed
                       and edgeOnly=True
-
         """
         if edge_only:
             # Check for existing csv files. If a full set of complete files are found or
@@ -442,10 +440,79 @@ class DataGenClient:
             " --chunk " + str(chunk_id) + " " + self._gen_arg_str + " " + self._cfg_file_name)
         genResult, genOut = self.runProcess(cmdStr)
         if genResult != 0:
-            print("ERROR Generator failed for", chunk_id, " cmd=", cmdStr,
+            print("ERROR Generator failed for", chunk_id, " cmd=", cmd, "args=", args,
                   "out=", genOut)
             return 'failed'
         return 'success'
+
+    def _createRecvChunks(self, chunk_recv_set):
+        """Create csv files for all tables in chunk_recv_set.
+
+        Parameters
+        ----------
+        chunk_recv_set : set of int
+            Set of chunk ids most recently received from the server.
+
+        Return
+        ------
+        created_chunks : list of int
+            List of chunk ids where all csv tables were created.
+        """
+        created_chunks = []
+        for chunk_id in chunk_recv_set:
+            # Generate the csv files for the chunk
+            if self._generateChunk(chunk_id, edge_only=False) != 'failed':
+                created_chunks.append(chunk_id)
+        return created_chunks
+
+    def _createNeighborChunks(self, created_chunks):
+        """Create neighbor chunks for all created chunks as needed.
+
+        Parameters
+        ----------
+        created_chunks : list of int
+            List of chunk ids that have been created from the most recent
+            list sent by the server.
+
+        Return
+        ------
+        have_all_csv_chunks : list of int
+            List of chunk ids from created_chunks where all the neccessary
+            neighbor chunks could be created or already existed.
+
+        Note
+        ----
+        Neighbor chunks may be edge only, but the tables in created_chunks
+        must be complete chunks.
+        """
+        chunker = self._chunker
+        have_all_csv_chunks = []
+        for chunk in created_chunks:
+            # Find the chunks that should be next to chunk
+            neighborChunks = chunker.getChunksAround(chunk, self._edge_width)
+            # Find the output files for the chunk, name must match "chunk<id>_*.csv"
+            foundCsv, filesCsv, neededChunks = self.findCsvInTargetDir(chunk, neighborChunks)
+            print("foundCsv=", foundCsv, "fCsv=", filesCsv, " needed=", neededChunks)
+            if not foundCsv:
+                print("ERROR Problems with finding essential csv for creating overlap chunk=",
+                        chunk, filesCsv)
+                continue
+            # Create edgeOnly neededChunks
+            createdAllNeeded = True
+            for nCh in neededChunks:
+                genResult = self._generateChunk(nCh, edge_only=True)
+                if genResult == 'failed':
+                    print("ERROR Failed to generate chunk", nCh)
+                    createdAllNeeded = False
+                    continue
+            if createdAllNeeded:
+                print("Created all needed edgeOnly for ", nCh)
+                # Put hardlinks to all the files needed for a chunk in
+                # a specific directory for the partioner to use to create
+                # the overlap tables and so on.
+                if self._fillChunkDir(chunk, neighborChunks):
+                    have_all_csv_chunks.append(chunk)
+        return have_all_csv_chunks
 
     def _createOverlapTables(self, chunkId):
         """Create ingest files and pass them to the ingest system.
@@ -472,7 +539,7 @@ class DataGenClient:
         # Everything happens in the ovlDir directory
         ovlDir = os.path.join(self._target_dir, str(chunkId))
         entries = os.listdir(ovlDir)
-        files = list()
+        files = []
         for e in entries:
             if os.path.isfile(os.path.join(ovlDir, e)):
                 files.append(os.path.basename(e))
@@ -483,14 +550,14 @@ class DataGenClient:
         # --in chunk0_CT_Object.csv --in chunk402_CT_Object.csv
         # --in chunk401_CT_Object.csv --in chunk400_CT_Object.csv
         # --in chunk404_EO_Object.csv --in chunk403_CT_Object.csv
-        info_list = list() # A list of tuples (tblName, fullPathFile)
+        info_list = [] # A list of tuples (tblName, fullPathFile)
         for cfg in self._pt_cfg_dict.items():
             # Determine the table name from the config file name.
             cfgFName = cfg[1][0]
             tblName = os.path.splitext(cfgFName)[0]
             # The list of --in files needs to be generated. It
             # needs to have all the .csv files for tblName.
-            inCsvFiles = list()
+            inCsvFiles = []
             reg = re.compile(r"chunk\w*_" + tblName + r"\.csv")
             for f in files:
                 m = reg.match(f)
@@ -601,15 +668,36 @@ class DataGenClient:
         success, status, content = self._ingest.endTransaction(t_id, abort)
         return success, status, content
 
+    def _sendIngestedChunksToServer(self, chunks_to_send):
+        """Send chunk ids back to the server until the list is empty.
+
+        Parameters
+        ----------
+        chunks_to_send : list of int
+            List of ingested chunk id numbers to send back to the server to
+            indicate that they have been ingested. The list is destroyed as
+            it is sent.
+
+        Note
+        ----
+        If the initial 'chunks_to_send' list is empty, it is important to send
+        it to the server to indicate there was a local problem and that the
+        server should abandon this connection.
+        """
+        while True:
+            chunks_to_send = self._cl_conn.clientReportChunksComplete(chunks_to_send)
+            if len(chunks_to_send) == 0:
+                break
+
     def run(self):
         """Connect to the server and do everything until the server
         runs out of chunks for this client to generate and ingest.
         """
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((self._host, self._port))
-            self._client = DataGenConnection(s)
-            self._client.clientReqInit()
-            self._name, self._gen_arg_str, self._cfg_file_contents, ingest_dict = self._client.clientRespInit()
+            self._cl_conn = DataGenConnection(s)
+            self._cl_conn.clientReqInit()
+            self._name, self._gen_arg_str, self._cfg_file_contents, ingest_dict = self._cl_conn.clientRespInit()
             print("ingest_dict=", ingest_dict)
             self._setIngest(ingest_dict)
             print("name=", self._name, self._gen_arg_str, ":\n", self._cfg_file_contents)
@@ -620,13 +708,16 @@ class DataGenClient:
             fileName = os.path.join(self._target_dir, self._cfg_file_name)
             with open(fileName, "w") as fw:
                 fw.write(self._cfg_file_contents)
-            # Request partioner configuration files from server
+            # Request partioner configuration files from server.
+            # The server has x number of these files, so the client will keep
+            # incrementing the index and asking for a file until the server
+            # responds with an empty file name.
             pCfgIndex = 0
             pCfgDict = {}
             pCfgName = "nothing"
             while not pCfgName == "":
-                self._client.clientReqPartitionCfgFile(pCfgIndex)
-                indx, pCfgName, pCfgContents = self._client.clientRespPartionCfgFile()
+                self._cl_conn.clientReqPartitionCfgFile(pCfgIndex)
+                indx, pCfgName, pCfgContents = self._cl_conn.clientRespPartionCfgFile()
                 if indx != pCfgIndex:
                     self.success = False
                     raise RuntimeError("Client got wrong pCfgIndex=", pCfgIndex,
@@ -638,97 +729,66 @@ class DataGenClient:
             self._pt_cfg_dict = pCfgDict
             # Write those files to the partitioner config directory
             pCfgDir = os.path.join(self._target_dir, self._pt_cfg_dir)
-            for it in pCfgDict.items():
-                pCfgName = os.path.join(pCfgDir, it[1][0])
-                print("writing ", it[0], "name=", pCfgName)
+            for index, cfg_info in pCfgDict.items():
+                pCfgName = os.path.join(pCfgDir, cfg_info[0])
+                print("writing ", index, "name=", pCfgName)
                 with open(pCfgName, "w") as fw:
-                    fw.write(it[1][1])
+                    fw.write(cfg_info[1])
 
             # Start creating and ingesting chunks.
-            while self._loop:
-                self._client.clientReqChunks(self._chunksPerReq)
-                chunkListRecv, problem = self._client.clientRecvChunks()
+            loop = True
+            while loop:
+                self._cl_conn.clientReqChunks(self._chunksPerReq)
+                chunkListRecv, problem = self._cl_conn.clientRecvChunks()
                 if problem:
                     print("WARN there was a problem with", chunkListRecv)
                 chunkRecvSet = set(chunkListRecv)
                 if len(chunkRecvSet) == 0:
                     # no more chunks, close the connection
                     print("No more chunks to create, exiting")
-                    self._loop = False
+                    loop = False
+                    break
+                withOverlapChunks = []
+                ingestedChunks = []
+                # Create chunks received in the list
+                createdChunks = self._createRecvChunks(chunkRecvSet)
+                # Create edge only chunks as needed.
+                haveAllCsvChunks = self._createNeighborChunks(createdChunks)
+                # Generate overlap tables and files for ingest (happens within
+                # the transaction).
+                # Start the transaction
+                abort = False
+                if len(haveAllCsvChunks):
+                    self._startTransaction()
+                try:
+                    for chunk in haveAllCsvChunks:
+                        if self._createOverlapTables(chunk):
+                            print("created overlap for chunk", chunk)
+                            withOverlapChunks.append(chunk)
+                        else:
+                            print("ERROR failed to create overlap for chunk", chunk)
+                except Exception as exc:
+                    # Abort the transaction if possible.
+                    print("ERROR transaction failed ", exc)
+                    abort = True
+                # TODO: It may be better to have the server end the transaction as
+                #       it could give a better record of which chunks got ingested.
+                # If no transaction was started, _endTransaction does nothing.
+                success, status, content = self._endTransaction(abort)
+                if success and not abort:
+                    for chunk in withOverlapChunks:
+                        ingestedChunks.append(chunk)
                 else:
-                    createdChunks = list()
-                    withOverlapChunks = list()
-                    haveAllCsvChunks = list()
-                    ingestedChunks = list()
-                    for chunk in chunkRecvSet:
-                        # Generate the csv files for the chunk
-                        if self._generateChunk(chunk, edge_only=False) != 'failed':
-                            createdChunks.append(chunk)
-                    # Create edge only chunks as needed.
-                    chunker = self._chunker
-                    for chunk in createdChunks:
-                        # Find the chunks that should be next to chunk
-                        neighborChunks = chunker.getChunksAround(chunk, self._edge_width)
-                        # Find the output files for the chunk, name must match "chunk<id>_*.csv"
-                        foundCsv, filesCsv, neededChunks = self.findCsvInTargetDir(chunk, neighborChunks)
-                        print("foundCsv=", foundCsv, "fCsv=", filesCsv, " needed=", neededChunks)
-                        if not foundCsv:
-                            print("ERROR Problems with finding essential csv for creating overlap chunk=",
-                                  chunk, filesCsv)
-                            continue
-                        # Create edgeOnly neededChunks
-                        createdAllNeeded = True
-                        for nCh in neededChunks:
-                            genResult = self._generateChunk(nCh, edge_only=True)
-                            if genResult == 'failed':
-                                print("ERROR Failed to generate chunk", nCh)
-                                createdAllNeeded = False
-                                continue
-                        if createdAllNeeded:
-                            print("Created all needed edgeOnly for ", nCh)
-                            # Put hardlinks to all the files needed for a chunk in
-                            # a specific directory for the partioner to use to create
-                            # the overlap tables and so on.
-                            if self._fillChunkDir(chunk, neighborChunks):
-                                haveAllCsvChunks.append(chunk)
-                    # Generate overlap tables and files for ingest.
-                    # Start the transaction
-                    abort = False
-                    if len(haveAllCsvChunks):
-                        self._startTransaction()
-                    try:
-                        for chunk in haveAllCsvChunks:
-                            if self._createOverlapTables(chunk):
-                                print("created overlap for chunk", chunk)
-                                withOverlapChunks.append(chunk)
-                            else:
-                                print("ERROR failed to create overlap for chunk", chunk)
-                    except Exception as exc:
-                        # Abort the transaction if possible.
-                        print("ERROR transaction failed ", exc)
-                        abort = True
-                    # TODO: It may be better to have the server end the transaction as
-                    # it could give a better record of which chunks got ingested.
-                    success, status, content = self._endTransaction(abort)
-                    if success and not abort:
-                        for chunk in withOverlapChunks:
-                            ingestedChunks.append(chunk)
-                    else:
-                        print("Failed ingest, transaction failed or aborted ", status, content)
-                    # If no chunks were created, likely fatal error. Asking for more
-                    # chunks to create would just cause more problems.
-                    if len(ingestedChunks) == 0:
-                        print("ERROR no chunks were successfully ingested, ending program")
-                        self._loop = False
+                    print("Failed ingest, transaction failed or aborted ", status, content)
+                # If no chunks were created, likely fatal error. Asking for more
+                # chunks to create would just cause more problems.
+                if len(ingestedChunks) == 0:
+                    print("ERROR no chunks were successfully ingested, ending program")
+                    loop = False
 
-                    # Client sends the list of completed chunks back
-                    while True:
-                        # Keep sending created chunks back until there are none left.
-                        # If ingestedChunks is empty initially, the server needs to be sent an
-                        # empty list to indicate the failure to ingest anything.
-                        ingestedChunks = self._client.clientReportChunksComplete(ingestedChunks)
-                        if len(ingestedChunks) == 0:
-                            break
+                # Client sends the list of completed chunks back
+                self._sendIngestedChunksToServer(ingestedChunks)
+
 
 def testC():
     dgClient = DataGenClient("127.0.0.1", 13042)

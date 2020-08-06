@@ -296,9 +296,6 @@ class IngestTransaction():
         return True
 
 
-
-
-
 if __name__ == "__main__":
     ingest = DataIngest('localhost', 25080)
     # No point in continuing if the ingest system can't be contacted.

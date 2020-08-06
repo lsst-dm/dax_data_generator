@@ -182,7 +182,7 @@ class DataGenConnection():
         msg_split = msg.split(self.SEP)
         if len(msg_split) == 1 and len(msg_split[0]) == 0:
             print("nothing in msg")
-            return list(), problem
+            return [], problem
         print("extract msg", msg, "msg_split", msg_split)
         # convert entire list back to int
         msg_ints = [ i for i in msg_split if len(i) > 0 and i.isnumeric() ]
@@ -428,6 +428,8 @@ class DataGenConnection():
         ------
         leftover : list of int
             List of chunks that did not fit in the message to the server.
+            If this list is not empty, it should be fed back into this
+            function as chunk_list.
         """
         print("clientReportChunksComplete C_CKCOMP", chunk_list)
         chunk_msg, completed_chunks = self._buildChunksMsg(chunk_list)
@@ -438,6 +440,7 @@ class DataGenConnection():
         if len(leftover) == 0:
             self._send_msg(self.C_CKCFIN, '')
         return leftover
+
     def servRecvChunksComplete(self):
         """Receive a list of finished chunks from a client. The
         list ends with a C_CKCFIN message.
