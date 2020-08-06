@@ -64,17 +64,18 @@ class DataGenClient:
         self._client = None # DataGenConnection
         self._cfg_file_name = 'gencfg.py' # name of the local config file for the generator
         self._cfg_file_contents = None # contents of the config file.
-        self._spec = None # spec from exec(self._cfgFileContents)
-        self._chunker = None # chunker from exec(self._cfgFileContents)
-        self._overlap = 0.017 # overlap in degrees, about 1 arcmin. TODO: This should be put
-                              # in the cfg_file from the server as changing it will change
-                              # the chunk contents.
         self._datagenpy = '~/work/dax_data_generator/bin/datagen.py' # TODO: MUST stop hard coding this
         self._pt_cfg_dir = 'partitionCfgs' # sub-dir of _targetDir for partitioner configs
         self._pt_cfg_dict = None # Dictionary that stores partioner config files.
         self.makeDir(self._target_dir)
         self.makeDir(os.path.join(self._target_dir, self._pt_cfg_dir))
 
+        # Values set from transferred self._cfgFileContents
+        self._spec = None # spec from exec(self._cfgFileContents)
+        self._chunker = None # chunker from exec(self._cfgFileContents)
+        self._edge_width = None # Width of edges in edge only generation.
+
+        # Ingest values
         self._ingest = None
         self._skip_ingest = True
         self._db_name = ''
@@ -199,59 +200,16 @@ class DataGenClient:
     def _readDatagenConfig(self):
         """ Create a Chunker and spec using the same configuration file as the datagen.py.
         """
-        spec_globals = dict()
+        spec_globals = {}
         exec(self._cfg_file_contents, spec_globals)
         assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
         assert 'chunker' in spec_globals, "Specification file must define a variable 'chunker'."
+        assert 'edge_width' in spec_globals, "Specification file must define a variable 'edge_width'."
         self._spec = spec_globals['spec']
         self._chunker = spec_globals['chunker']
+        self._edge_width = spec_globals['edge_width']
         print("_cfgFileContents=", self._cfg_file_contents)
         print("_spec=", self._spec)
-
-    def convertPg2Csv(self, chunk_id):
-        """Convert parquet files to csv for chunk_id. The original parquet files are deleted.
-
-        Parameters
-        ----------
-        chunk_id : int
-            The chunk id number.
-
-        Return
-        ------
-        success : bool
-            Return True if all files are converted successfully.
-        out_file_names : list of str
-            A list of names of generated csv files.
-        """
-        success = None
-        # Find the relevant files in self._targetDir.
-        find_parquet = self.createFileName(chunk_id, '*', 'parquet', use_targ_path=True)
-        print("cwd=", os.getcwd(), "findParquet=", find_parquet)
-        #TODO: python3 has better version of glob that would make this code cleaner.
-        chunk_parquet_paths = glob.glob(find_parquet)
-        # Remove the path from the file names.
-        chunk_parquet_files = list()
-        for fn in chunk_parquet_paths:
-            chunk_parquet_files.append(os.path.basename(fn))
-        print("findParquet=", find_parquet, " chunkParquetFiles=", chunk_parquet_files)
-
-        out_file_names = list()
-        if len(chunk_parquet_files) == 0:
-            print("No parquet files found for", chunk_id)
-            return False, out_file_names
-        for fname in chunk_parquet_files:
-            out_name = os.path.splitext(fname)[0] + ".csv"
-            cmd = 'pq2csv --replace ' + fname + ' ' + out_name
-            gen_result, gen_out = self.runProcess(cmd)
-            if gen_result != 0:
-                print("ERROR Failed to convert file", fname, "cmd=", cmd,
-                      "res=", gen_result, "out=", gen_out)
-                success = False
-            out_file_names.append(out_name)
-            self.removeFile(os.path.join(self._target_dir, fname))
-        if success == None:
-            success = True
-        return success, out_file_names
 
     def findCsvInTargetDir(self, chunk_id, neighbor_chunks):
         """Find files required csv to generate overlap for chunk_id.
@@ -483,12 +441,7 @@ class DataGenClient:
         cmdStr = ("python " + self._datagenpy + options +
             " --chunk " + str(chunk_id) + " " + self._gen_arg_str + " " + self._cfg_file_name)
         genResult, genOut = self.runProcess(cmdStr)
-        if genResult == 0:
-            # Convert parquet files to csv.
-            if not self.convertPg2Csv(chunk_id):
-                print("conversion to csv failed for", chunk_id)
-                return 'failed'
-        else:
+        if genResult != 0:
             print("ERROR Generator failed for", chunk_id, " cmd=", cmdStr,
                   "out=", genOut)
             return 'failed'
@@ -669,7 +622,7 @@ class DataGenClient:
                 fw.write(self._cfg_file_contents)
             # Request partioner configuration files from server
             pCfgIndex = 0
-            pCfgDict = dict()
+            pCfgDict = {}
             pCfgName = "nothing"
             while not pCfgName == "":
                 self._client.clientReqPartitionCfgFile(pCfgIndex)
@@ -715,7 +668,7 @@ class DataGenClient:
                     chunker = self._chunker
                     for chunk in createdChunks:
                         # Find the chunks that should be next to chunk
-                        neighborChunks = chunker.getChunksAround(chunk, self._overlap)
+                        neighborChunks = chunker.getChunksAround(chunk, self._edge_width)
                         # Find the output files for the chunk, name must match "chunk<id>_*.csv"
                         foundCsv, filesCsv, neededChunks = self.findCsvInTargetDir(chunk, neighborChunks)
                         print("foundCsv=", foundCsv, "fCsv=", filesCsv, " needed=", neededChunks)

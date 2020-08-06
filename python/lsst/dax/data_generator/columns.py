@@ -301,7 +301,7 @@ class RaDecGenerator(ColumnGenerator):
         decA = chunk_box.getLat().getA().asDegrees()
         decB = chunk_box.getLat().getB().asDegrees()
 
-        boxes = dict()
+        boxes = {}
         entire_box = SimpleBox(raA, raB, decA, decB)
         boxes["entire"] = entire_box
         print("chunk=", chunk_id, "bbox=", entire_box.__repr__())
@@ -329,13 +329,13 @@ class RaDecGenerator(ColumnGenerator):
                 edge_area += value.area()
 
         ratio_edge_to_entire = edge_area/entire_area
-        blocks = dict()
+        blocks = {}
         # TODO: replace 10 with minLength and 0.90 with maxRatioEdgeToEntire
         if (not edge_width > 0.0) or ratio_edge_to_entire > 0.90 or length < 10:
             # Just generate the entire block
             blocks["entire"] = self._generateBlock(chunk_id, boxes["entire"], length)
         else:
-            lengths = dict()
+            lengths = {}
             sub_length = length
             for key, value in boxes.items():
                 if key != "entire":
@@ -472,7 +472,7 @@ class ForcedSourceGenerator(ColumnGenerator):
     are unknown here. The case where an Object gets no visits may also
     be possible. Possibly visits should not be generated per chunk
     but across the visible sky as 100k visit table could be generated
-    in a second or two and used for tables.
+    in a second or two and used for all chunks and tables.
     """
 
     def __init__(self, filters="ugrizy", visit_radius=0.30, column_val=3):
@@ -642,22 +642,22 @@ def tst_RaDecGenerator(log_msgs=True, every_nth=75):
     edge_width = 0.017
     col_gen = RaDecGenerator(localChunker)
     seed = 1
-    blocksA = dict()
+    blocksA = {}
     for chunk_id in many_chunks:
         blocksA[chunk_id] = col_gen(chunk_id, length, seed, edge_width, edge_only=False)
         if log_msgs: print("blocksA[", chunk_id, "]=", blocksA[chunk_id])
 
-    blocksB = dict()
+    blocksB = {}
     for chunk_id in many_chunks:
         blocksB[chunk_id] = col_gen(chunk_id, length, seed, edge_width, edge_only=False)
         if log_msgs: print("blocksB[", chunk_id, "]=", blocksB[chunk_id])
 
-    blocksC = dict()
+    blocksC = {}
     for chunk_id in many_chunks:
         blocksC[chunk_id] = col_gen(chunk_id, length, seed, edge_width, edge_only=True)
         if log_msgs: print("blocksC[", chunk_id, "]=", blocksC[chunk_id])
 
-    blocksD = dict()
+    blocksD = {}
     for chunk_id in many_chunks:
         blocksD[chunk_id] = col_gen(chunk_id, length, seed, edge_width, edge_only=True)
         if log_msgs: print("blocksD[", chunk_id, "]=", blocksD[chunk_id])

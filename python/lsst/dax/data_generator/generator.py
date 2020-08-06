@@ -30,15 +30,16 @@ __all__ = ["DataGenerator"]
 
 
 class TableColumnInfo:
-    def __init__(self, colNames, generator, position):
-        self.colNames = colNames
+    def __init__(self, col_names, generator, position):
+        self.col_names = col_names
         self.position = position
         self.generator = generator
         self.block = None
 
     def __repr__(self):
-        return ("{colNames:" + self.colNames + ' position:' + str(self.position)
+        return ("{col_names:" + self.col_names + ' position:' + str(self.position)
               + " generator:" + str(self.generator) + ' block:' + str(self.block))
+
 
 class DataGenerator:
     """Create a DataGenerator based on a specification dictionary.
@@ -97,7 +98,6 @@ class DataGenerator:
         split_column_names : list
             List of column names for the separate tuple elements of
             generated_data.
-
         """
         if isinstance(generated_data, tuple) or isinstance(generated_data, list):
             for i, name in enumerate(split_column_names):
@@ -140,58 +140,57 @@ class DataGenerator:
         else:
             rows_per_table = defaultdict(lambda: num_rows)
 
-        resolvedOrder = self._resolve_table_order(self.spec)
-        tableColumns = dict()
-        newRowsPerTable = dict()
+        resolved_order = self._resolve_table_order(self.spec)
+        table_columns = {}
 
-        for table in resolvedOrder:
-            tableLength = rows_per_table[table]
-            columnSpecs = self.spec[table]["columns"]
-            cols = list()
+        for table in resolved_order:
+            table_length = rows_per_table[table]
+            column_specs = self.spec[table]["columns"]
+            cols = []
             position = 0
-            for col, generator in columnSpecs.items():
-                colNames = col
-                colInfo = TableColumnInfo(colNames, generator, position)
+            for col, generator in column_specs.items():
+                col_names = col
+                col_info = TableColumnInfo(col_names, generator, position)
                 position += 1
                 # RaDecGenerator needs to run first to determine the
                 # length of the table.
                 if isinstance(generator, columns.RaDecGenerator):
-                    colInfo.block = colInfo.generator(chunk_id, tableLength, seed, edge_width, edge_only)
-                    blockLength = len(colInfo.block[0])
-                    if tableLength != blockLength:
+                    col_info.block = col_info.generator(chunk_id, table_length, seed, edge_width, edge_only)
+                    blockLength = len(col_info.block[0])
+                    if table_length != blockLength:
                         # Reducing length to what was generated for RA and Dec
-                        tableLength = blockLength
-                cols.append(colInfo)
-            tableColumns[table] = cols
-            rows_per_table[table] = tableLength
+                        table_length = blockLength
+                cols.append(col_info)
+            table_columns[table] = cols
+            rows_per_table[table] = table_length
 
-        for table in resolvedOrder:
-            cols = tableColumns[table]
+        for table in resolved_order:
+            cols = table_columns[table]
             prereq_rows = self.spec[table].get("prereq_row", None)
             prereq_tables = self.spec[table].get("prereq_tables", [])
             output_columns = {}
-            for colInfo in cols:
-
-                split_column_names = colInfo.colNames.split(",")
+            for col_info in cols:
+                print(f"Working on table={table} col_info={col_info.col_names}")
+                split_column_names = col_info.col_names.split(",")
                 for name in split_column_names:
                     output_columns[name] = []
 
                 if prereq_rows is None:
-                    if colInfo.block is None:
+                    if col_info.block is None:
                         prereq_tbls = {t: output_tables[t] for t in prereq_tables}
-                        colInfo.block = colInfo.generator(
+                        col_info.block = col_info.generator(
                             chunk_id, rows_per_table[table], seed,
                             prereq_tables=prereq_tbls)
-                    self._add_to_list(colInfo.block, output_columns, split_column_names)
+                    self._add_to_list(col_info.block, output_columns, split_column_names)
                 else:
                     prereq_table_contents = {t: output_tables[t] for t in prereq_tables}
                     for n in range(len(output_tables[prereq_rows])):
                         preq_rw = output_tables[prereq_rows].iloc[n]
-                        colInfo.block = colInfo.generator(
+                        col_info.block = col_info.generator(
                             chunk_id, rows_per_table[table], seed,
                             prereq_row=preq_rw,
                             prereq_tables=prereq_table_contents)
-                        self._add_to_list(colInfo.block, output_columns, split_column_names)
+                        self._add_to_list(col_info.block, output_columns, split_column_names)
 
             for name in output_columns.keys():
                 temp = np.concatenate(output_columns[name])

@@ -4,6 +4,7 @@ from lsst.dax.data_generator import Chunker
 num_stripes = 200
 num_substripes = 5
 chunker = Chunker(0, num_stripes, num_substripes)
+edge_width = 0.017  # degrees, must be >= overlap
 
 spec = {
     "Object": {

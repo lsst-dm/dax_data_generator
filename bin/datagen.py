@@ -25,7 +25,9 @@ if __name__ == "__main__":
         spec_globals = {}
         exec(f.read(), spec_globals)
         assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
+        assert 'edge_width' in spec_globals, "Specification file must define variable 'edge_width'."
         spec = spec_globals['spec']
+        edge_width = spec_globals['edge_width']
 
     dataGen = DataGenerator(spec)
     chunk_id = args.chunk
@@ -37,7 +39,6 @@ if __name__ == "__main__":
         row_counts["ForcedSource"] = None
 
     seed = 1
-    edge_width = 0.017 # degrees
     tables = dataGen.make_chunk(chunk_id, num_rows=row_counts, seed=seed,
                                 edge_width=edge_width, edge_only=edge_only)
 
@@ -46,5 +47,6 @@ if __name__ == "__main__":
     for table_name, table in tables.items():
         edgeType = "CT"  # complete
         if edge_only: edgeType = "EO" # edge only
-        table.to_parquet("chunk{:d}_{:s}_{:s}.parquet".format(chunk_id, edgeType, table_name))
+        table.to_csv("chunk{:d}_{:s}_{:s}.csv".format(chunk_id, edgeType, table_name),
+                     header=False, index=False)
 

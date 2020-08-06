@@ -175,17 +175,17 @@ class DataGenServer:
         # List of client connection threads
         self._client_threads = list()
         # Dictionary of clients by clientId
-        self._clients = dict()
+        self._clients = {}
 
         # Build dictionary of info for chunks to send to workers.
         # Read the datagen configuration for chunker info.
-        spec_globals = dict()
+        spec_globals = {}
         exec(self._fakeCfgData, spec_globals)
         assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
         assert 'chunker' in spec_globals, "Specification file must define a variable 'chunker'."
         chunker = spec_globals['chunker']
         all_chunks = chunker.getAllChunks()
-        self._chunks_to_send = dict() # Dictionary of information on chunks to send
+        self._chunks_to_send = {} # Dictionary of information on chunks to send
         # Set of chunks to send, desirable to have in order but not essential.
         self._chunks_to_send_set = set()
         print("Finding valid chunk numbers...")
@@ -232,7 +232,7 @@ class DataGenServer:
                 if ext == '.cfg':
                     files.append(os.path.basename(e))
         print("partitionCfg files=", files, entries)
-        file_dict = dict()
+        file_dict = {}
         index = 0
         for f in files:
             fName = os.path.join(partioner_cfg_dir, f)
