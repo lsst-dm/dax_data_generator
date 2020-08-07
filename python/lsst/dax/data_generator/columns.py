@@ -51,11 +51,8 @@ def mergeBlocks(block_a, block_b):
     Tuple of lists
         Result of merging the two blocks.
     """
-    newList = []
-    # There's probably a more pythonic way to do this.
-    for j in range(len(block_a)):
-        newList.append(np.append(block_a[j], block_b[j]))
-    return tuple(newList)
+    return tuple(np.concatenate(x) for x in zip(block_a, block_b))
+
 
 def equalBlocks(block_a, block_b):
     """Each block should be a tuple of np.array. Return True if
@@ -258,7 +255,8 @@ class RaDecGenerator(ColumnGenerator):
             ra_out.append(ra)
         return (ra_out, dec_centers)
 
-    def __call__(self, chunk_id, length, seed, edge_width, edge_only, prereq_tables=None, **kwargs):
+    def __call__(self, chunk_id, length, seed, edge_width=0.017, edge_only=False,
+                 prereq_tables=None, **kwargs):
         """
         Parameters
         ----------
@@ -268,10 +266,10 @@ class RaDecGenerator(ColumnGenerator):
             Number of coordiantes to generate.
         seed : int
             Random number seed.
-        edge_width : float degrees
+        edge_width : float degrees, optional
             Width of the edge generated. Must be wide enough to cover
             overlap and must be consistent throughout chunk generation.
-        edge_only : bool
+        edge_only : bool, optional
             When True, only generate the values near edges of chunks,
             edge_width. Otherwise, generate edge values first and then
             generate values for the middle of the chunk.

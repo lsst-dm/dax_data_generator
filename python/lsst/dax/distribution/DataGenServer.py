@@ -33,6 +33,7 @@ from DataGenConnection import DataGenConnection
 from DataGenConnection import DataGenError
 from DataIngest import DataIngest
 
+
 class GenerationStage(Enum):
     """This class is used to indicate where a chunk is in the process
     of having synthetic data genrated.
@@ -302,18 +303,18 @@ class DataGenServer:
         out_of_chunks = False
         try:
             print('Connected by', addr, name, conn)
-            serv = DataGenConnection(conn)
+            sv_conn = DataGenConnection(conn)
             with self._client_lock:
                 self._clients[name] = addr
             # receive init from client
-            serv.servReqInit()
+            sv_conn.servReqInit()
             # server sending back configuration information
-            serv.servRespInit(name, self._cfg_fake_args, self._fakeCfgData, self._ingest_dict)
+            sv_conn.servRespInit(name, self._cfg_fake_args, self._fakeCfgData, self._ingest_dict)
             # client requests partioner configuration files, starting with
             # pCfgIndex=0 and incrementing it until pCfgName==""
             pCfgDone = False
             while not pCfgDone:
-                pCfgIndex = serv.servRespPartitionCfgFile()
+                pCfgIndex = sv_conn.servRespPartitionCfgFile()
                 if pCfgIndex in self._partioner_cfg_dict:
                     pCfgTpl = self._partioner_cfg_dict[pCfgIndex]
                     pCfgName = pCfgTpl[0]
@@ -322,10 +323,10 @@ class DataGenServer:
                     pCfgName = ""
                     pCfgContents = ""
                     pCfgDone = True
-                serv.servSendPartionCfgFile(pCfgIndex, pCfgName, pCfgContents)
+                sv_conn.servSendPartionCfgFile(pCfgIndex, pCfgName, pCfgContents)
             # client requesting chunk list
             while self._loop and not out_of_chunks:
-                clientReqChunkCount = serv.servRecvReqChunks()
+                clientReqChunkCount = sv_conn.servRecvReqChunks()
                 chunksForClient = []
                 # get the first clientReqChunkCount elements of self._chunksToSendSet
                 with self._list_lock:
@@ -338,7 +339,7 @@ class DataGenServer:
                         cInfo.client_addr = addr
                     for chunk in chunksForClient:
                         self._chunks_to_send_set.discard(chunk)
-                serv.servSendChunks(chunksForClient)
+                sv_conn.servSendChunks(chunksForClient)
                 if len(chunksForClient) == 0:
                     print("out of chunks to send, nothing more to send")
                     out_of_chunks = True
@@ -348,7 +349,7 @@ class DataGenServer:
                     completed_chunks = []
                     finished = False
                     while not finished:
-                        completedC, finished, problem = serv.servRecvChunksComplete()
+                        completedC, finished, problem = sv_conn.servRecvChunksComplete()
                         print("serv got", completedC, finished, problem)
                         completed_chunks.extend(completedC)
                     # Mark completed chunks as finished
@@ -357,7 +358,7 @@ class DataGenServer:
                             self._total_generated_chunks.add(completed)
                             cInfo = self._chunks_to_send[completed]
                             cInfo.gen_stage = GenerationStage.FINISHED
-                    diff = serv.compareChunkLists(completed_chunks, chunksForClient)
+                    diff = sv_conn.compareChunkLists(completed_chunks, chunksForClient)
                     if len(diff) > 0:
                         # Mark missing chunks as being in limbo.
                         with self._list_lock:

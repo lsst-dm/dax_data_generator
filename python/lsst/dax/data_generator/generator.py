@@ -105,8 +105,8 @@ class DataGenerator:
         else:
             output_columns[split_column_names[0]].append(generated_data)
             if(len(split_column_names) > 1):
-                assert ValueError, ("Column name implies multiple returns, "
-                                    "but generator only returned one")
+                raise ValueError("Column name implies multiple returns, "
+                                 "but generator only returned one")
 
     def make_chunk(self, chunk_id, num_rows=None, seed=1, edge_width=0.017, edge_only=False):
         """Generate synthetic data for one chunk.

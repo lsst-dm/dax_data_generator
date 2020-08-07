@@ -231,13 +231,13 @@ class DataIngest():
         cmd = ('qserv-replica-file-ingest FILE ' + host + ' ' + str(port) + ' '
             + str(transaction_id) + ' ' + table + ' P ' + f_path + ' --verbose --columns-separator=TAB')
         print("cmd=", cmd)
-        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        out_str = process.communicate()
-        process.wait()
+        process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        out_str = str(process.stdout)
         if process.returncode != 0:
             print("ERROR sendChunkToTarget cmd=", cmd, "out=", out_str)
             raise RuntimeError("ERROR sendChunkToTarget cmd=" + cmd + " out=" + str(out_str))
         return process.returncode, out_str
+
 
     def publishDatabase(self, db_name):
         """Once all the chunks have been ingested, call this to publish the database.

@@ -217,6 +217,7 @@ class DataGenConnection():
             self.warnings += 1
             raise DataGenError('ERROR servRecvInit ' + str(msg_id) + ' ' + msg + ' ' +str(msg_len))
         return msg_id, msg
+
     def servRespInit(self, name, arg_string, cfg_file_contents, ingest_dict):
         """Respond to the client initialization request.
 
@@ -251,6 +252,7 @@ class DataGenConnection():
             + sep + ingest_dict['user'] + sep + ingest_dict['auth']
             + sep + ingest_dict['db'] + sep + skip_val)
         self._send_msg(self.S_INIT_R, msg)
+
     def clientRespInit(self):
         """Unwrap the configuration information sent by the server.
 
@@ -294,6 +296,7 @@ class DataGenConnection():
         """
         print("clientReqChunks C_PCFGR")
         self._send_msg(self.C_PCFG_R, str(index))
+
     def servRespPartitionCfgFile(self):
         """Serv recieve the partition configuration index from the client.
 
@@ -308,6 +311,7 @@ class DataGenConnection():
             self.warnings += 1
             raise DataGenError('ERROR servRespPartitionCfgFile' + str(msg_id) + ' ' + str(msg_len) + ' ' + msg)
         return int(msg)
+
     def servSendPartionCfgFile(self, index, file_name, file_contents):
         """Send the file_name and contents to the requestor. If there are
         no more Files to send, file_name is empty.
@@ -326,6 +330,7 @@ class DataGenConnection():
         sep = self.COMPLEXSEP
         msg = str(index) + sep + file_name + sep + file_contents
         self._send_msg(self.S_PCFG_A, msg)
+
     def clientRespPartionCfgFile(self):
         """Extract file name and contents from the message sent by the server.
 
@@ -360,6 +365,7 @@ class DataGenConnection():
         print("clientReqChunks C_CHUNKR")
         msg = str(max_count)
         self._send_msg(self.C_CHUNKR, msg)
+
     def servRecvReqChunks(self):
         """Server getting the number of chunks requested in clientReqChunks.
 
@@ -392,6 +398,7 @@ class DataGenConnection():
         chunk_msg, sent_chunks = self._buildChunksMsg(chunk_list)
         self._send_msg(self.S_CNKLST, chunk_msg)
         return sent_chunks
+
     def clientRecvChunks(self):
         """Receive the list of chunks sent by the server.
 
@@ -503,7 +510,7 @@ class DataGenConnection():
             print("compare b has more elements len failed", diff)
             success = False
         # Test a reasonable length range for ChunkMsg methods
-        b = range(1,110)
+        b = list(range(1,110))
         testMsg, usedChunks = self._buildChunksMsg(b)
         c, problem = self._extractChunksFromMsg(testMsg)
         diff = self.compareChunkLists(usedChunks, c)
@@ -603,7 +610,7 @@ class ServerTestThrd(threading.Thread):
                 raise RuntimeError("mismatch in sent vs received lists", self.name, diff)
             self.warnings += serv.warnings
         print("ServerTestThrd.run finished")
-        if self.success == None: self.success = True
+        if self.success is None: self.success = True
 
 class ClientTestThrd(threading.Thread):
     """Class for testing the client side of messaging
@@ -674,7 +681,7 @@ class ClientTestThrd(threading.Thread):
 
 
         print("ClientTestThrd.run finished")
-        if self.success == None: self.success = True
+        if self.success is None: self.success = True
 
 
 def testDataGenConnection(port, name, arg_string, cfg_file_contents, maxCount,

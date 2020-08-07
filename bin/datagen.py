@@ -15,7 +15,7 @@ if __name__ == "__main__":
     parser.add_argument("--chunk", type=int, required=True)
     parser.add_argument("--objects", type=int, required=True)
     parser.add_argument("--visits", type=int, required=True)
-    parser.add_argument("--edgeonly", action="count", default=0)
+    parser.add_argument("--edgeonly", action="store_true")
     parser.add_argument("specification", type=str)
     args = parser.parse_args()
 

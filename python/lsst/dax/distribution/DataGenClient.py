@@ -57,6 +57,7 @@ class DataGenClient:
     def __init__(self, host, port, target_dir='fakeData', chunks_per_req=5):
         self._host = host
         self._port = port
+        self._name = "-1"
         self._target_dir = os.path.abspath(target_dir)
         self._chunksPerReq = chunks_per_req
         self._gen_arg_str = None # Arguments from the server for the generator.
@@ -189,9 +190,8 @@ class DataGenClient:
         if not cwd:
             cwd = self._target_dir
         print("cwd", cwd, "cmd=", cmd)
-        process = subprocess.Popen(cmd, cwd=cwd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        out_str = process.communicate()
-        process.wait()
+        process = subprocess.run(cmd, cwd=cwd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        out_str = str(process.stdout)
         if process.returncode != 0:
             print("out=", out_str)
         return process.returncode, out_str
@@ -324,7 +324,7 @@ class DataGenClient:
                         return False
         return True
 
-    def _fillChunkDir(self, chunk_id, neighborChunks):
+    def _fillChunkDir(self, chunk_id, neighbor_chunks):
         """Create and fill a directory with all the csv files needed for the
         partitioner to make chunk_id.
 
@@ -346,7 +346,7 @@ class DataGenClient:
         all the csv files needed for the partioner to build chunk and
         overlap files for ingest. One file for each table in each chunk.
         """
-        print("fillChunkDir chunkId=", chunk_id, neighborChunks)
+        print("fillChunkDir chunkId=", chunk_id, neighbor_chunks)
         # If the chunk directory already exists, empty it.
         if not os.path.exists(self._target_dir):
             print("ERROR targetDirectory does not exist.")
@@ -362,7 +362,7 @@ class DataGenClient:
         if not self.makeDir(dirName):
             print("ERROR directory creation", dirName)
             return False
-        cList = neighborChunks.copy()
+        cList = neighbor_chunks.copy()
         if not chunk_id in cList:
             cList.append(chunk_id)
         for cId in cList:
@@ -719,7 +719,6 @@ class DataGenClient:
                 self._cl_conn.clientReqPartitionCfgFile(pCfgIndex)
                 indx, pCfgName, pCfgContents = self._cl_conn.clientRespPartionCfgFile()
                 if indx != pCfgIndex:
-                    self.success = False
                     raise RuntimeError("Client got wrong pCfgIndex=", pCfgIndex,
                                        "indx=", indx, pCfgName)
                 print("pCfgName=", pCfgName)
