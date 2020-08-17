@@ -5,6 +5,7 @@ import healpy
 import pandas as pd
 
 import lsst.dax.data_generator.columns as columns
+import lsst.dax.data_generator.testing as testing
 from lsst.dax.data_generator import Chunker
 
 num_stripes = 50
@@ -116,6 +117,6 @@ class ColumnGeneratorTests(unittest.TestCase):
                 self.assertIn(res_row_visit, output_ccdvisits)
 
     def testRaDecGenerator(self):
-        self.assertTrue(columns.tst_convertBlockToRows(False))
-        self.assertTrue(columns.tst_mergeBlocks(False))
-        self.assertTrue(columns.tst_RaDecGenerator(False, 1000))
+        self.assertTrue(testing.tst_convertBlockToRows(False))
+        self.assertTrue(testing.tst_mergeBlocks(False))
+        self.assertTrue(testing.tst_RaDecGenerator(False, 1000))

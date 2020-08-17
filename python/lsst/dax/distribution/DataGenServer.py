@@ -29,9 +29,9 @@ import yaml
 
 from enum import Enum
 
-from DataGenConnection import DataGenConnection
-from DataGenConnection import DataGenError
-from DataIngest import DataIngest
+from .DataGenConnection import DataGenConnection
+from .DataGenConnection import DataGenError
+from .DataIngest import DataIngest
 
 
 class GenerationStage(Enum):
@@ -142,21 +142,25 @@ class DataGenServer:
             print("cfg", self._cfg)
         # The port number the host will listen to.
         self._port = self._cfg['server']['port']
+        # base directory for other configuration files
+        self._base_cfg_dir = os.path.abspath(self._cfg['fakeDataGenerator']['baseCfgDir'])
         # The arguments that will be passed from server to
         # clients to dax_data_generator/bin/datagen.py.
         self._cfg_fake_args = self._cfg['fakeDataGenerator']['arguments']
         print("port=", self._port, self._cfg_fake_args)
+
         # The name and contents of the configuration file that will be passed
         # from server to clients to dax_data_generator/bin/datagen.py.
-        fake_cfg_file_name = self._cfg['fakeDataGenerator']['cfgFileName']
+        fake_cfg_file_name = os.path.join(self._base_cfg_dir, self._cfg['fakeDataGenerator']['cfgFileName'])
         print("fake_cfg_file_name", fake_cfg_file_name)
         with open(fake_cfg_file_name, 'r') as file:
             self._fakeCfgData = file.read()
         print("fake_cfg_data=", self._fakeCfgData)
 
         # Get the directory containing partioner configuration files.
-        partioner_cfg_dir = os.path.abspath(self._cfg['partitioner']['cfgDir'])
+        partioner_cfg_dir = os.path.join(self._base_cfg_dir, self._cfg['partitioner']['cfgDir'])
         print("partioner_cfg_dir=", partioner_cfg_dir)
+
         # Read all the files in that directory and their contents.
         self._partioner_cfg_dict = self._readPartionerCfgDir(partioner_cfg_dir)
 
@@ -168,7 +172,8 @@ class DataGenServer:
         ingest_auth = self._cfg['ingest']['authKey']
         self._ingest_dict = {'host':ingest_host, 'port':ingest_port, 'user':ingest_user, 'auth':ingest_auth,
                             'db':self._db_name, 'skip':self._skip_ingest}
-        self._ingest_cfg_dir = os.path.abspath(self._cfg['ingest']['cfgDir'])
+        # Read ingest config files.
+        self._ingest_cfg_dir = os.path.join(self._base_cfg_dir, self._cfg['ingest']['cfgDir'])
         print("ingest addr=", ingest_host, ":", ingest_port, " user=", ingest_user)
         print("ingest cfg dir=", self._ingest_cfg_dir)
         self._ingest = DataIngest(ingest_host, ingest_port, ingest_user, ingest_auth)
@@ -474,41 +479,3 @@ class DataGenServer:
         else:
             print("Not publishing due to incomplete data/creation/ingestion")
 
-
-def testA():
-    """Temporary main function call.
-    TODO: The next step is to have the chunks to be created read in from files
-    and have this program produce a files of that format for created chunks
-    and chunks that should be created. That way, after the server runs
-    the output from the server can be examined and the server can be run
-    again with the output files to fill in the gaps.
-    """
-    argumentList = sys.argv[1:]
-    print("argumentList=", argumentList)
-    options = "hksi:"
-    long_options = ["help", "skipIngest", "skipSchema", "ingestCfg"]
-    skip_ingest = False
-    skip_schema = False
-    try:
-        arguments, values = getopt.getopt(argumentList, options, long_options)
-        print("arguments=", arguments)
-        for arg, val in arguments:
-            if arg in ("-h", "--help"):
-                print("-h, --help  help")
-                print("-k, --skipIngest  skip trying to ingest anything")
-                print("-s, --skipSchema  skip sending schema, needed when schema was already sent.")
-                return False
-            elif arg in ("-k", "--skipIngest"):
-                skip_ingest = True
-            elif arg in ("-s", "--skipSchema"):
-                skip_schema = True
-    except getopt.error as err:
-        print (str(err))
-        exit(1)
-    print("skip_ingest=", skip_ingest, "skip_schema=", skip_schema, "values=", values)
-    # 0-50000 would be all chunks for stripes = 200 substripes = 5
-    dgServ = DataGenServer("serverCfg.yml", 0, 2000, skip_ingest, skip_schema)
-    dgServ.start()
-
-if __name__ == "__main__":
-    testA()

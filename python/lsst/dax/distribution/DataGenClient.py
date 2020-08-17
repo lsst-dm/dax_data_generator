@@ -27,9 +27,8 @@ import shutil
 import socket
 import subprocess
 
-from DataGenConnection import DataGenConnection
-from DataIngest import DataIngest
-
+from .DataGenConnection import DataGenConnection
+from .DataIngest import DataIngest
 
 
 class DataGenClient:
@@ -440,8 +439,7 @@ class DataGenClient:
             " --chunk " + str(chunk_id) + " " + self._gen_arg_str + " " + self._cfg_file_name)
         genResult, genOut = self.runProcess(cmdStr)
         if genResult != 0:
-            print("ERROR Generator failed for", chunk_id, " cmd=", cmd, "args=", args,
-                  "out=", genOut)
+            print("ERROR Generator failed for", chunk_id, " cmd=", cmdStr, "out=", genOut)
             return 'failed'
         return 'success'
 
@@ -788,11 +786,3 @@ class DataGenClient:
                 # Client sends the list of completed chunks back
                 self._sendIngestedChunksToServer(ingestedChunks)
 
-
-def testC():
-    dgClient = DataGenClient("127.0.0.1", 13042)
-    dgClient.run()
-
-
-if __name__ == "__main__":
-    testC()

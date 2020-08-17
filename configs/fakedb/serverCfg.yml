@@ -5,10 +5,11 @@ server:
 fakeDataGenerator:
 # --chunk 3525 --visits 30 --objects 10000 example_spec.py
   arguments: '--visits 30 --objects 1000'
+  baseCfgDir: configs/fakedb
   cfgFileName: fakeGenSpec.py
 
 partitioner:
-  cfgDir: fakePartitionerCfgs
+  cfgDir: partitionerCfgs
 
 ingest:
   host: localhost
@@ -16,6 +17,6 @@ ingest:
   user: ''
   authKey: ''
   dbName: fakedb
-  cfgDir: fakeIngestCfgs
+  cfgDir: ingestCfgs
 
 
