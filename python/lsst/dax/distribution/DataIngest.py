@@ -277,7 +277,7 @@ class IngestTransaction():
             self._id = id
             print('Transaction started ', self._db_name, self._id)
         else:
-            raise RuntimeError('Transaction failed to start ' + self._db_name + self._id)
+            raise RuntimeError('Transaction failed to start ' + self._db_name + str(self._id))
         return self._id
 
     def __exit__(self, e_type, e_value, e_traceback):
@@ -294,47 +294,4 @@ class IngestTransaction():
             raise RuntimeError('Transaction failed ' + self._db_name + " trans_id="+ str(self._id)
                                 + " status=" + str(status) + " content=" + str(content))
         return True
-
-
-if __name__ == "__main__":
-    ingest = DataIngest('localhost', 25080)
-    # No point in continuing if the ingest system can't be contacted.
-    if not ingest.isIngestAlive():
-        print("ERROR ingest server not responding.")
-        exit(1)
-    # Try sending the database. This will fail if the database already exists.
-    if not ingest.sendDatabase("fakeIngestCfgsTest/test102.json"):
-        print("ERROR failed to send database configuration to ingest.")
-    # Ingest the test Object tables schema. This will fail if the
-    # database already exists.
-    if not ingest.sendTableSchema("fakeIngestCfgsTest/test102_Object.json"):
-        print("ERROR failed to send Object table schema")
-    # Start a transaction
-    i_transaction = IngestTransaction(ingest, 'test102')
-    transaction_status = None
-    try:
-        with i_transaction as t_id:
-            chunk_id = 0
-            # Get address of worker to handle this chunk.
-            host, port = ingest.getChunkTargetAddr(t_id, chunk_id)
-            # Send the chunk to the target worker
-            table = 'Object'
-            f_path = 'fakeIngestCfgsTest/chunk_0.txt'
-            r_code, out_str = ingest.sendChunkToTarget(host, port, t_id, table, f_path)
-            print('host=', host, 'port=', port, "")
-            i_transaction.abort = False
-            # Transaction ends
-        transaction_status = True
-    except RuntimeError as err:
-        transaction_status = False
-        print("Transaction Failed ", i_transaction, "err=", err)
-        exit(1)
-    # code to publish
-    success, status, content = ingest.publishDatabase('test102')
-    if not success:
-        print("Failed to publish")
-        exit(1)
-    print("Success")
-
-
 

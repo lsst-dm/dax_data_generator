@@ -1,9 +1,0 @@
-This directory contains configuration files for the partitioner. 
-Files that end in '.cfg' will be copied from the server to the worker.
-The clients will generate data files for the tables that have 
-configuration files in this directory. 
-
-If fakeGenSpec.py defines tables "Object", "CcdVisit" and "ForcedSource" 
-This directory will need  files "Object.cfg" and "ForcedSource.cfg" files. 
-This will keep "CcdVisit" from being ingested into the final database.
-
