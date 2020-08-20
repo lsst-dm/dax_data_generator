@@ -21,11 +21,14 @@ class TestDataGenerator(unittest.TestCase):
                             }
             }
         }
-        cell_id = 5000
+        chunk_id = 5000
 
         generator = DataGenerator(generator_spec)
 
-        data = generator.make_chunk(cell_id, num_rows=50)
+        seed = 1
+        edge_width = 0.017 # degrees
+        data = generator.make_chunk(chunk_id, num_rows=50, seed=seed,
+                                    edge_width=edge_width, edge_only=False)
         self.assertIn('Object', data.keys())
         self.assertEqual(len(data['Object']), 50)
 
@@ -53,8 +56,11 @@ class TestDataGenerator(unittest.TestCase):
             },
         }
         chunk_id = 5000
+        seed = 1
+        edge_width = 0.017 # degrees
         generator = DataGenerator(generator_spec)
-        chunk_table = generator.make_chunk(chunk_id, 50)
+        chunk_table = generator.make_chunk(chunk_id, num_rows=50, seed=seed,
+                                           edge_width=edge_width, edge_only=False)
         self.assertIn("CcdVisit", chunk_table.keys())
         self.assertEqual(len(chunk_table["CcdVisit"]), 50)
 
@@ -88,7 +94,10 @@ class TestDataGenerator(unittest.TestCase):
         row_counts = {"CcdVisit": 80,
                       "Object": 100,
                       "ForcedSource": 0}
-        chunk_tables = generator.make_chunk(chunk_id, row_counts)
+        seed = 1
+        edge_width = 0.017 # degrees
+        chunk_tables = generator.make_chunk(chunk_id, num_rows=50, seed=seed,
+                                            edge_width=edge_width, edge_only=False)
         self.assertIn("ForcedSource", chunk_tables.keys())
         self.assertIn("Object", chunk_tables.keys())
         self.assertIn("CcdVisit", chunk_tables.keys())

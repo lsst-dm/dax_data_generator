@@ -5,6 +5,7 @@ import healpy
 import pandas as pd
 
 import lsst.dax.data_generator.columns as columns
+import lsst.dax.data_generator.testing as testing
 from lsst.dax.data_generator import Chunker
 
 num_stripes = 50
@@ -13,27 +14,11 @@ num_substripes = 5
 
 class ColumnGeneratorTests(unittest.TestCase):
 
-    def testCcdVisitGenerator(self):
-        filters = "ugrizy"
-        num_ccd_visits = 10
-        cell_id = 2500
-        chunker = Chunker(0, num_stripes, num_substripes)
-        ccdVisitGenerator = columns.CcdVisitGenerator(chunker, num_ccd_visits, filters=filters)
-
-        results = ccdVisitGenerator(cell_id, num_ccd_visits)
-        self.assertEqual(len(results), 4)
-
-        ccdVisitId, ra_centers, dec_centers, filterName = results
-        self.assertEqual(len(ccdVisitId), len(ra_centers))
-        self.assertEqual(len(ccdVisitId), len(filterName))
-        self.assertEqual(len(ccdVisitId), num_ccd_visits)
-        self.assertEqual(len(ccdVisitId), len(set(ccdVisitId)))
-
     @unittest.skip("hpix8 is deprecated")
     def testCcdVisitHpix8(self):
         filters = "ugrizy"
         num_ccd_visits = 10
-        cell_id = 2500 
+        cell_id = 2500
         chunker = Chunker(0, num_stripes, num_substripes)
         ccdVisitGenerator = columns.CcdVisitGenerator(chunker, num_ccd_visits, filters=filters)
         hpix8_values = ccdVisitGenerator._find_hpix8_in_cell(cell_id)
@@ -54,13 +39,14 @@ class ColumnGeneratorTests(unittest.TestCase):
         obs_generator = columns.ObjIdGenerator()
 
         cell_id = 5000
-        output_ids = obs_generator(cell_id, 20)
+        seed = 1
+        output_ids = obs_generator(cell_id, 20, seed)
         self.assertEqual(len(output_ids), 20)
 
         # Test for uniqueness
         self.assertEqual(len(set(output_ids)), 20)
 
-        output_ids2 = obs_generator(cell_id + 1, 20)
+        output_ids2 = obs_generator(cell_id + 1, 20, seed)
         # Test for uniqueness
         self.assertEqual(len(set(output_ids) | set(output_ids2)), 40)
 
@@ -71,14 +57,14 @@ class ColumnGeneratorTests(unittest.TestCase):
         mag_generator = columns.MagnitudeGenerator(min_mag=min_mag,
                                                    max_mag=max_mag,
                                                    n_mags=1)
-        magnitudes = mag_generator(5000, 40)
+        magnitudes = mag_generator(5000, 40, seed=1)
         self.assertTrue(np.min(magnitudes) >= min_mag)
         self.assertTrue(np.max(magnitudes) <= max_mag)
 
     def testFilterGenerator(self):
         filters = "ugrizy"
         filter_generator = columns.FilterGenerator(filters)
-        filter_values = filter_generator(5000, 40)
+        filter_values = filter_generator(5000, 40, seed=1)
         self.assertTrue(set(filter_values).issubset(filters))
 
     def testFSGenerator(self):
@@ -120,7 +106,7 @@ class ColumnGeneratorTests(unittest.TestCase):
                     [(8, 103), (8, 104)]]
 
         for object_row_id, expected_res in enumerate(expected):
-            fs_output = fs_generator(cell_id, length,
+            fs_output = fs_generator(cell_id, length, seed=1,
                                      prereq_row=object_df.iloc[object_row_id],
                                      prereq_tables=prereq_tables)
 
@@ -129,3 +115,8 @@ class ColumnGeneratorTests(unittest.TestCase):
             for res_row_obj, res_row_visit in expected_res:
                 self.assertIn(res_row_obj, output_obj_ids)
                 self.assertIn(res_row_visit, output_ccdvisits)
+
+    def testRaDecGenerator(self):
+        self.assertTrue(testing.tst_convertBlockToRows(False))
+        self.assertTrue(testing.tst_mergeBlocks(False))
+        self.assertTrue(testing.tst_RaDecGenerator(False, 1000))

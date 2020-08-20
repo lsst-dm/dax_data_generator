@@ -1,0 +1,21 @@
+# serverCfg.yml
+server:
+  port: 13042
+
+fakeDataGenerator:
+# --chunk 3525 --visits 30 --objects 10000 example_spec.py
+  arguments: '--visits 30 --objects 1000'
+  baseCfgDir: configs/fakedb
+  cfgFileName: fakeGenSpec.py
+
+partitioner:
+  cfgDir: partitionerCfgs
+
+ingest:
+  host: localhost
+  port: 25080
+  authKey: ''
+  dbName: fakedb
+  cfgDir: ingestCfgs
+
+
