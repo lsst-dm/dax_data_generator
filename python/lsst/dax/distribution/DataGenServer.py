@@ -168,15 +168,14 @@ class DataGenServer:
         self._db_name = self._cfg['ingest']['dbName']
         ingest_host = self._cfg['ingest']['host']
         ingest_port = self._cfg['ingest']['port']
-        ingest_user = self._cfg['ingest']['user']
         ingest_auth = self._cfg['ingest']['authKey']
-        self._ingest_dict = {'host':ingest_host, 'port':ingest_port, 'user':ingest_user, 'auth':ingest_auth,
+        self._ingest_dict = {'host':ingest_host, 'port':ingest_port, 'auth':ingest_auth,
                             'db':self._db_name, 'skip':self._skip_ingest}
         # Read ingest config files.
         self._ingest_cfg_dir = os.path.join(self._base_cfg_dir, self._cfg['ingest']['cfgDir'])
-        print("ingest addr=", ingest_host, ":", ingest_port, " user=", ingest_user)
+        print("ingest addr=", ingest_host, ":", ingest_port)
         print("ingest cfg dir=", self._ingest_cfg_dir)
-        self._ingest = DataIngest(ingest_host, ingest_port, ingest_user, ingest_auth)
+        self._ingest = DataIngest(ingest_host, ingest_port, ingest_auth)
 
         # List of client connection threads
         self._client_threads = []
@@ -422,7 +421,7 @@ class DataGenServer:
         db_jfile = self._db_name + ".json"
         db_jpath = os.path.join(self._ingest_cfg_dir, db_jfile)
         print("sending db config to ingest", db_jpath)
-        if not self._ingest.sendDatabase(db_jpath):
+        if not self._ingest.registerDatabase(db_jpath):
             raise RuntimeError("Failed to send databse to ingest.", db_jpath, self._ingest)
         # Find all of the schema files in self._ingest_cfg_dir while
         # ignoring the database config file.
@@ -439,7 +438,7 @@ class DataGenServer:
         # Send each config file to ingest
         for f in files:
             print("Sending schema file to ingest", f)
-            if not self._ingest.sendTableSchema(f):
+            if not self._ingest.registerTable(f):
                 raise RuntimeError("Failed to send schema file to ingest", f)
         return True
 

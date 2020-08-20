@@ -89,8 +89,7 @@ class DataGenClient:
             Dictionary containing information about the ingest system.
             'host' : str, ingest system host name.
             'port' : int, ingest port number.
-            'user' : str, ingest user name.
-            'auth' : str, ingest user name.
+            'auth' : str, ingest authorization.
             'db'   : str, name of the databse being created
             'skip  : bool, true if ingest is being skipped.
 
@@ -99,7 +98,7 @@ class DataGenClient:
         The keys in ingest_dict should match those in servRespInit and clientRespInit.
         """
         ingd = ingest_dict
-        self._ingest = DataIngest(ingd['host'], ingd['port'], ingd['user'], ingd['auth'])
+        self._ingest = DataIngest(ingd['host'], ingd['port'], ingd['auth'])
         self._skip_ingest = ingd['skip']
         self._db_name = ingd['db']
 
@@ -621,8 +620,6 @@ class DataGenClient:
 
         Return
         ------
-        r_code : int
-            Return code from program execution.
         out_str : str
             Output string from program execution.
 
@@ -636,9 +633,9 @@ class DataGenClient:
         t_id = self._transaction_id
         host, port = self._ingest.getChunkTargetAddr(t_id, chunk_id)
         print("Sending to", host, ":", port, "info", t_id, table, chunk_id, f_path)
-        r_code, out_str =self._ingest.sendChunkToTarget(host, port, t_id, table, f_path)
-        print("Added to Transaction ", host, ":", port, "info", r_code, out_str)
-        return r_code, out_str
+        out_str =self._ingest.sendChunkToTarget(host, port, t_id, table, f_path)
+        print("Added to Transaction ", host, ":", port, "info", out_str)
+        return out_str
 
     def _endTransaction(self, abort):
         """End the transaction, aborting if indicated.

@@ -37,6 +37,8 @@ working directories or there are posible conflicts with incomplete
 files as well as complete vs edge only csv files.
 
 Replace 'work' with the appropriate development directory.
+For cases where you do not want to register or publish data with
+the ingest system, start the server with 'python bin/datagenserver.py -k'
 
 Starting distribution server:
   cd ~/stack
@@ -58,8 +60,6 @@ starting distribution client:
   setup -k -r . -t qserv-dev
   cd ../partition
   setup -k -r . -t qserv-dev
-  cd ../parquet_tools
-  python setup.py develop
   cd ../dax_data_generator/
   python setup.py develop
   python bin/datagenclient.py
@@ -105,12 +105,9 @@ Fake Catalog Generator
 ======================
 
 
-Requires sphgeom, using the branch available at
-https://github.com/lsst/sphgeom/tree/u/ctslater/getchunk. No other LSST packages are required.
-
+Requires sphgeom
 pip install healpy
 pip install pyarrow
-pip install .
 
 Example usage:
 ```

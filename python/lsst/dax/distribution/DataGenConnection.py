@@ -233,8 +233,7 @@ class DataGenConnection():
             Dictionary containing information about the ingest system.
             'host' : str, ingest system host name.
             'port' : int, ingest port number.
-            'user' : str, ingest user name.
-            'auth' : str, ingest user name.
+            'auth' : str, ingest authorization.
             'db'   : str, name of the databse being created
             'skip  : bool, True if ingest is being skipped.
 
@@ -249,7 +248,7 @@ class DataGenConnection():
             skip_val = '1'
         msg = (name + sep + arg_string + sep + cfg_file_contents
             + sep + ingest_dict['host'] + sep + str(ingest_dict['port'])
-            + sep + ingest_dict['user'] + sep + ingest_dict['auth']
+            + sep + ingest_dict['auth']
             + sep + ingest_dict['db'] + sep + skip_val)
         self._send_msg(self.S_INIT_R, msg)
 
@@ -277,9 +276,8 @@ class DataGenConnection():
         name = splt_msg[0]
         arg_string = splt_msg[1]
         cfg_file_contents = splt_msg[2]
-        ingest_dict = { 'host':splt_msg[3], 'port':int(splt_msg[4]), 'user':splt_msg[5], 'auth':splt_msg[6],
-                        'db':splt_msg[7] }
-        skip_val = splt_msg[8]
+        ingest_dict = { 'host':splt_msg[3], 'port':int(splt_msg[4]), 'auth':splt_msg[5], 'db':splt_msg[6] }
+        skip_val = splt_msg[7]
         ingest_dict['skip'] = bool(skip_val != '0')
         return name, arg_string, cfg_file_contents, ingest_dict
 

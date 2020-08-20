@@ -35,53 +35,43 @@ class DataIngest():
         Data ingest server host.
     port : int
         Data ingerst server port number.
-    user, auth_key : str, optional
-        User name and authorization key.
+    auth_key : str, optional
+        Authorization key.
     """
 
-    def __init__(self, host, port, user='', auth_key=''):
+    def __init__(self, host, port, auth_key=''):
         self._host = host
         self._port = port
-        self._user = user
         self._auth_key = auth_key
         self._base_url = 'http://' + self._host + ':' + str(port) + '/'
         print("base_url=", self._base_url)
 
     def __repr__(self):
-        out = ("host=" + self._host + ":" + str(self._port)
-             + " user=" + self._user + "auth_key:****")
+        out = ("host=" + self._host + ":" + str(self._port) + "auth_key:****")
         return out
 
     def isIngestAlive(self):
         """Test if ingest system is alive.
         """
-        url = self._base_url + 'meta/version'
-        print("ingest url=", url)
-        response = requests.get(url)
-        r_json = response.json()
-        if not r_json['success']:
-            print('error: ' + r_json['error'])
+        success, status_code, r_json = self._requestToIngest("GET", 'meta/version', None)
+        if not success:
             return False
         print('ingest version=', r_json['version'])
         return True
 
-    def _postToIngest(self, ingest_cmd, data_json):
-        """Send the data_json to the ingest system and return
-        a json result
-        """
-        url = self._base_url + ingest_cmd
-        print('url=', url, " data=", data_json)
-        response = requests.post(url, json=data_json)
-        r_json = response.json()
-        success = True
-        if not r_json['success']:
-            print('ERROR post url=', url, " data=", data_json,
-                  'error: ', r_json['error'])
-            success = False
-        return success, r_json
+    def _requestToIngest(self, req_type, ingest_cmd, data_json):
+        """Send the REST request to the ingest system.
 
-    def _putToIngest(self, ingest_cmd, data_json):
-        """Send the data_json to the ingest system and return
+        Parameters
+        ----------
+        req_type : str
+            Indicates the type of rest action. It must be one of "PUT",
+            "POST", or "GET"
+        ingest_cmd : str
+            The command for the ingest system
+        data_json : json
+            json object containing the data. It is not used for 'GET'.
+
         Return
         ------
         success : bool
@@ -91,10 +81,18 @@ class DataIngest():
         r_json : json or None
             If the status code was not 200, this will be None.
             Otherwise it is a json object with information about the request.
+
         """
         url = self._base_url + ingest_cmd
         print('url=', url, " data=", data_json)
-        response = requests.put(url, json=data_json)
+        if req_type == "PUT":
+            response = requests.put(url, json=data_json)
+        elif req_type == "POST":
+            response = requests.post(url, json=data_json)
+        elif req_type == "GET":
+            response = requests.get(url)
+        else:
+            raise ValueError(f"requestToIngest req_type must be one of PUT, POST, or GET. req_type={req_type}")
         status_code = response.status_code
         success = True
         # 200 means the put request was at least well formed.
@@ -109,23 +107,23 @@ class DataIngest():
             success = False
         return success, status_code, r_json
 
-    def sendDatabase(self, db_file_path):
+    def registerDatabase(self, db_file_path):
         """ Send the database description to the ingest system.
         """
         with open(db_file_path, 'r') as db_f:
             data = db_f.read()
             data_json = json.loads(data)
-        success, r_json = self._postToIngest('ingest/database', data_json)
+        success, status_code, r_json = self._requestToIngest("POST", 'ingest/database', data_json)
         if not success:
             print('ERROR while sending databaae ', db_file_path, "r_json=", r_json)
             return False
         return True
 
-    def sendTableSchema(self, schema_file_path):
+    def registerTable(self, schema_file_path):
         with open(schema_file_path, 'r') as schema_f:
             data = schema_f.read()
             data_json = json.loads(data)
-        success, r_json = self._postToIngest('ingest/table', data_json)
+        success, status_code, r_json = self._requestToIngest("POST", 'ingest/table', data_json)
         if not success:
             print('ERROR while sending table schema ', schema_file_path, "r_json=", r_json)
             return False
@@ -141,7 +139,8 @@ class DataIngest():
         id : int
             Ingest super transaction id number.
         """
-        success, r_json = self._postToIngest('ingest/trans', {'database':db_name,'auth_key':''})
+        success, status_code, r_json = self._requestToIngest("POST", 'ingest/trans',
+                                                         {'database':db_name,'auth_key':''})
         if not success:
             print('ERROR when starting transaction ', db_name, "r_json=", r_json)
             return False, -1
@@ -168,12 +167,8 @@ class DataIngest():
         r_json : json or None
             json data from the put operation if status was 200.
         """
-        cmd = 'ingest/trans/' + str(transaction_id) + '?abort='
-        if abort:
-            cmd += '1'
-        else:
-            cmd += '0'
-        success, status, r_json = self._putToIngest(cmd, {'auth_key':self._auth_key})
+        cmd = 'ingest/trans/%d?abort=%d' % (transaction_id,abort)
+        success, status, r_json = self._requestToIngest("PUT", cmd, {'auth_key':self._auth_key})
         if not success:
             print("ERROR ending transaction id=", transaction_id, "abort=", abort, "status=", status,
                   "r_json=", r_json)
@@ -198,7 +193,7 @@ class DataIngest():
         """
         cmd = 'ingest/chunk'
         jdata = {"transaction_id":transaction_id,"chunk":chunk_id,"auth_key":self._auth_key}
-        success, r_json = self._postToIngest(cmd, jdata)
+        success, status_code, r_json = self._requestToIngest("POST", cmd, jdata)
         if not success:
             print("ERROR failed to get chunk target address", jdata, " r_json=", r_json)
             raise RuntimeError('Transaction ' + transaction_id
@@ -249,7 +244,8 @@ class DataIngest():
         """
         success = False
         cmd = 'ingest/database/' + db_name
-        success, status, r_json = self._putToIngest(cmd, {'auth_key':self._auth_key})
+        success, status, r_json = self._requestToIngest("PUT", cmd,
+                                                         {'auth_key':self._auth_key})
         if not success:
             print("ERROR publishing", db_name, "status=", status, "r_json=", r_json)
         return success, status, r_json

@@ -200,7 +200,7 @@ def connectionTest():
     pCfgFiles = {0:("obj.cfg", "a lot of obj cfg info"),
                  1:("fs.cfg", "some forcedSource info"),
                  2:("junk_cfg", "blah blah junk\n more stuff")}
-    ingest_dict = {'host':'mt.st.com', 'port':2461, 'user': 'person', 'auth': '1234',
+    ingest_dict = {'host':'mt.st.com', 'port':2461, 'auth': '1234',
                             'db':'afake_db', 'skip': False}
     success, s_warn1, c_warn1 = testDataGenConnection(14242, 'qt', '--visits 30 --objects 10000',
                           'bunch of json file entries', 28, cListA,
@@ -209,7 +209,7 @@ def connectionTest():
         print("First test failed")
         exit(1)
 
-    ingest_dict = {'host':'mt.st.edu', 'port':0, 'user': '', 'auth': '',
+    ingest_dict = {'host':'mt.st.edu', 'port':0, 'auth': '',
                    'db':'diff_db', 'skip': True}
     success, s_warn2, c_warn2 = testDataGenConnection(14242, 'qt', '--visits 30 --objects 10000',
                           'bunch of json file entries', 28, cListA,
@@ -225,11 +225,11 @@ def dataIngestTest():
         print("ERROR ingest server not responding.")
         exit(1)
     # Try sending the database. This will fail if the database already exists.
-    if not ingest.sendDatabase("configs/fakeIngestCfgsTest/test102.json"):
+    if not ingest.registerDatabase("configs/fakeIngestCfgsTest/test102.json"):
         print("ERROR failed to send database configuration to ingest.")
     # Ingest the test Object tables schema. This will fail if the
     # database already exists.
-    if not ingest.sendTableSchema("configs/fakeIngestCfgsTest/test102_Object.json"):
+    if not ingest.registerTable("configs/fakeIngestCfgsTest/test102_Object.json"):
         print("ERROR failed to send Object table schema")
     # Start a transaction
     i_transaction = DataIngest.IngestTransaction(ingest, 'test102')
@@ -242,8 +242,8 @@ def dataIngestTest():
             # Send the chunk to the target worker
             table = 'Object'
             f_path = 'configs/fakeIngestCfgsTest/chunk_0.txt'
-            r_code, out_str = ingest.sendChunkToTarget(host, port, t_id, table, f_path)
-            print('host=', host, 'port=', port, "")
+            out_str = ingest.sendChunkToTarget(host, port, t_id, table, f_path)
+            print('host=', host, 'port=', port, "", out_str)
             i_transaction.abort = False
             # Transaction ends
         transaction_status = True
