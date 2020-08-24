@@ -63,7 +63,8 @@ class DataGenClient:
         self._cl_conn = None # DataGenConnection
         self._cfg_file_name = 'gencfg.py' # name of the local config file for the generator
         self._cfg_file_contents = None # contents of the config file.
-        self._datagenpy = '~/work/dax_data_generator/bin/datagen.py' # TODO: MUST stop hard coding this
+        #self._datagenpy = '~/work/dax_data_generator/bin/datagen.py' # TODO: MUST stop hard coding this &&&
+        self._datagenpy = '~/dax_data_generator/bin/datagen.py' # TODO: MUST stop hard coding this &&&
         self._pt_cfg_dir = 'partitionCfgs' # sub-dir of _targetDir for partitioner configs
         self._pt_cfg_dict = None # Dictionary that stores partioner config files.
         self.makeDir(self._target_dir)

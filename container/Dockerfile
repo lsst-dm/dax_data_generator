@@ -5,6 +5,10 @@ USER 1000
 
 RUN source /qserv/stack/loadLSST.bash && \
     setup -t qserv-dev qserv_distrib && \
+    setup partition && \
+    git clone https://github.com/lsst/sphgeom.git && \
+    cd sphgeom && setup -k -r . && scons -j10 install && \
+    cd .. && \
     git clone https://github.com/lsst-dm/dax_data_generator.git && \
     cd dax_data_generator && \
     git checkout tickets/DM-26409 && \
