@@ -12,10 +12,10 @@ cat container/Dockerfile.tmpl | sed 's/{{BRANCH}}/'${BRANCH}'/g' > container/Doc
 docker build -t qserv/dax_data_generator:tools -f container/Dockerfile .
 docker push qserv/dax_data_generator:tools
 ```
-or for tickets/DM-12345
+or for tickets/DM-12345 ('--no-cache' is useful when the code in github changes)
 ```
 cat container/Dockerfile.tmpl | sed  's/{{BRANCH}}/tickets\/DM-12345/g' > container/Dockerfile
-docker build -t qserv/dax_data_generator:tools-DM-12345 -f container/Dockerfile .
+docker build --no-cache -t qserv/dax_data_generator:tools-DM-12345 -f container/Dockerfile .
 docker push qserv/dax_data_generator:tools-DM-12345
 ```
 

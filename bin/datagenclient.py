@@ -20,13 +20,45 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
+import getopt
+import sys
+
 from lsst.dax.data_generator import columns
 from lsst.dax.data_generator import DataGenerator
 from lsst.dax.distribution.DataGenConnection import DataGenConnection
 from lsst.dax.distribution.DataGenClient import DataGenClient
 
-#TODO: add arguments for server host, port, and maybe working directory
+
+def usage():
+    print("-h, --help  help")
+    print("-H, --host  server host IP adress.")
+    print("-P, --port  server port number")
+
 if __name__ == "__main__":
-    dgClient = DataGenClient("127.0.0.1", 13042)
+    host = "127.0.0.1"
+    port = 13042
+
+    argumentList = sys.argv[1:]
+    print("argumentList=", argumentList)
+    options = "hH:P:"
+    long_options = ["help", "host", "port"]
+    skip_ingest = False
+    skip_schema = False
+    try:
+        arguments, values = getopt.getopt(argumentList, options, long_options)
+        print("arguments=", arguments)
+        for arg, val in arguments:
+            if arg in ("-h", "--help"):
+                usage()
+                exit(0)
+            elif arg in ("-H", "--host"):
+                host = val
+            elif arg in ("-P", "--port"):
+                port = int(val)
+    except getopt.error as err:
+        print (str(err))
+        exit(1)
+    print(f'server {host}:{port}')
+    dgClient = DataGenClient(host, port)
     dgClient.run()
 
