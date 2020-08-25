@@ -25,6 +25,10 @@ import sys
 
 from lsst.dax.distribution.DataGenServer import DataGenServer
 
+def usage():
+    print("-h, --help  help")
+    print("-k, --skipIngest  skip trying to ingest anything")
+    print("-s, --skipSchema  skip sending schema, needed when schema was already sent.")
 
 def server():
     """Temporary main function call.
@@ -37,7 +41,7 @@ def server():
     argumentList = sys.argv[1:]
     print("argumentList=", argumentList)
     options = "hksi:"
-    long_options = ["help", "skipIngest", "skipSchema", "ingestCfg"]
+    long_options = ["help", "skipIngest", "skipSchema"]
     skip_ingest = False
     skip_schema = False
     try:
@@ -45,9 +49,7 @@ def server():
         print("arguments=", arguments)
         for arg, val in arguments:
             if arg in ("-h", "--help"):
-                print("-h, --help  help")
-                print("-k, --skipIngest  skip trying to ingest anything")
-                print("-s, --skipSchema  skip sending schema, needed when schema was already sent.")
+                usage()
                 return False
             elif arg in ("-k", "--skipIngest"):
                 skip_ingest = True
