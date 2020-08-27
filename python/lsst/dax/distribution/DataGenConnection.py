@@ -48,6 +48,7 @@ class DataGenConnection():
     S_PCFG_A = 'S_PCFG_A' # server answering with specified config file
     C_CHUNKR = 'C_CHUNKR' # client request for chunks to generate
     S_CNKLST = 'S_CNKLST' # server sending chunks to generate
+    C_TIMDCT = 'C_TIMDCT' # client sending timing information
     C_CKCOMP = 'C_CKCOMP' # client sending list of chunks completed
     C_CKCFIN = 'C_CKCFIN' # marks the end of the list
 
@@ -217,41 +218,6 @@ class DataGenConnection():
             self.warnings += 1
             raise DataGenError('ERROR servRecvInit ' + str(msg_id) + ' ' + msg + ' ' +str(msg_len))
         return msg_id, msg
-
-    #&&&
-    def servRespInitOld(self, name, arg_string, cfg_file_contents, ingest_dict):
-        """Respond to the client initialization request.
-
-        Parameters
-        ----------
-        name : str
-            name of the client
-        arg_string : str
-            arguments for datagen.py
-        cfg_file_contents : str
-            contents of the configguration file
-        ingest_dict : dictionary
-            Dictionary containing information about the ingest system.
-            'host' : str, ingest system host name.
-            'port' : int, ingest port number.
-            'auth' : str, ingest authorization.
-            'db'   : str, name of the databse being created
-            'skip  : bool, True if ingest is being skipped.
-
-        Note
-        ----
-        Parameters for servRespInit are the return values for clientRespInit.
-        """
-        sep = self.COMPLEXSEP
-        print("ingest_dict=", ingest_dict)
-        skip_val = '0'
-        if ingest_dict['skip']:
-            skip_val = '1'
-        msg = (name + sep + arg_string + sep + cfg_file_contents
-            + sep + ingest_dict['host'] + sep + str(ingest_dict['port'])
-            + sep + ingest_dict['auth']
-            + sep + ingest_dict['db'] + sep + skip_val)
-        self._send_msg(self.S_INIT_R, msg)
 
     def servRespInit(self, name, objects, visits, seed, cfg_file_contents, ingest_dict):
         """Respond to the client initialization request.
@@ -459,6 +425,64 @@ class DataGenConnection():
             self.warnings += 1
             print("WARN clientRecvChunks problem with", msg, msg_chunks)
         return msg_chunks, problem
+
+    def clientReportTiming(self, timing_dict): #&&&Time
+        """Send a small dictionary of string keys and float time values.
+
+        Parameters
+        ----------
+        timing_dict : dictionary
+            Dictionary with str keys and float values in seconds.
+
+        Return
+        ------
+        entries_sent : int
+            The number of key-value pairs sent, capped at 50.
+        """
+        print("clientReportTiming C_TIMDCT", timing_dict)
+        time_msg = ''
+        first = True
+        c_sep = self.COMPLEXSEP
+        count = 0
+        for tkey, tval in timing_dict.items():
+            count += 1
+            if count > 50:
+                break
+            sep = c_sep
+            if first:
+                first = False
+                sep = ''
+            time_msg += sep + str(tkey) + c_sep + str(tval)
+        self._send_msg(self.C_TIMDCT, time_msg)
+        return count
+
+    def servRecvTiming(self): #&&&TIME
+        """Receive the dictionary of timing information from the client
+
+        Return
+        ------
+        timing_dict : dictionary
+            Dictionary with str keys and float values in seconds.
+        """
+        print("servRecvTiming C_TIMDCT")
+        msg_id, msg, msg_len = self._recv_msg()
+        if msg_id != self.C_TIMDCT:
+            self.warnings += 1
+            raise DataGenError(f'ERROR servRecvTiming {str(msg_id)}:{str(msg_len)} {msg}')
+        msg_split = msg.split(self.COMPLEXSEP)
+        time_dict = {}
+        a_key = True
+        last_key = ""
+        # msg_split contains an alternating sequence of key then value
+        for m in msg_split:
+            if a_key:
+                a_key = False
+                last_key = m
+            else:
+                a_key = True
+                val = float(m)
+                time_dict[last_key] = val
+        return time_dict
 
     def clientReportChunksComplete(self, chunk_list):
         """Send a list of compled chunks to the server and

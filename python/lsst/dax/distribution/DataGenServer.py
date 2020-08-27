@@ -203,8 +203,10 @@ class DataGenServer:
                 chunk_info = ChunkInfo(chunk)
                 self._chunks_to_send[chunk] = chunk_info
                 self._chunks_to_send_set.add(chunk)
+        self._chunks_to_send_total = len(self._chunks_to_send_set)
+        self._limbo_count = 0 # number of chunks that had problems being created.
         print("len(totalChunks)=", len(total_chunks),
-              "len(self._chunksToSendSet)=", len(self._chunks_to_send_set))
+              "_chunks_to_send_total=", self._chunks_to_send_total)
 
         # Track all client connections so it is possible to
         # determine when the server's job is finished.
@@ -333,6 +335,7 @@ class DataGenServer:
                     pCfgContents = ""
                     pCfgDone = True
                 sv_conn.servSendPartionCfgFile(pCfgIndex, pCfgName, pCfgContents)
+
             # client requesting chunk list
             while self._loop and not out_of_chunks:
                 clientReqChunkCount = sv_conn.servRecvReqChunks()
@@ -354,6 +357,9 @@ class DataGenServer:
                     out_of_chunks = True
                     conn.close()
                 else:
+                    # receive timing information from client
+                    timing_dict = sv_conn.servRecvTiming()
+                    print("&&&&&&&&&&&&***** timing_dict", timing_dict.items())
                     # receive completed chunks from client
                     completed_chunks = []
                     finished = False
@@ -374,6 +380,17 @@ class DataGenServer:
                             for missing in diff:
                                 cInfo = self._chunks_to_send[missing]
                                 cInfo.gen_stage = GenerationStage.LIMBO
+                                self._limbo_count += 1
+                with self._list_lock:
+                    total_to_send = self._chunks_to_send_total
+                    to_send_count = len(self._chunks_to_send_set)
+                    completed_count = len(self._total_generated_chunks)
+                    limbo_count = self._limbo_count
+                print('Chunks total        =', total_to_send)
+                print('Chunks left to send =', to_send_count)
+                print('Chunks finished     =', completed_count)
+                print('Chunks in limbo     =', limbo_count)
+                print('Chunks processing   =', (total_to_send - (to_send_count + completed_count + limbo_count)))
         except socket.gaierror as e:
             print("breaking connection", addr, name, "socket.gaierror:", e)
         except socket.error as e:

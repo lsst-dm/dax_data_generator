@@ -32,7 +32,7 @@ class ServerTestThrd(threading.Thread):
     """
 
     def __init__(self, host, port, name, objects, visits, seed, cfg_file_contents,
-                 maxCount, chunkListA, pCfgFiles, ingest_dict):
+                 maxCount, chunkListA, pCfgFiles, ingest_dict, timing_dict):
         super().__init__()
         self.success = None
         self.warnings = 0
@@ -47,6 +47,7 @@ class ServerTestThrd(threading.Thread):
         self.chunkListA = chunkListA
         self.pCfgFiles = pCfgFiles
         self.ingest_dict = ingest_dict
+        self.timing_dict = timing_dict
 
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -82,6 +83,13 @@ class ServerTestThrd(threading.Thread):
                 self.success = False
                 raise RuntimeError("serv test failed", self.name, maxCount)
             serv.servSendChunks(self.chunkListA)
+            # Receive timing information from client
+            timing_dict = serv.servRecvTiming()
+            print("timing_dict", timing_dict.items())
+            if timing_dict != self.timing_dict:
+                self.success = False
+                raise RuntimeError("serv test failed timing_dict mismatch",
+                                   timing_dict.items(), "\n", self.timing_dict.items())
             # receive completed chunks from client
             completed_chunks = []
             finished = False
@@ -104,7 +112,7 @@ class ClientTestThrd(threading.Thread):
     """
 
     def __init__(self, host, port, name, objects, visits, seed, cfg_file_contents,
-                 maxCount, chunkListA, pCfgFiles, ingest_dict):
+                 maxCount, chunkListA, pCfgFiles, ingest_dict, timing_dict):
         super().__init__()
         self.success = None
         self.warnings = 0
@@ -119,6 +127,7 @@ class ClientTestThrd(threading.Thread):
         self.chunkListA = chunkListA
         self.pCfgFiles = pCfgFiles
         self.ingest_dict = ingest_dict
+        self.timing_dict = timing_dict
 
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -136,7 +145,7 @@ class ClientTestThrd(threading.Thread):
                 pass
             else:
                 self.success = False
-                raise RuntimeError("Client test failed", name, arg_string, cfg_file_contents)
+                raise RuntimeError("Client test failed", name, cfg_file_contents)
             # Request partioner configuration files from server
             pCfgIndex = 0
             pCfgDict = {}
@@ -166,6 +175,8 @@ class ClientTestThrd(threading.Thread):
             else:
                 print("chunks read success")
             self.warnings += client.warnings
+            # send back timing information
+            client.clientReportTiming(self.timing_dict)
             # Send the list of completed chunks back
             completedChunks = chunkListARecv.copy()
             while len(completedChunks) > 0:
@@ -177,13 +188,13 @@ class ClientTestThrd(threading.Thread):
 
 
 def testDataGenConnection(port, name, objects, visits, seed, cfg_file_contents, maxCount,
-                          chunkListA, pCfgFiles, ingest_dict):
+                          chunkListA, pCfgFiles, ingest_dict, timing_dict):
     """Short test to check that inputs to one side match outputs on the other"""
     host = "127.0.0.1"
     servThrd = ServerTestThrd(host, port, name, objects, visits, seed, cfg_file_contents,
-                              maxCount, chunkListA, pCfgFiles, ingest_dict)
+                              maxCount, chunkListA, pCfgFiles, ingest_dict, timing_dict)
     clientThrd = ClientTestThrd(host, port, name, objects, visits, seed, cfg_file_contents,
-                                maxCount, chunkListA, pCfgFiles, ingest_dict)
+                                maxCount, chunkListA, pCfgFiles, ingest_dict, timing_dict)
     servThrd.start()
     time.sleep(1)
     clientThrd.start()
@@ -210,18 +221,20 @@ def connectionTest():
                  2:("junk_cfg", "blah blah junk\n more stuff")}
     ingest_dict = {'host':'mt.st.com', 'port':2461, 'auth': '1234',
                             'db':'afake_db', 'skip': False}
+    timing_dict = {'gen_o':345.23, 'gen_fs': 981.23, 'conv':12.9999, 'trans':42.1, 'del':0.123}
     success, s_warn1, c_warn1 = testDataGenConnection(14242, 'qt', 10000, 30, 178,
                           'bunch of json file entries', 28, cListA,
-                          pCfgFiles, ingest_dict)
+                          pCfgFiles, ingest_dict, timing_dict)
     if not success:
         print("First test failed")
         exit(1)
 
     ingest_dict = {'host':'mt.st.edu', 'port':0, 'auth': '',
                    'db':'diff_db', 'skip': True}
+    timing_dict = {}
     success, s_warn2, c_warn2 = testDataGenConnection(14242, 'qt', 10000, 30, 1,
                           'bunch of json file entries', 28, cListA,
-                          pCfgFiles, ingest_dict)
+                          pCfgFiles, ingest_dict, timing_dict)
 
     print("success=", success, "serv_warn=", s_warn1, s_warn2, "client_warn=", c_warn1, c_warn2)
 

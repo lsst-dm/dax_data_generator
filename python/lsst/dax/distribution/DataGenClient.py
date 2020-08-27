@@ -26,6 +26,7 @@ import re
 import shutil
 import socket
 import subprocess
+import time
 
 from .DataGenConnection import DataGenConnection
 from .DataIngest import DataIngest
@@ -87,6 +88,10 @@ class DataGenClient:
         self._skip_ingest = True
         self._db_name = ''
         self._transaction_id = -1
+
+        # timing information
+        self._timing_dict = {}
+        self._timingDictAdd("aSmallHorse", 56.23401)
 
     def _setIngest(self, ingest_dict):
         """Create ingest object from ingest_dict values.
@@ -390,34 +395,6 @@ class DataGenClient:
         return True
 
     def _datGenChunk(self, chunk_id, edge_only):
-        #&&&
-        #options = " "
-        #if edge_only:
-        #    options += " --edgeonly "
-        #cmdStr = ("python " + self._datagenpy + options +
-        #    " --chunk " + str(chunk_id) + " " + self._gen_arg_str + " " + self._cfg_file_name)
-        #parser = argparse.ArgumentParser()
-        #parser.add_argument("--chunk", type=int, required=True)
-        #parser.add_argument("--objects", type=int, required=True)
-        #parser.add_argument("--visits", type=int, required=True)
-        #parser.add_argument("--edgeonly", action="store_true")
-        #parser.add_argument("specification", type=str)
-        #args = parser.parse_args()
-
-        #edge_only = args.edgeonly > 0
-
-        #with open(args.specification) as f:
-        #    spec_globals = {}
-        #    exec(f.read(), spec_globals)
-        #    assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
-        #    assert 'edge_width' in spec_globals, "Specification file must define variable 'edge_width'."
-        #    spec = spec_globals['spec']
-        #    edge_width = spec_globals['edge_width']
-
-        #dataGen = DataGenerator(spec)
-        #chunk_id = args.chunk
-        #&&&
-
         #&&& TODO: This seems like it should be in the config file ???
         row_counts = {"CcdVisit": self._visits, "Object": self._objects}
 
@@ -425,23 +402,16 @@ class DataGenClient:
         if("ForcedSource" in self._spec):
             row_counts["ForcedSource"] = None
 
-        #&&& seed = 1
         tables = self._data_gen.make_chunk(chunk_id, num_rows=row_counts, seed=self._seed,
                                     edge_width=self._edge_width, edge_only=edge_only)
-
         print("tables=", tables)
 
-        #edge_only = args.edgeonly > 0
         for table_name, table in tables.items():
             edgeType = "CT"  # complete
             if edge_only: edgeType = "EO" # edge only
-            #&&&table.to_csv("chunk{:d}_{:s}_{:s}.csv".format(chunk_id, edgeType, table_name),
-            #&&&            header=False, index=False)
-            #&&&fname = self._target_dir + "chunk{:d}_{:s}_{:s}.csv".format(chunk_id, edgeType, table_name)
             fname = "chunk{:d}_{:s}_{:s}.csv".format(chunk_id, edgeType, table_name)
             fname = os.path.join(self._target_dir, fname)
             table.to_csv(fname, header=False, index=False)
-
 
     def _generateChunk(self, chunk_id, edge_only=False):
         """Generate the csv files for a chunk.
@@ -487,24 +457,13 @@ class DataGenClient:
                 else: # Not a full set of complete files
                     print("Removing extraneous complete files")
                     if not self.removeFilesForChunk(chunk_id, edge_only=False, complete=True):
-                        print("WARN failed to remove incomplete csv for", chunk_id)
+                        print("WARN failed to removservRecvTiminge incomplete csv for", chunk_id)
                 return 'exists'
         else:
             # Delete files for this chunk if they exist.
             if not self.removeFilesForChunk( chunk_id, edge_only=True, complete=True):
                 print("WARN failed to remove all files for chunk=", chunk_id)
         # Genrate the chunk csv files.
-        #&&& options = " "
-        #&&& if edge_only:
-        #&&&     options += " --edgeonly "
-        #&&& cmdStr = ("python " + self._datagenpy + options +
-        #&&&     " --chunk " + str(chunk_id) + " " + self._gen_arg_str + " " + self._cfg_file_name)
-        #&&& genResult, genOut = self.runProcess(cmdStr)
-        # &&& call datagen directly
-
-        #&&& if genResult != 0:
-        #&&&     print("ERROR Generator failed for", chunk_id, " cmd=", cmdStr, "out=", genOut)
-        #&&&     return 'failed'
         try:
             self._datGenChunk(chunk_id, edge_only)
         except IndexError as ie:
@@ -765,11 +724,9 @@ class DataGenClient:
             s.connect((self._host, self._port))
             self._cl_conn = DataGenConnection(s)
             self._cl_conn.clientReqInit()
-            #&&&self._name, self._gen_arg_str, self._cfg_file_contents, ingest_dict = self._cl_conn.clientRespInit()
             self._name, self._objects, self._visits, self._seed, self._cfg_file_contents, ingest_dict = self._cl_conn.clientRespInit()
             print("ingest_dict=", ingest_dict)
             self._setIngest(ingest_dict)
-            #&&&print("name=", self._name, self._gen_arg_str, ":\n", self._cfg_file_contents)
             print("cfg_file_contents:\n",self._cfg_file_contents)
             print(f'name={self._name} objects={self._objects} visits={self._visits} seed={self._seed}'
                   f'skip_ingest={self._skip_ingest}')
@@ -856,6 +813,8 @@ class DataGenClient:
                     print("ERROR no chunks were successfully ingested, ending program")
                     loop = False
 
+                # client sends timing info back to server.
+                self._cl_conn.clientReportTiming(self._timing_dict)
                 # Client sends the list of completed chunks back
                 self._sendIngestedChunksToServer(ingestedChunks)
 
