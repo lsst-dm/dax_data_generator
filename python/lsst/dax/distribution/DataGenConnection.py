@@ -218,7 +218,8 @@ class DataGenConnection():
             raise DataGenError('ERROR servRecvInit ' + str(msg_id) + ' ' + msg + ' ' +str(msg_len))
         return msg_id, msg
 
-    def servRespInit(self, name, arg_string, cfg_file_contents, ingest_dict):
+    #&&&
+    def servRespInitOld(self, name, arg_string, cfg_file_contents, ingest_dict):
         """Respond to the client initialization request.
 
         Parameters
@@ -252,6 +253,43 @@ class DataGenConnection():
             + sep + ingest_dict['db'] + sep + skip_val)
         self._send_msg(self.S_INIT_R, msg)
 
+    def servRespInit(self, name, objects, visits, seed, cfg_file_contents, ingest_dict):
+        """Respond to the client initialization request.
+
+        Parameters
+        ----------
+        name : str
+            name of the client
+        objects, visits : int
+            Number of objects to generate per chunk and number of visits.
+        seed : int
+            Random number seed.
+        cfg_file_contents : str
+            contents of the configguration file
+        ingest_dict : dictionary
+            Dictionary containing information about the ingest system.
+            'host' : str, ingest system host name.
+            'port' : int, ingest port number.
+            'auth' : str, ingest authorization.
+            'db'   : str, name of the databse being created
+            'skip  : bool, True if ingest is being skipped.
+
+        Note
+        ----
+        Parameters for servRespInit are the return values for clientRespInit.
+        """
+        sep = self.COMPLEXSEP
+        print("ingest_dict=", ingest_dict)
+        skip_val = '0'
+        if ingest_dict['skip']:
+            skip_val = '1'
+        msg = (name + sep + str(objects) + sep + str(visits) + sep + str(seed)
+            + sep + cfg_file_contents
+            + sep + ingest_dict['host'] + sep + str(ingest_dict['port'])
+            + sep + ingest_dict['auth']
+            + sep + ingest_dict['db'] + sep + skip_val)
+        self._send_msg(self.S_INIT_R, msg)
+
     def clientRespInit(self):
         """Unwrap the configuration information sent by the server.
 
@@ -259,8 +297,10 @@ class DataGenConnection():
         ------
         name : str
             Name for the client.
-        arg_string : str
-            Argument string for dataGen.py.
+        objects, visits : int
+            Number of objects to generate per chunk and number of visits.
+        seed : int
+            Random number seed.
         cfg_file_contents : str
             Contents of the configuration file for dataGen.py.
         ingest_dict : dictionary
@@ -274,12 +314,14 @@ class DataGenConnection():
         sep = self.COMPLEXSEP
         splt_msg = msg.split(sep)
         name = splt_msg[0]
-        arg_string = splt_msg[1]
-        cfg_file_contents = splt_msg[2]
-        ingest_dict = { 'host':splt_msg[3], 'port':int(splt_msg[4]), 'auth':splt_msg[5], 'db':splt_msg[6] }
-        skip_val = splt_msg[7]
+        objects = int(splt_msg[1])
+        visits = int(splt_msg[2])
+        seed = int(splt_msg[3])
+        cfg_file_contents = splt_msg[4]
+        ingest_dict = { 'host':splt_msg[5], 'port':int(splt_msg[6]), 'auth':splt_msg[7], 'db':splt_msg[8] }
+        skip_val = splt_msg[9]
         ingest_dict['skip'] = bool(skip_val != '0')
-        return name, arg_string, cfg_file_contents, ingest_dict
+        return name, objects, visits, seed, cfg_file_contents, ingest_dict
 
     def clientReqPartitionCfgFile(self, index):
         """Client request a partitioner configuration file from the server

@@ -29,6 +29,7 @@ import subprocess
 
 from .DataGenConnection import DataGenConnection
 from .DataIngest import DataIngest
+from lsst.dax.data_generator import DataGenerator
 
 
 class DataGenClient:
@@ -50,7 +51,8 @@ class DataGenClient:
     ----
     This class is used to connect to the DataGenServer and uses the information
     the server provides to generate appropriate fake chunks while reporting
-    what chunks have been created and registered with the ingest system.
+    what chunks have been created and registered with the ingest system back to
+    the server.
     """
 
     def __init__(self, host, port, target_dir='fakeData', chunks_per_req=5):
@@ -64,7 +66,7 @@ class DataGenClient:
         self._cfg_file_name = 'gencfg.py' # name of the local config file for the generator
         self._cfg_file_contents = None # contents of the config file.
         #self._datagenpy = '~/work/dax_data_generator/bin/datagen.py' # TODO: MUST stop hard coding this &&&
-        self._datagenpy = '~/dax_data_generator/bin/datagen.py' # TODO: MUST stop hard coding this &&&
+        #self._datagenpy = '~/dax_data_generator/bin/datagen.py' # TODO: MUST stop hard coding this &&&
         self._pt_cfg_dir = 'partitionCfgs' # sub-dir of _targetDir for partitioner configs
         self._pt_cfg_dict = None # Dictionary that stores partioner config files.
         self.makeDir(self._target_dir)
@@ -73,7 +75,12 @@ class DataGenClient:
         # Values set from transferred self._cfgFileContents
         self._spec = None # spec from exec(self._cfgFileContents)
         self._chunker = None # chunker from exec(self._cfgFileContents)
-        self._edge_width = None # Width of edges in edge only generation.
+        self._edge_width = None # float Width of edges in edge only generation.
+        # DataGenerator, cannot be initialized until '_spec' received from server
+        self._data_gen = None
+        self._objects = None # int number of objects set
+        self._visits = None # int number of visits
+        self._seed = None # int random number seed
 
         # Ingest values
         self._ingest = None
@@ -208,6 +215,7 @@ class DataGenClient:
         self._edge_width = spec_globals['edge_width']
         print("_cfgFileContents=", self._cfg_file_contents)
         print("_spec=", self._spec)
+        self._data_gen = DataGenerator(self._spec)
 
     def findCsvInTargetDir(self, chunk_id, neighbor_chunks):
         """Find files required csv to generate overlap for chunk_id.
@@ -381,6 +389,60 @@ class DataGenClient:
                         return False
         return True
 
+    def _datGenChunk(self, chunk_id, edge_only):
+        #&&&
+        #options = " "
+        #if edge_only:
+        #    options += " --edgeonly "
+        #cmdStr = ("python " + self._datagenpy + options +
+        #    " --chunk " + str(chunk_id) + " " + self._gen_arg_str + " " + self._cfg_file_name)
+        #parser = argparse.ArgumentParser()
+        #parser.add_argument("--chunk", type=int, required=True)
+        #parser.add_argument("--objects", type=int, required=True)
+        #parser.add_argument("--visits", type=int, required=True)
+        #parser.add_argument("--edgeonly", action="store_true")
+        #parser.add_argument("specification", type=str)
+        #args = parser.parse_args()
+
+        #edge_only = args.edgeonly > 0
+
+        #with open(args.specification) as f:
+        #    spec_globals = {}
+        #    exec(f.read(), spec_globals)
+        #    assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
+        #    assert 'edge_width' in spec_globals, "Specification file must define variable 'edge_width'."
+        #    spec = spec_globals['spec']
+        #    edge_width = spec_globals['edge_width']
+
+        #dataGen = DataGenerator(spec)
+        #chunk_id = args.chunk
+        #&&&
+
+        #&&& TODO: This seems like it should be in the config file ???
+        row_counts = {"CcdVisit": self._visits, "Object": self._objects}
+
+        # ForcedSource count is defined by visits and objects.
+        if("ForcedSource" in self._spec):
+            row_counts["ForcedSource"] = None
+
+        #&&& seed = 1
+        tables = self._data_gen.make_chunk(chunk_id, num_rows=row_counts, seed=self._seed,
+                                    edge_width=self._edge_width, edge_only=edge_only)
+
+        print("tables=", tables)
+
+        #edge_only = args.edgeonly > 0
+        for table_name, table in tables.items():
+            edgeType = "CT"  # complete
+            if edge_only: edgeType = "EO" # edge only
+            #&&&table.to_csv("chunk{:d}_{:s}_{:s}.csv".format(chunk_id, edgeType, table_name),
+            #&&&            header=False, index=False)
+            #&&&fname = self._target_dir + "chunk{:d}_{:s}_{:s}.csv".format(chunk_id, edgeType, table_name)
+            fname = "chunk{:d}_{:s}_{:s}.csv".format(chunk_id, edgeType, table_name)
+            fname = os.path.join(self._target_dir, fname)
+            table.to_csv(fname, header=False, index=False)
+
+
     def _generateChunk(self, chunk_id, edge_only=False):
         """Generate the csv files for a chunk.
 
@@ -431,15 +493,25 @@ class DataGenClient:
             # Delete files for this chunk if they exist.
             if not self.removeFilesForChunk( chunk_id, edge_only=True, complete=True):
                 print("WARN failed to remove all files for chunk=", chunk_id)
-        # Genrate the chunk parquet files.
-        options = " "
-        if edge_only:
-            options += " --edgeonly "
-        cmdStr = ("python " + self._datagenpy + options +
-            " --chunk " + str(chunk_id) + " " + self._gen_arg_str + " " + self._cfg_file_name)
-        genResult, genOut = self.runProcess(cmdStr)
-        if genResult != 0:
-            print("ERROR Generator failed for", chunk_id, " cmd=", cmdStr, "out=", genOut)
+        # Genrate the chunk csv files.
+        #&&& options = " "
+        #&&& if edge_only:
+        #&&&     options += " --edgeonly "
+        #&&& cmdStr = ("python " + self._datagenpy + options +
+        #&&&     " --chunk " + str(chunk_id) + " " + self._gen_arg_str + " " + self._cfg_file_name)
+        #&&& genResult, genOut = self.runProcess(cmdStr)
+        # &&& call datagen directly
+
+        #&&& if genResult != 0:
+        #&&&     print("ERROR Generator failed for", chunk_id, " cmd=", cmdStr, "out=", genOut)
+        #&&&     return 'failed'
+        try:
+            self._datGenChunk(chunk_id, edge_only)
+        except IndexError as ie:
+            print(f"ERROR Generator failed for {chunk_id} error={ie}")
+            return 'failed'
+        except RuntimeError as re:
+            print(f"ERROR Generator failed for {chunk_id} error={re}")
             return 'failed'
         return 'success'
 
@@ -693,11 +765,14 @@ class DataGenClient:
             s.connect((self._host, self._port))
             self._cl_conn = DataGenConnection(s)
             self._cl_conn.clientReqInit()
-            self._name, self._gen_arg_str, self._cfg_file_contents, ingest_dict = self._cl_conn.clientRespInit()
+            #&&&self._name, self._gen_arg_str, self._cfg_file_contents, ingest_dict = self._cl_conn.clientRespInit()
+            self._name, self._objects, self._visits, self._seed, self._cfg_file_contents, ingest_dict = self._cl_conn.clientRespInit()
             print("ingest_dict=", ingest_dict)
             self._setIngest(ingest_dict)
-            print("name=", self._name, self._gen_arg_str, ":\n", self._cfg_file_contents)
-            print("skip_ingest=", self._skip_ingest)
+            #&&&print("name=", self._name, self._gen_arg_str, ":\n", self._cfg_file_contents)
+            print("cfg_file_contents:\n",self._cfg_file_contents)
+            print(f'name={self._name} objects={self._objects} visits={self._visits} seed={self._seed}'
+                  f'skip_ingest={self._skip_ingest}')
             # Read the datagen config file to get access to an identical chunker and spec.
             self._readDatagenConfig()
             # Write the configuration file

@@ -146,8 +146,12 @@ class DataGenServer:
         self._base_cfg_dir = os.path.abspath(self._cfg['fakeDataGenerator']['baseCfgDir'])
         # The arguments that will be passed from server to
         # clients to dax_data_generator/bin/datagen.py.
-        self._cfg_fake_args = self._cfg['fakeDataGenerator']['arguments']
-        print("port=", self._port, self._cfg_fake_args)
+        #self._cfg_fake_args = self._cfg['fakeDataGenerator']['arguments'] #&&&
+        #print("port=", self._port, self._cfg_fake_args) #&&&
+        self._visits = self._cfg['fakeDataGenerator']['visits']
+        self._objects = self._cfg['fakeDataGenerator']['objects']
+        self._seed = self._cfg['fakeDataGenerator']['seed']
+        print(f'port={self._port} objects={self._objects} visits={self._visits}')
 
         # The name and contents of the configuration file that will be passed
         # from server to clients to dax_data_generator/bin/datagen.py.
@@ -313,7 +317,8 @@ class DataGenServer:
             # receive init from client
             sv_conn.servReqInit()
             # server sending back configuration information
-            sv_conn.servRespInit(name, self._cfg_fake_args, self._fakeCfgData, self._ingest_dict)
+            sv_conn.servRespInit(name, self._objects, self._visits, self._seed,
+                                 self._fakeCfgData, self._ingest_dict)
             # client requests partioner configuration files, starting with
             # pCfgIndex=0 and incrementing it until pCfgName==""
             pCfgDone = False
