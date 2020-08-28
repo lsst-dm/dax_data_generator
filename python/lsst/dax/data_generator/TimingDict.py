@@ -64,10 +64,32 @@ class TimingDict
             Value to add to the existing value. Existing value is 0 for
             undefined keys.
         """
-        if key in self._timing_dict:
+        if key in self.timing_dict:
             self.timing_dict[key] += float(val)
         else:
             self.timing_dict[key] = float(val)
+
+    def combine(self, other):
+        """Merge another timing_dict object with this one.
+
+        Parameters
+        ----------
+        other : TimingDict
+            Another TimingDict object
+
+        Notes
+        -----
+        The 'other' object will be merged with this one. In cases
+        where the keys match, the 'other' values will be added to
+        the corresponding values in this object. In cases where
+        the 'other' key does not exist, it will be created with
+        the 'other' value.
+        """
+        for key, val in other:
+            if key in self.timing_dict:
+                self.timing_dict[key] += val
+            else:
+                self.timing_dict[key] = val
 
     def report(self):
         """Get a somewhat well formed string of the contents of this object.
@@ -93,6 +115,7 @@ class TimingDict
         for key, val in self.timing_dict:
             st += f'{key:<{width}}={val:9.3f}'
             if count is not None:
-                st += f' avg={val/count:9.3f} {val*100.0/sum:3.1f}%'
+                st += f' avg={val/count:9.3f} {val*100.0/sum:3.1f}%\n'
+        return st
 
 
