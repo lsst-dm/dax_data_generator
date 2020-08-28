@@ -22,10 +22,12 @@
 
 import numpy as np
 import pandas as pd
+import math
 
 from collections import defaultdict
 from . import columns
 from .timingdict import TimingDict
+from .columns import SimpleBox
 
 __all__ = ["DataGenerator"]
 
@@ -52,11 +54,13 @@ class DataGenerator:
     No validation is performed on the generator specification.
     """
 
-    def __init__(self, spec):
+    def __init__(self, spec, chunker, seed=1):
 
         self.spec = spec
         self.tables = spec.keys()
         self.timingdict = TimingDict()
+        self.chunker = chunker
+        self.seed = seed
 
     @staticmethod
     def _resolve_table_order(spec):
@@ -87,7 +91,7 @@ class DataGenerator:
         different column of data, and appends the contents to the lists in
         the output_columns dictionary.
 
-        The structure is output_columns[table_name] = list(np.array([]))
+        The structure is output_columns[column_name] = list(np.array([]))
 
         Parameters
         ----------
@@ -110,18 +114,13 @@ class DataGenerator:
                 raise ValueError("Column name implies multiple returns, "
                                  "but generator only returned one")
 
-    def make_chunk(self, chunk_id, num_rows=None, seed=1, edge_width=0.017, edge_only=False):
+    def make_chunk(self, chunk_id, edge_width=0.017, edge_only=False):
         """Generate synthetic data for one chunk.
 
         Parameters
         ----------
         chunk_id : int
             ID of the chunk to generate.
-        num_rows : int or dict
-            Generate the specified number of rows. Can either be a
-            scalar, or a dictionary of the form {table_name: num_rows}.
-        seed : int
-            Random number seed
         edge_width : float
             Width/height of the edge in degrees
         edge_only : bool
@@ -137,73 +136,121 @@ class DataGenerator:
         """
 
         output_tables = {}
-        if isinstance(num_rows, dict):
-            rows_per_table = dict(num_rows)
-        else:
-            rows_per_table = defaultdict(lambda: num_rows)
 
         resolved_order = self._resolve_table_order(self.spec)
         table_columns = {}
 
         for table in resolved_order:
-            table_length = rows_per_table[table]
-            column_specs = self.spec[table]["columns"]
-            cols = []
-            position = 0
-            for col, generator in column_specs.items():
-                col_names = col
-                col_info = TableColumnInfo(col_names, generator, position)
-                position += 1
-                # RaDecGenerator needs to run first to determine the
-                # length of the table.
-                if isinstance(generator, columns.RaDecGenerator):
-                    st_time = self.timingdict.start()
-                    col_info.block = col_info.generator(chunk_id, table_length, seed, edge_width, edge_only)
-                    blockLength = len(col_info.block[0])
-                    if table_length != blockLength:
-                        # Reducing length to what was generated for RA and Dec
-                        table_length = blockLength
-                    self.timingdict.end("gen_raDecGen", st_time)
-                cols.append(col_info)
-            table_columns[table] = cols
-            rows_per_table[table] = table_length
-
-        for table in resolved_order:
-            cols = table_columns[table]
+            #cols = table_columns[table]
+            column_generators = self.spec[table]["columns"]
             prereq_rows = self.spec[table].get("prereq_row", None)
             prereq_tables = self.spec[table].get("prereq_tables", [])
             output_columns = {}
-            for col_info in cols:
-                print(f"Working on table={table} col_info={col_info.col_names}")
-                st_time = self.timingdict.start()
-                split_column_names = col_info.col_names.split(",")
-                for name in split_column_names:
-                    output_columns[name] = []
 
-                if prereq_rows is None:
-                    if col_info.block is None:
-                        prereq_tbls = {t: output_tables[t] for t in prereq_tables}
-                        col_info.block = col_info.generator(
-                            chunk_id, rows_per_table[table], seed,
-                            prereq_tables=prereq_tbls)
-                    self._add_to_list(col_info.block, output_columns, split_column_names)
-                else:
-                    prereq_table_contents = {t: output_tables[t] for t in prereq_tables}
-                    for n in range(len(output_tables[prereq_rows])):
-                        preq_rw = output_tables[prereq_rows].iloc[n]
-                        col_info.block = col_info.generator(
-                            chunk_id, rows_per_table[table], seed,
-                            prereq_row=preq_rw,
-                            prereq_tables=prereq_table_contents)
-                        self._add_to_list(col_info.block, output_columns, split_column_names)
-                self.timingdict.end(f"gen_{table}_{col_info.col_names}", st_time)
+            if("density" not in self.spec[table]):
+                table_row_count = None
+            else:
+                density_model = self.spec[table]["density"]
+                chunk_latlon = self.chunker.getChunkBounds(chunk_id).getCenter()
+                ra_center = chunk_latlon.getLon().asDegrees()
+                dec_center = chunk_latlon.getLat().asDegrees()
+                chunk_density = density_model.get_density_at_point(ra_center, dec_center)
 
-            for name in output_columns.keys():
-                temp = np.concatenate(output_columns[name])
-                output_columns[name] = temp
-            print("rows_per_table=", rows_per_table)
+            generated_data_per_box = []
+            boxes = self._make_subchunk_boxes(chunk_id, edge_width=edge_width,
+                                                                  edge_only=edge_only)
+            for box_n, box in enumerate(boxes):
+                assert(box.area() > 0)
+                box_rowcount = int(chunk_density * box.area())
+                unique_box_id = chunk_id*8 + box_n
+                output = self._generate_table_block(box, column_generators,
+                                                    row_count=box_rowcount,
+                                                    prereq_rows=prereq_rows,
+                                                    prereq_tables=output_tables,
+                                                    unique_box_id=unique_box_id)
+                for name in output.keys():
+                    temp = np.concatenate(output[name])
+                    output[name] = temp
+                generated_data_per_box.append(pd.DataFrame(output))
 
-            output_tables[table] = pd.DataFrame(output_columns)
+
+            output_tables[table] = pd.concat(generated_data_per_box)
 
         return output_tables
+
+    def _make_subchunk_boxes(self, chunk_id, edge_width=0, edge_only=False):
+
+        # sphgeom Box from Chunker::getChunkBoundingBox
+        chunk_box = self.chunker.getChunkBounds(chunk_id)
+        # Need to correct for RA that crosses 0.
+        raA = chunk_box.getLon().getA().asDegrees()
+        raB = chunk_box.getLon().getB().asDegrees()
+        ra_delta = raB - raA
+        if ra_delta < 0:
+            raA = raA - 360.0
+            ra_delta = raB -raA
+        decA = chunk_box.getLat().getA().asDegrees()
+        decB = chunk_box.getLat().getB().asDegrees()
+
+        boxes = []
+        print("chunk=", chunk_id, "bbox=", chunk_box.__repr__())
+
+        if edge_width > 0.0:
+            # Correct the edge_width for declination so there is at least
+            # edge_width at both the top and bottom of the east and west blocks.
+            edge_raA = edge_width / math.cos(decA + edge_width)
+            edge_raB = edge_width / math.cos(decB - edge_width)
+            edge_widthRA = max(edge_raA, edge_raB)
+
+            box_north = SimpleBox(raA, raB, decB - edge_width, decB)
+            box_east = SimpleBox(raA, raA + edge_widthRA, decA + edge_width, decB - edge_width)
+            box_west = SimpleBox(raB - edge_widthRA, raB, decA + edge_width, decB - edge_width)
+            box_south =SimpleBox(raA, raB, decA, decA + edge_width)
+
+            boxes.extend([box_north, box_east, box_west, box_south])
+
+            if(not edge_only):
+                # Middle
+                box_middle = SimpleBox(box_east.raB, box_west.raA,
+                                       box_north.decB, box_south.decA)
+                boxes.append(box_middle)
+        else:
+            entire_box = SimpleBox(raA, raB, decA, decB)
+            boxes.append(entire_box)
+
+        return boxes
+
+    def _generate_table_block(self, box, column_generators, row_count, unique_box_id, **kwargs):
+
+        # XXX: these need to be reworked
+        prereq_rows = None
+        prereq_tables = []
+
+        output_columns = {}
+
+        for column_name, column_generator in column_generators.items():
+            print(f"Working on column_name={column_name}")
+            split_column_names = column_name.split(",")
+            for name in split_column_names:
+                output_columns[name] = []
+
+            if prereq_rows is None:
+                prereq_tbls = {t: output_tables[t] for t in prereq_tables}
+                block = column_generator(
+                    box, row_count, self.seed,
+                    prereq_tables=prereq_tbls)
+                self._add_to_list(block, output_columns, split_column_names)
+            else:
+                prereq_table_contents = {t: output_tables[t] for t in prereq_tables}
+                for n in range(len(output_tables[prereq_rows])):
+                    preq_rw = output_tables[prereq_rows].iloc[n]
+                    block = column_generator(
+                        box, row_count, self.seed,
+                        unique_box_id=unique_box_id,
+                        prereq_row=preq_rw,
+                        prereq_tables=prereq_table_contents)
+                    self._add_to_list(block, output_columns, split_column_names)
+
+        return output_columns
+
 

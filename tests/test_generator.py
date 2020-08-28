@@ -3,7 +3,7 @@ import numpy as np
 import unittest
 from lsst.dax.data_generator import DataGenerator
 import lsst.dax.data_generator.columns as columns
-from lsst.dax.data_generator import Chunker
+from lsst.dax.data_generator import Chunker, UniformSpatialModel
 
 num_stripes = 200
 num_substripes = 5
@@ -18,7 +18,9 @@ class TestDataGenerator(unittest.TestCase):
                 "columns": {"objectId": columns.ObjIdGenerator(),
                             "ra,decl": columns.RaDecGenerator(chunker),
                             "mag_u,mag_g,mag_r": columns.MagnitudeGenerator(n_mags=3)
-                            }
+                            },
+                "density": UniformSpatialModel(50),
+                "chunker": chunker
             }
         }
         chunk_id = 5000
@@ -52,7 +54,9 @@ class TestDataGenerator(unittest.TestCase):
                 "columns": {"ccdVisitId": columns.VisitIdGenerator(),
                             "filterName": columns.FilterGenerator(filters="ugr"),
                             "ra,decl": columns.RaDecGenerator(chunker)
-                            }
+                            },
+                "density": UniformSpatialModel(50),
+                "chunker": chunker
             },
         }
         chunk_id = 5000
@@ -71,13 +75,17 @@ class TestDataGenerator(unittest.TestCase):
                 "columns": {"objectId": columns.ObjIdGenerator(),
                             "ra,decl": columns.RaDecGenerator(chunker),
                             "mag_u,mag_g,mag_r": columns.MagnitudeGenerator(n_mags=3)
-                            }
+                            },
+                "density": UniformSpatialModel(100),
+                "chunker": chunker
             },
             "CcdVisit": {
                 "columns": {"ccdVisitId": columns.VisitIdGenerator(),
                             "filterName": columns.FilterGenerator(filters="ugr"),
                             "ra,decl": columns.RaDecGenerator(chunker)
-                            }
+                            },
+                "density": UniformSpatialModel(80),
+                "chunker": chunker
             },
             "ForcedSource": {
                 "prereq_row": "Object",
@@ -86,6 +94,7 @@ class TestDataGenerator(unittest.TestCase):
                     "objectId,ccdVisitId,psFlux,psFlux_Sigma":
                         columns.ForcedSourceGenerator(visit_radius=3.0, filters="ugr"),
                 },
+                "chunker": chunker
             }
         }
 

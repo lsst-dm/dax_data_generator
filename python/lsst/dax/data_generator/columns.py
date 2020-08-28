@@ -13,7 +13,7 @@ __all__ = ["ColumnGenerator", "ObjIdGenerator", "FilterGenerator",
            "VisitIdGenerator", "mergeBlocks"]
 
 
-def calcSeedFrom(chunk_id, seed, column_val):
+def calcSeedFrom(chunk_id, seed, column_val=0):
     """Try to keep some separation between column generator seeds.
 
     Parameters
@@ -156,10 +156,10 @@ class SimpleBox:
         """
         Return
         ------
-        area : float degrees
+        area : float, square degrees
         Returns the approximate area of the box on a sphere, requires degrees
         """
-        area = (self.raA - self.raB) * (self.decA - self.decB)
+        area = abs(self.raA - self.raB) * abs(self.decA - self.decB)
         avgDecDeg = (self.decA + self.decB) / 2
         avgDecRad = avgDecDeg * (math.pi/180.0)
         area = math.cos(avgDecRad) * area
@@ -168,13 +168,12 @@ class SimpleBox:
 
 class ColumnGenerator(ABC):
 
-    def __call__(self, chunk_id, length, seed):
+    def __call__(self, box, length, seed):
         """
         Parameters
         ----------
-        chunk_id : int
-            Identifier of which cell on the sky to in which
-            coordinates should be generated
+        box : SimpleBox
+            Bounding box in which to generate sources.
         length : int
             Number of coordiantes to generate
         seed : int
@@ -206,44 +205,14 @@ class RaDecGenerator(ColumnGenerator):
     It starts by generating edges first so edge_only and complete chunks
     will have matching edges.
     """
-    def __init__(self, chunker, ignore_edge_only=False):
-        self.chunker = chunker
+    def __init__(self, ignore_edge_only=False):
         self.ignore_edge_only = ignore_edge_only
-        self.columnVal = 1
+        self.column_val = 1
         # avoid having the same ra and dec in different tables.
         if self.ignore_edge_only:
-            self.columnVal = 2
+            self.column_val = 2
 
-    def _generateBlock(self, chunk_id, simple_box, length):
-        """ Generate 'length' number of RA and Dec data entries for 'simpleBox'
-
-        Parameters
-        ----------
-        chunk_id : int
-            Chunk id number.
-        simple_box : SimpleBox
-            Defines min and max legal RA and Dec to be generated.
-
-        Returns
-        -------
-        tuple of list of generated RA's and list of generated Dec's
-        """
-        ra_min = simple_box.raA
-        ra_delta = simple_box.raB - simple_box.raA
-        dec_min = simple_box.decA
-        dec_delta = simple_box.decB - simple_box.decA
-        ra_centers = np.random.random(length)*ra_delta + ra_min
-        dec_centers = np.random.random(length)*dec_delta + dec_min
-        ra_out = []
-        for ra in ra_centers:
-            while ra < 0.0:
-                ra += 360.0
-            while ra >= 360.0:
-                ra -= 360.0
-            ra_out.append(ra)
-        return (ra_out, dec_centers)
-
-    def __call__(self, chunk_id, length, seed, edge_width=0.0, edge_only=False):
+    def __call__(self, box, length, seed, edge_width=0.0, edge_only=False, unique_box_id=0, **kwargs):
         """
         Parameters
         ----------
@@ -265,81 +234,24 @@ class RaDecGenerator(ColumnGenerator):
         -------
         a tuple of a list of generated RA's and a list of generated Dec's.
         """
-        np.random.seed(calcSeedFrom(chunk_id, seed, self.columnVal))
+        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_val))
 
-        # Some tables, such as ccdVisit, cannot be generated edgeOnly.
-        if self.ignore_edge_only:
-            edge_only = False
+        ra_min = box.raA
+        ra_delta = box.raB - box.raA
+        dec_min = box.decA
+        dec_delta = box.decB - box.decA
+        ra_centers = np.random.random(length)*ra_delta + ra_min
+        dec_centers = np.random.random(length)*dec_delta + dec_min
 
-        # sphgeom Box from Chunker::getChunkBoundingBox
-        chunk_box = self.chunker.getChunkBounds(chunk_id)
-        # Need to correct for RA that crosses 0.
-        raA = chunk_box.getLon().getA().asDegrees()
-        raB = chunk_box.getLon().getB().asDegrees()
-        ra_delta = raB - raA
-        if ra_delta < 0:
-            raA = raA - 360.0
-            ra_delta = raB - raA
-        decA = chunk_box.getLat().getA().asDegrees()
-        decB = chunk_box.getLat().getB().asDegrees()
+        ra_centers += 360 * (ra_centers < 0.0)
+        ra_centers -= 360 * (ra_centers >= 360.0)
 
-        boxes = {}
-        entire_box = SimpleBox(raA, raB, decA, decB)
-        boxes["entire"] = entire_box
-        print("chunk=", chunk_id, "bbox=", entire_box.__repr__())
-
-        if edge_width > 0.0:
-            # Correct the edge_width for declination so there is at least
-            # edge_width at both the top an bottom of the east and west blocks.
-            edge_raA = edge_width / math.cos(decA + edge_width)
-            edge_raB = edge_width / math.cos(decB - edge_width)
-            edge_widthRA = max(edge_raA, edge_raB)
-
-            boxes["north"] = SimpleBox(raA, raB, decB - edge_width, decB)
-            boxes["east"] = SimpleBox(raA, raA + edge_widthRA, decA + edge_width, decB - edge_width)
-            boxes["west"] = SimpleBox(raB - edge_widthRA, raB, decA + edge_width, decB - edge_width)
-            boxes["south"] = SimpleBox(raA, raB, decA, decA + edge_width)
-
-        # If the area of the entire box is only slightly larger than the sub-boxes,
-        # don't bother with separate edge calculation
-        edge_area = 0.0
-        entire_area = 0.0
-        for key, value in boxes.items():
-            if key == "entire":
-                entire_area = value.area()
-            else:
-                edge_area += value.area()
-
-        ratio_edge_to_entire = edge_area/entire_area
-        blocks = {}
-        # TODO: replace 10 with minLength and 0.90 with maxRatioEdgeToEntire
-        if (not edge_width > 0.0) or ratio_edge_to_entire > 0.90 or length < 10:
-            # Just generate the entire block
-            blocks["entire"] = self._generateBlock(chunk_id, boxes["entire"], length)
-        else:
-            lengths = {}
-            sub_length = length
-            for key, value in boxes.items():
-                if key != "entire":
-                    lengths[key] = int((value.area()/entire_area) * length)
-                    if lengths[key] < 1:
-                        lengths[key] = 1
-                    sub_length -= lengths[key]
-                    blocks[key] = self._generateBlock(chunk_id, boxes[key], lengths[key])
-            blockNS = mergeBlocks(blocks["north"], blocks["south"])
-            blockEW = mergeBlocks(blocks["east"], blocks["west"])
-            blocks["entire"] = mergeBlocks(blockNS, blockEW)
-            if not edge_only:
-                box_middle = SimpleBox(boxes["east"].raB, boxes["west"].raA,
-                                       boxes["north"].decB, boxes["south"].decA)
-                block_middle = self._generateBlock(chunk_id, box_middle, sub_length)
-                blocks["entire"] = mergeBlocks(blocks["entire"], block_middle)
-        return blocks["entire"]
+        return (ra_centers, dec_centers)
 
 
 class ObjIdGenerator(ColumnGenerator):
 
-    def __call__(self, chunk_id, length, seed, **kwargs):
+    def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
         """
         Returns
         -------
@@ -349,12 +261,12 @@ class ObjIdGenerator(ColumnGenerator):
 
         # TODO: more than 100k objects in a chunk will cause issues
         #       Replace 100000 with max_objects_per_chunk?
-        return (chunk_id * 100000) + np.arange(length)
+        return (unique_box_id * 100000) + np.arange(length)
 
 
 class VisitIdGenerator(ColumnGenerator):
 
-    def __call__(self, chunk_id, length, seed, **kwargs):
+    def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
         """
         Returns
         -------
@@ -364,7 +276,7 @@ class VisitIdGenerator(ColumnGenerator):
 
         # TODO: This shouldn't have the same issue as objects/chunk
         #       but maybe replace 100000 with max_objects_per_chunk?
-        return 10000000000 + (chunk_id * 100000) + np.arange(length)
+        return 10000000000 + (unique_box_id * 100000) + np.arange(length)
 
 
 class MagnitudeGenerator(ColumnGenerator):
@@ -395,15 +307,15 @@ class MagnitudeGenerator(ColumnGenerator):
         self.max_mag = max_mag
         self.column_val = column_val  # arbitrary, but different from other columns
 
-    def __call__(self, chunk_id, length, seed, **kwargs):
+    def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
 
-        np.random.seed(calcSeedFrom(chunk_id, seed, self.column_val))
+        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_val))
 
         # This needs to be made row by row not column by column, as
         # row by row results in repeatable values when doing edges first.
         magRows = []
         delta_mag = self.max_mag - self.min_mag
-        for unused in range(length):
+        for _ in range(length):
             mag = np.random.rand(self.n_mags)*delta_mag + self.min_mag
             magRows.append(mag)
         magCols = convertBlockToRows(magRows)
@@ -426,8 +338,8 @@ class FilterGenerator(ColumnGenerator):
         self.filters = filters
         self.column_val = column_val
 
-    def __call__(self, chunk_id, length, seed, **kwargs):
-        np.random.seed(calcSeedFrom(chunk_id, seed, self.column_val))
+    def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
+        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_val))
         return np.random.choice(list(self.filters), length)
 
 

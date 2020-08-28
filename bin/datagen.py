@@ -13,7 +13,6 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--chunk", type=int, required=True)
-    parser.add_argument("--objects", type=int, required=True)
     parser.add_argument("--visits", type=int, required=True)
     parser.add_argument("--edgeonly", action="store_true")
     parser.add_argument("specification", type=str)
@@ -26,23 +25,16 @@ if __name__ == "__main__":
         exec(f.read(), spec_globals)
         assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
         assert 'edge_width' in spec_globals, "Specification file must define variable 'edge_width'."
+        assert 'chunker' in spec_globals, "Specification file must define a variable 'chunker'."
         spec = spec_globals['spec']
         edge_width = spec_globals['edge_width']
-
-    dataGen = DataGenerator(spec)
-    chunk_id = args.chunk
-    row_counts = {"CcdVisit": args.visits,
-                  "Object": args.objects}
-
-    # ForcedSource count is defined by visits and objects.
-    if("ForcedSource" in spec):
-        row_counts["ForcedSource"] = None
+        chunker = spec_globals['chunker']
 
     seed = 1
-    tables = dataGen.make_chunk(chunk_id, num_rows=row_counts, seed=seed,
-                                edge_width=edge_width, edge_only=edge_only)
+    dataGen = DataGenerator(spec, chunker, seed=seed)
+    chunk_id = args.chunk
 
-    print("tables=", tables)
+    tables = dataGen.make_chunk(chunk_id, edge_width=edge_width, edge_only=edge_only)
 
     for table_name, table in tables.items():
         edge_type = "EO" if edge_only else "CT"
