@@ -40,10 +40,11 @@ def server():
     """
     argumentList = sys.argv[1:]
     print("argumentList=", argumentList)
-    options = "hksi:"
-    long_options = ["help", "skipIngest", "skipSchema"]
+    options = "hksc:"
+    long_options = ["help", "skipIngest", "skipSchema", "configfile"]
     skip_ingest = False
     skip_schema = False
+    configFile = "configs/fakedb/serverCfg.yml"
     try:
         arguments, values = getopt.getopt(argumentList, options, long_options)
         print("arguments=", arguments)
@@ -55,12 +56,14 @@ def server():
                 skip_ingest = True
             elif arg in ("-s", "--skipSchema"):
                 skip_schema = True
+            elif arg in ("-c", "--configfile"):
+                configFile = val
     except getopt.error as err:
         print (str(err))
         exit(1)
     print("skip_ingest=", skip_ingest, "skip_schema=", skip_schema, "values=", values)
     # 0-50000 would be all chunks for stripes = 200 substripes = 5
-    dgServ = DataGenServer("configs/fakedb/serverCfg.yml", 0, 2000, skip_ingest, skip_schema)
+    dgServ = DataGenServer(configFile, 0, 2000, skip_ingest, skip_schema)
     dgServ.start()
 
 if __name__ == "__main__":
