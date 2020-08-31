@@ -31,6 +31,7 @@ import time
 from .DataGenConnection import DataGenConnection
 from .DataIngest import DataIngest
 from lsst.dax.data_generator import DataGenerator
+from lsst.dax.data_generator import TimingDict
 
 
 class DataGenClient:
@@ -66,8 +67,6 @@ class DataGenClient:
         self._cl_conn = None # DataGenConnection
         self._cfg_file_name = 'gencfg.py' # name of the local config file for the generator
         self._cfg_file_contents = None # contents of the config file.
-        #self._datagenpy = '~/work/dax_data_generator/bin/datagen.py' # TODO: MUST stop hard coding this &&&
-        #self._datagenpy = '~/dax_data_generator/bin/datagen.py' # TODO: MUST stop hard coding this &&&
         self._pt_cfg_dir = 'partitionCfgs' # sub-dir of _targetDir for partitioner configs
         self._pt_cfg_dict = None # Dictionary that stores partioner config files.
         self.makeDir(self._target_dir)
@@ -90,8 +89,7 @@ class DataGenClient:
         self._transaction_id = -1
 
         # timing information
-        self._timing_dict = {}
-        self._timingDictAdd("aSmallHorse", 56.23401)
+        self._timing_dict = TimingDict()
 
     def _setIngest(self, ingest_dict):
         """Create ingest object from ingest_dict values.
@@ -395,15 +393,17 @@ class DataGenClient:
         return True
 
     def _datGenChunk(self, chunk_id, edge_only):
-        #&&& TODO: This seems like it should be in the config file ???
         row_counts = {"CcdVisit": self._visits, "Object": self._objects}
 
         # ForcedSource count is defined by visits and objects.
         if("ForcedSource" in self._spec):
             row_counts["ForcedSource"] = None
 
+        self._data_gen.timingdict.reset()
         tables = self._data_gen.make_chunk(chunk_id, num_rows=row_counts, seed=self._seed,
                                     edge_width=self._edge_width, edge_only=edge_only)
+        self._data_gen.timingdict.increment()
+        self._timing_dict.combine(self._data_gen.timingdict)
         print("tables=", tables)
 
         for table_name, table in tables.items():
@@ -457,7 +457,7 @@ class DataGenClient:
                 else: # Not a full set of complete files
                     print("Removing extraneous complete files")
                     if not self.removeFilesForChunk(chunk_id, edge_only=False, complete=True):
-                        print("WARN failed to removservRecvTiminge incomplete csv for", chunk_id)
+                        print("WARN failed to remove incomplete csv for", chunk_id)
                 return 'exists'
         else:
             # Delete files for this chunk if they exist.
@@ -491,6 +491,7 @@ class DataGenClient:
         for chunk_id in chunk_recv_set:
             # Generate the csv files for the chunk
             if self._generateChunk(chunk_id, edge_only=False) != 'failed':
+                self._timing_dict.increment() # increment the count of chunks
                 created_chunks.append(chunk_id)
         return created_chunks
 
@@ -581,6 +582,7 @@ class DataGenClient:
         # --in chunk404_EO_Object.csv --in chunk403_CT_Object.csv
         info_list = [] # A list of tuples (tblName, fullPathFile)
         for cfg in self._pt_cfg_dict.items():
+            st_time = self._timing_dict.start()
             # Determine the table name from the config file name.
             cfgFName = cfg[1][0]
             tblName = os.path.splitext(cfgFName)[0]
@@ -616,9 +618,12 @@ class DataGenClient:
                     info_list.append((tblName, full_path))
                 else:
                     os.remove(full_path)
+            self._timing_dict.end("overlap", st_time)
         for info in info_list:
             print("info=", info, "0=", info[0], "1=", info[1])
+            st_time = self._timing_dict.start()
             self._addChunkToTransaction(chunkId, table=info[0], f_path=info[1])
+            self._timing_dict.end("ingest", st_time)
         return True
 
     def _startTransaction(self):
@@ -780,7 +785,9 @@ class DataGenClient:
                 # Create chunks received in the list
                 createdChunks = self._createRecvChunks(chunkRecvSet)
                 # Create edge only chunks as needed.
+                st_time = self._timing_dict.start()
                 haveAllCsvChunks = self._createNeighborChunks(createdChunks)
+                self._timing_dict.end("neighborChunks", st_time)
                 # Generate overlap tables and files for ingest (happens within
                 # the transaction).
                 # Start the transaction
@@ -814,7 +821,10 @@ class DataGenClient:
                     loop = False
 
                 # client sends timing info back to server.
-                self._cl_conn.clientReportTiming(self._timing_dict)
+                print(self._timing_dict.report())
+                self._cl_conn.clientReportTiming(self._timing_dict.timing_dict)
+                self._timing_dict.reset()
+
                 # Client sends the list of completed chunks back
                 self._sendIngestedChunksToServer(ingestedChunks)
 

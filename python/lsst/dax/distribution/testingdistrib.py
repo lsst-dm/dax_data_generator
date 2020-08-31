@@ -62,7 +62,6 @@ class ServerTestThrd(threading.Thread):
             # receive init from client
             serv.servReqInit()
             # server sending back configuration information for datagenerator
-            #&&&
             serv.servRespInit(self.name, self.objects, self.visits, self.seed, self.cfg_file_contents, self.ingest_dict)
             # client requests partioner configuration files.
             pCfgDone = False

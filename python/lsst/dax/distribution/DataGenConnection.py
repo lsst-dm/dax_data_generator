@@ -426,7 +426,7 @@ class DataGenConnection():
             print("WARN clientRecvChunks problem with", msg, msg_chunks)
         return msg_chunks, problem
 
-    def clientReportTiming(self, timing_dict): #&&&Time
+    def clientReportTiming(self, timing_dict):
         """Send a small dictionary of string keys and float time values.
 
         Parameters
@@ -456,7 +456,7 @@ class DataGenConnection():
         self._send_msg(self.C_TIMDCT, time_msg)
         return count
 
-    def servRecvTiming(self): #&&&TIME
+    def servRecvTiming(self):
         """Receive the dictionary of timing information from the client
 
         Return

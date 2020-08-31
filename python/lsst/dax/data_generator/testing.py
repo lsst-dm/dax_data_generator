@@ -24,6 +24,7 @@ import numpy as np
 from . import columns
 from .chunker import Chunker
 
+
 def equalBlocks(block_a, block_b):
     """Each block should be a tuple of np.array. Return True if
     both blocks contain the same arrays in the same order.

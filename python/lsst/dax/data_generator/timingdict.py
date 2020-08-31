@@ -22,7 +22,7 @@
 import time
 
 
-class TimingDict
+class TimingDict:
     """A dictionary used to store timing information
 
     Parameters
@@ -40,7 +40,7 @@ class TimingDict
     The key "count" is reserved for the total count.
     """
 
-    def __init__(self, timing_dict):
+    def __init__(self, timing_dict=None):
         self.timing_dict = timing_dict
         if self.timing_dict is None:
             self.reset()
@@ -69,6 +69,30 @@ class TimingDict
         else:
             self.timing_dict[key] = float(val)
 
+    def start(self):
+        """Return a float start_time.
+        """
+        return time.time()
+
+    def end(self, key, start_time):
+        """Add a timing entry for 'key'
+
+        Parameters
+        ----------
+        key : str
+            Key the measurment should be added to.
+        start_time : float
+            Starting time for a measurent.
+        """
+        end_time = time.time()
+        val = end_time - start_time
+        self.add(key, val)
+
+    def increment(self):
+        """Increment "count"
+        """
+        self.add("count", 1.0)
+
     def combine(self, other):
         """Merge another timing_dict object with this one.
 
@@ -85,7 +109,7 @@ class TimingDict
         the 'other' key does not exist, it will be created with
         the 'other' value.
         """
-        for key, val in other:
+        for key, val in other.timing_dict.items():
             if key in self.timing_dict:
                 self.timing_dict[key] += val
             else:
@@ -102,7 +126,7 @@ class TimingDict
             if self.timing_dict[COUNT] != 0:
                 count = self.timing_dict[COUNT]
         sum = 0.0
-        for key, val in self.timing_dict:
+        for key, val in self.timing_dict.items():
             if key == COUNT:
                 continue
             if (len(key) > width):
@@ -112,10 +136,11 @@ class TimingDict
             st += f'count={count} with a total time of {sum} and avg of {sum/count}\n'
         else:
             st += 'count 0 or unavailable\n'
-        for key, val in self.timing_dict:
+        for key, val in self.timing_dict.items():
+            if key == COUNT:
+                continue
             st += f'{key:<{width}}={val:9.3f}'
             if count is not None:
                 st += f' avg={val/count:9.3f} {val*100.0/sum:3.1f}%\n'
         return st
-
 
