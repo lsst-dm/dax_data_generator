@@ -25,6 +25,7 @@ import time
 
 from . import DataGenConnection
 from . import DataIngest
+from lsst.dax.data_generator import TimingDict
 
 
 class ServerTestThrd(threading.Thread):
@@ -62,7 +63,8 @@ class ServerTestThrd(threading.Thread):
             # receive init from client
             serv.servReqInit()
             # server sending back configuration information for datagenerator
-            serv.servRespInit(self.name, self.objects, self.visits, self.seed, self.cfg_file_contents, self.ingest_dict)
+            serv.servRespInit(self.name, self.objects, self.visits, self.seed,
+                              self.cfg_file_contents, self.ingest_dict)
             # client requests partioner configuration files.
             pCfgDone = False
             while not pCfgDone:
@@ -84,11 +86,11 @@ class ServerTestThrd(threading.Thread):
             serv.servSendChunks(self.chunkListA)
             # Receive timing information from client
             timing_dict = serv.servRecvTiming()
-            print("timing_dict", timing_dict.items())
+            print("timing_dict", timing_dict)
             if timing_dict != self.timing_dict:
                 self.success = False
                 raise RuntimeError("serv test failed timing_dict mismatch",
-                                   timing_dict.items(), "\n", self.timing_dict.items())
+                                   timing_dict, "\n", self.timing_dict)
             # receive completed chunks from client
             completed_chunks = []
             finished = False
@@ -135,6 +137,7 @@ class ClientTestThrd(threading.Thread):
             client.clientReqInit()
             name, objects, visits, seed, cfg_file_contents, ingest_dict = client.clientRespInit()
             print("ingest_dict=", ingest_dict)
+            # Check that the values sent over the connection match what should have been sent.
             if (name == self.name
                 and objects == self.objects
                 and visits == self.visits
@@ -188,7 +191,11 @@ class ClientTestThrd(threading.Thread):
 
 def testDataGenConnection(port, name, objects, visits, seed, cfg_file_contents, maxCount,
                           chunkListA, pCfgFiles, ingest_dict, timing_dict):
-    """Short test to check that inputs to one side match outputs on the other"""
+    """Short test to check that inputs to one side match outputs on the other.
+    Both the client thread and server thread are given the same information.
+    If transmitted information doesn't match what is expected, there is a
+    problem with encoding/decoding.
+    """
     host = "127.0.0.1"
     servThrd = ServerTestThrd(host, port, name, objects, visits, seed, cfg_file_contents,
                               maxCount, chunkListA, pCfgFiles, ingest_dict, timing_dict)
@@ -220,7 +227,13 @@ def connectionTest():
                  2:("junk_cfg", "blah blah junk\n more stuff")}
     ingest_dict = {'host':'mt.st.com', 'port':2461, 'auth': '1234',
                             'db':'afake_db', 'skip': False}
-    timing_dict = {'gen_o':345.23, 'gen_fs': 981.23, 'conv':12.9999, 'trans':42.1, 'del':0.123}
+    timing_dict = TimingDict()
+    timing_dict.add('gen_o', 345.23)
+    timing_dict.add('gen_fs', 981.23)
+    timing_dict.add('conv', 12.9999)
+    timing_dict.add('trans', 42.1)
+    timing_dict.add('del', 0.123)
+    timing_dict.increment()
     success, s_warn1, c_warn1 = testDataGenConnection(14242, 'qt', 10000, 30, 178,
                           'bunch of json file entries', 28, cListA,
                           pCfgFiles, ingest_dict, timing_dict)
@@ -230,7 +243,7 @@ def connectionTest():
 
     ingest_dict = {'host':'mt.st.edu', 'port':0, 'auth': '',
                    'db':'diff_db', 'skip': True}
-    timing_dict = {}
+    timing_dict = TimingDict()
     success, s_warn2, c_warn2 = testDataGenConnection(14242, 'qt', 10000, 30, 1,
                           'bunch of json file entries', 28, cListA,
                           pCfgFiles, ingest_dict, timing_dict)

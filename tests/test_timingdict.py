@@ -8,15 +8,6 @@ import lsst.dax.data_generator.timingdict as td
 
 class TestTimingDict(unittest.TestCase):
 
-    def testCreate(self):
-        timing = td.TimingDict()
-        timing.add("t", 387.32)
-        timing.increment()
-
-        timing_dict = timing.timing_dict.copy()
-        t_2 = td.TimingDict(timing.timing_dict)
-        self.assertEqual(t_2.timing_dict, timing.timing_dict)
-
     def testAddIncrement(self):
         timing = td.TimingDict()
         keya = "a"
@@ -45,11 +36,23 @@ class TestTimingDict(unittest.TestCase):
             sumd += valsd[j]
             timing.increment()
 
-        self.assertEqual(suma, timing.timing_dict[keya])
-        self.assertEqual(sumb, timing.timing_dict[keyb])
-        self.assertEqual(sumc, timing.timing_dict[keyc])
-        self.assertEqual(sumd, timing.timing_dict[keyd])
-        self.assertEqual(timing.timing_dict["count"], 4.0)
+        self.assertEqual(suma, timing.times[keya])
+        self.assertEqual(sumb, timing.times[keyb])
+        self.assertEqual(sumc, timing.times[keyc])
+        self.assertEqual(sumd, timing.times[keyd])
+        self.assertEqual(timing.count, 4)
+
+        timing_b = td.TimingDict()
+        self.assertTrue(timing != timing_b)
+        timing_b.combine(timing)
+        self.assertTrue(timing == timing_b)
+        timing_b.increment()
+        self.assertTrue(timing != timing_b)
+        timing_b = td.TimingDict()
+        timing_b.combine(timing)
+        self.assertTrue(timing == timing_b)
+        timing_b.add(keyc, 0.0001)
+        self.assertTrue(timing != timing_b)
 
         t_2 = td.TimingDict()
         val = 0.2
@@ -67,11 +70,11 @@ class TestTimingDict(unittest.TestCase):
         t_2.increment()
 
         timing.combine(t_2)
-        self.assertEqual(suma, timing.timing_dict[keya])
-        self.assertEqual(sumb, timing.timing_dict[keyb])
-        self.assertEqual(sumc, timing.timing_dict[keyc])
-        self.assertEqual(sumd, timing.timing_dict[keyd])
-        self.assertEqual(timing.timing_dict["count"], 5.0)
+        self.assertEqual(suma, timing.times[keya])
+        self.assertEqual(sumb, timing.times[keyb])
+        self.assertEqual(sumc, timing.times[keyc])
+        self.assertEqual(sumd, timing.times[keyd])
+        self.assertEqual(timing.count, 5)
 
         # Check that full report doesn't crash
         print(timing.report())
@@ -83,9 +86,7 @@ class TestTimingDict(unittest.TestCase):
         st = timing.start()
         time.sleep(0.01)
         timing.end("a", st)
-        self.assertIn("a", timing.timing_dict)
-        self.assertTrue(timing.timing_dict["a"] > 0.0)
+        self.assertIn("a", timing.times)
+        self.assertTrue(timing.times["a"] > 0.0)
 
-        timing.reset()
-        self.assertTrue(not timing.timing_dict)
 

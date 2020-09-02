@@ -196,7 +196,7 @@ class DataGenerator:
                             prereq_row=preq_rw,
                             prereq_tables=prereq_table_contents)
                         self._add_to_list(col_info.block, output_columns, split_column_names)
-                self.timingdict.end(f'gen_{table}_{col_info.col_names}', st_time)
+                self.timingdict.end(f"gen_{table}_{col_info.col_names}", st_time)
 
             for name in output_columns.keys():
                 temp = np.concatenate(output_columns[name])

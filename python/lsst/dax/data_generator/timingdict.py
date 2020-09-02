@@ -27,7 +27,7 @@ class TimingDict:
 
     Parameters
     ----------
-    timing_dict : dictionary
+    times : dictionary
         A dicitionary with str keys and float values. The dictionary is
         used internally by the class. If it is None, an empty dictionary
         is created.
@@ -40,18 +40,15 @@ class TimingDict:
     The key "count" is reserved for the total count.
     """
 
-    def __init__(self, timing_dict=None):
-        self.timing_dict = timing_dict
-        if self.timing_dict is None:
-            self.reset()
+    def __init__(self):
+        self.times = {}
+        self.count = 0
 
     def __repr__(self):
-        return str(self.timing_dict.items())
+        return f'TimingDict count={self.count} {self.times.items()}'
 
-    def reset(self):
-        """Clear the dictionary
-        """
-        self.timing_dict = {}
+    def __eq__(self, other):
+        return self.count == other.count and self.times == other.times
 
     def add(self, key, val):
         """Add val to the corresponding key.
@@ -64,10 +61,10 @@ class TimingDict:
             Value to add to the existing value. Existing value is 0 for
             undefined keys.
         """
-        if key in self.timing_dict:
-            self.timing_dict[key] += float(val)
+        if key in self.times:
+            self.times[key] += float(val)
         else:
-            self.timing_dict[key] = float(val)
+            self.times[key] = float(val)
 
     def start(self):
         """Return a float start_time.
@@ -91,10 +88,10 @@ class TimingDict:
     def increment(self):
         """Increment "count"
         """
-        self.add("count", 1.0)
+        self.count += 1
 
     def combine(self, other):
-        """Merge another timing_dict object with this one.
+        """Merge another TimingDict object with this one.
 
         Parameters
         ----------
@@ -109,38 +106,31 @@ class TimingDict:
         the 'other' key does not exist, it will be created with
         the 'other' value.
         """
-        for key, val in other.timing_dict.items():
-            if key in self.timing_dict:
-                self.timing_dict[key] += val
+        for key, val in other.times.items():
+            if key in self.times:
+                self.times[key] += val
             else:
-                self.timing_dict[key] = val
+                self.times[key] = val
+        self.count += other.count
 
     def report(self):
         """Get a somewhat well formed string of the contents of this object.
         """
         st = "Times\n"
-        COUNT = 'count' # reserved string
-        count = None
-        width = 5
-        if COUNT in self.timing_dict:
-            if self.timing_dict[COUNT] != 0:
-                count = self.timing_dict[COUNT]
+        width = 5 if not self.times else max(len(x) for x in self.times.keys())
         sum = 0.0
-        for key, val in self.timing_dict.items():
-            if key == COUNT:
-                continue
-            if (len(key) > width):
-                width = len(key)
+        for key, val in self.times.items():
             sum += val
-        if count is not None:
-            st += f'count={count} with a total time of {sum} and avg of {sum/count}\n'
-        else:
-            st += 'count 0 or unavailable\n'
-        for key, val in self.timing_dict.items():
-            if key == COUNT:
-                continue
+        st += f'count={self.count} with a total time of {sum}'
+        if sum != 0.0:
+            st += f' and avg of {sum/self.count}'
+        st += '\n'
+        for key, val in self.times.items():
             st += f'{key:<{width}}={val:9.3f}'
-            if count is not None:
-                st += f' avg={val/count:9.3f} {val*100.0/sum:3.1f}%\n'
+            if self.count != 0:
+                st += f'   avg={val/self.count:9.3f}'
+            if sum != 0.0:
+                st += f' {val*100.0/sum:3.1f}%'
+            st += '\n'
         return st
 

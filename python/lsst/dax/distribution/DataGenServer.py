@@ -359,8 +359,7 @@ class DataGenServer:
                     conn.close()
                 else:
                     # receive timing information from client
-                    timing_dict = sv_conn.servRecvTiming()
-                    client_times = TimingDict(timing_dict)
+                    client_times = sv_conn.servRecvTiming()
                     print("client times ", client_times.report())
                     # receive completed chunks from client
                     completed_chunks = []

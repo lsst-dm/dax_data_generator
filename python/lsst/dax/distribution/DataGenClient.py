@@ -26,7 +26,6 @@ import re
 import shutil
 import socket
 import subprocess
-import time
 
 from .DataGenConnection import DataGenConnection
 from .DataIngest import DataIngest
@@ -72,7 +71,7 @@ class DataGenClient:
         self.makeDir(self._target_dir)
         self.makeDir(os.path.join(self._target_dir, self._pt_cfg_dir))
 
-        # Values set from transferred self._cfgFileContents
+        # Values set from transferred self._cfgFileContents (see _readDatagenConfig)
         self._spec = None # spec from exec(self._cfgFileContents)
         self._chunker = None # chunker from exec(self._cfgFileContents)
         self._edge_width = None # float Width of edges in edge only generation.
@@ -136,8 +135,7 @@ class DataGenClient:
             fn : str
             The name to use for the file.
         """
-        typeStr = 'CT_'
-        if edge_only: typeStr = 'EO_'
+        typeStr = "EO_" if edge_only else "CT_"
         # If the tabelName is a wildcard, don't use typeStr
         if table_name == '*': typeStr = ''
         fn = 'chunk' + str(chunk_id) + '_' + typeStr + table_name + '.' + ext
@@ -208,6 +206,10 @@ class DataGenClient:
     def _readDatagenConfig(self):
         """ Create a Chunker and spec using the same configuration file as the datagen.py.
         """
+        # Load the python configuration file used to generate the synthetic data.
+        # spec defines tables and columns.
+        # chunker defines the partitioning scheme
+        # edge_width should be at least as wide as the partitioning overlap.
         spec_globals = {}
         exec(self._cfg_file_contents, spec_globals)
         assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
@@ -399,7 +401,7 @@ class DataGenClient:
         if("ForcedSource" in self._spec):
             row_counts["ForcedSource"] = None
 
-        self._data_gen.timingdict.reset()
+        self._data_gen.timingdict = TimingDict()
         tables = self._data_gen.make_chunk(chunk_id, num_rows=row_counts, seed=self._seed,
                                     edge_width=self._edge_width, edge_only=edge_only)
         self._data_gen.timingdict.increment()
@@ -407,9 +409,8 @@ class DataGenClient:
         print("tables=", tables)
 
         for table_name, table in tables.items():
-            edgeType = "CT"  # complete
-            if edge_only: edgeType = "EO" # edge only
-            fname = "chunk{:d}_{:s}_{:s}.csv".format(chunk_id, edgeType, table_name)
+            edge_type = "EO" if edge_only else "CT"
+            fname = "chunk{:d}_{:s}_{:s}.csv".format(chunk_id, edge_type, table_name)
             fname = os.path.join(self._target_dir, fname)
             table.to_csv(fname, header=False, index=False)
 
@@ -822,8 +823,8 @@ class DataGenClient:
 
                 # client sends timing info back to server.
                 print(self._timing_dict.report())
-                self._cl_conn.clientReportTiming(self._timing_dict.timing_dict)
-                self._timing_dict.reset()
+                self._cl_conn.clientReportTiming(self._timing_dict)
+                self._timing_dict = TimingDict()
 
                 # Client sends the list of completed chunks back
                 self._sendIngestedChunksToServer(ingestedChunks)
