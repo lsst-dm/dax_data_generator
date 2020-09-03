@@ -19,13 +19,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import socket
+from lsst.dax.data_generator import TimingDict
 
 
 class DataGenError(Exception):
     def __init__(self, msg):
         super().__init__()
         self.msg = msg
+
 
 class DataGenConnection():
     """Used for sending an receiving DataGenController messgaes.
@@ -42,14 +43,15 @@ class DataGenConnection():
     # containing the rest of the length of the message
     MSG_LENSTR_LEN = 5
     MAX_MSG_LEN = 90000
-    C_INIT_R = 'C_INIT_R' # client initial request
-    S_INIT_R = 'S_INIT_R' # server initial response
-    C_PCFG_R = 'C_PCFG_R' # client asking for partioner config file
-    S_PCFG_A = 'S_PCFG_A' # server answering with specified config file
-    C_CHUNKR = 'C_CHUNKR' # client request for chunks to generate
-    S_CNKLST = 'S_CNKLST' # server sending chunks to generate
-    C_CKCOMP = 'C_CKCOMP' # client sending list of chunks completed
-    C_CKCFIN = 'C_CKCFIN' # marks the end of the list
+    _C_INIT_R = 'C_INIT_R' # client initial request
+    _S_INIT_R = 'S_INIT_R' # server initial response
+    _C_PCFG_R = 'C_PCFG_R' # client asking for partioner config file
+    _S_PCFG_A = 'S_PCFG_A' # server answering with specified config file
+    _C_CHUNKR = 'C_CHUNKR' # client request for chunks to generate
+    _S_CNKLST = 'S_CNKLST' # server sending chunks to generate
+    _C_TIMDCT = 'C_TIMDCT' # client sending timing information
+    _C_CKCOMP = 'C_CKCOMP' # client sending list of chunks completed
+    _C_CKCFIN = 'C_CKCFIN' # marks the end of the list
 
     def __init__(self, connection):
         self.conn = connection
@@ -90,7 +92,7 @@ class DataGenConnection():
         msg_len : int
             The length of the message.
         """
-        msg_id = self._recv_msg_helper(len(self.C_INIT_R))
+        msg_id = self._recv_msg_helper(len(self._C_INIT_R))
         msg_lenstr = self._recv_msg_helper(self.MSG_LENSTR_LEN)
         msg_len = int(msg_lenstr)
         print('_recv_msg', msg_id, msg_lenstr)
@@ -207,26 +209,28 @@ class DataGenConnection():
     def clientReqInit(self):
         """Connect to the server, request initialization information.
         """
-        self._send_msg(self.C_INIT_R, '')
+        self._send_msg(self._C_INIT_R, '')
     def servReqInit(self):
         """Receive the initialization request from the client.
         """
         msg_id, msg, msg_len = self._recv_msg()
         print('servReqInit', msg_id, msg)
-        if not msg_id == self.C_INIT_R:
+        if not msg_id == self._C_INIT_R:
             self.warnings += 1
             raise DataGenError('ERROR servRecvInit ' + str(msg_id) + ' ' + msg + ' ' +str(msg_len))
         return msg_id, msg
 
-    def servRespInit(self, name, arg_string, cfg_file_contents, ingest_dict):
+    def servRespInit(self, name, objects, visits, seed, cfg_file_contents, ingest_dict):
         """Respond to the client initialization request.
 
         Parameters
         ----------
         name : str
             name of the client
-        arg_string : str
-            arguments for datagen.py
+        objects, visits : int
+            Number of objects to generate per chunk and number of visits.
+        seed : int
+            Random number seed.
         cfg_file_contents : str
             contents of the configguration file
         ingest_dict : dictionary
@@ -246,11 +250,12 @@ class DataGenConnection():
         skip_val = '0'
         if ingest_dict['skip']:
             skip_val = '1'
-        msg = (name + sep + arg_string + sep + cfg_file_contents
+        msg = (name + sep + str(objects) + sep + str(visits) + sep + str(seed)
+            + sep + cfg_file_contents
             + sep + ingest_dict['host'] + sep + str(ingest_dict['port'])
             + sep + ingest_dict['auth']
             + sep + ingest_dict['db'] + sep + skip_val)
-        self._send_msg(self.S_INIT_R, msg)
+        self._send_msg(self._S_INIT_R, msg)
 
     def clientRespInit(self):
         """Unwrap the configuration information sent by the server.
@@ -259,8 +264,10 @@ class DataGenConnection():
         ------
         name : str
             Name for the client.
-        arg_string : str
-            Argument string for dataGen.py.
+        objects, visits : int
+            Number of objects to generate per chunk and number of visits.
+        seed : int
+            Random number seed.
         cfg_file_contents : str
             Contents of the configuration file for dataGen.py.
         ingest_dict : dictionary
@@ -268,18 +275,20 @@ class DataGenConnection():
             where the keys must match those in servRespInit.
         """
         msg_id, msg, msg_len = self._recv_msg()
-        if not msg_id == self.S_INIT_R:
+        if not msg_id == self._S_INIT_R:
             self.warnings += 1
             raise DataGenError('ERROR clientRespInit ' + str(msg_id) + ' ' + str(msg_len) + ' ' + msg)
         sep = self.COMPLEXSEP
         splt_msg = msg.split(sep)
         name = splt_msg[0]
-        arg_string = splt_msg[1]
-        cfg_file_contents = splt_msg[2]
-        ingest_dict = { 'host':splt_msg[3], 'port':int(splt_msg[4]), 'auth':splt_msg[5], 'db':splt_msg[6] }
-        skip_val = splt_msg[7]
+        objects = int(splt_msg[1])
+        visits = int(splt_msg[2])
+        seed = int(splt_msg[3])
+        cfg_file_contents = splt_msg[4]
+        ingest_dict = { 'host':splt_msg[5], 'port':int(splt_msg[6]), 'auth':splt_msg[7], 'db':splt_msg[8] }
+        skip_val = splt_msg[9]
         ingest_dict['skip'] = bool(skip_val != '0')
-        return name, arg_string, cfg_file_contents, ingest_dict
+        return name, objects, visits, seed, cfg_file_contents, ingest_dict
 
     def clientReqPartitionCfgFile(self, index):
         """Client request a partitioner configuration file from the server
@@ -293,7 +302,7 @@ class DataGenConnection():
             depending on the database.
         """
         print("clientReqChunks C_PCFGR")
-        self._send_msg(self.C_PCFG_R, str(index))
+        self._send_msg(self._C_PCFG_R, str(index))
 
     def servRespPartitionCfgFile(self):
         """Serv recieve the partition configuration index from the client.
@@ -305,7 +314,7 @@ class DataGenConnection():
         """
         print("servRespPartitionCfgFile C_PCFGR")
         msg_id, msg, msg_len = self._recv_msg()
-        if not msg_id == self.C_PCFG_R:
+        if not msg_id == self._C_PCFG_R:
             self.warnings += 1
             raise DataGenError('ERROR servRespPartitionCfgFile' + str(msg_id) + ' ' + str(msg_len) + ' ' + msg)
         return int(msg)
@@ -327,7 +336,7 @@ class DataGenConnection():
         print("servSendPartionCfgFile S_PCFG_A", index, file_name, len(file_contents))
         sep = self.COMPLEXSEP
         msg = str(index) + sep + file_name + sep + file_contents
-        self._send_msg(self.S_PCFG_A, msg)
+        self._send_msg(self._S_PCFG_A, msg)
 
     def clientRespPartionCfgFile(self):
         """Extract file name and contents from the message sent by the server.
@@ -340,7 +349,7 @@ class DataGenConnection():
             Name of the file at that index and its contents.
         """
         msg_id, msg, msg_len = self._recv_msg()
-        if not msg_id == self.S_PCFG_A:
+        if not msg_id == self._S_PCFG_A:
             self.warnings += 1
             raise DataGenError('ERROR clientRespPartionCfgFile ' + str(msg_id) + ' ' + str(msg_len) + ' ' + msg)
         sep = self.COMPLEXSEP
@@ -362,7 +371,7 @@ class DataGenConnection():
         """
         print("clientReqChunks C_CHUNKR")
         msg = str(max_count)
-        self._send_msg(self.C_CHUNKR, msg)
+        self._send_msg(self._C_CHUNKR, msg)
 
     def servRecvReqChunks(self):
         """Server getting the number of chunks requested in clientReqChunks.
@@ -374,7 +383,7 @@ class DataGenConnection():
         """
         print("servRecvReqChunks C_CHUNKR")
         msg_id, msg, msg_len = self._recv_msg()
-        if not msg_id == self.C_CHUNKR:
+        if not msg_id == self._C_CHUNKR:
             self.warnings += 1
             raise DataGenError('ERROR servRecvReqChunks' + str(msg_id) + ' ' + str(msg_len) + ' ' + msg)
         return int(msg)
@@ -394,7 +403,7 @@ class DataGenConnection():
         """
         print("servSendChunks S_CNKLST", chunk_list)
         chunk_msg, sent_chunks = self._buildChunksMsg(chunk_list)
-        self._send_msg(self.S_CNKLST, chunk_msg)
+        self._send_msg(self._S_CNKLST, chunk_msg)
         return sent_chunks
 
     def clientRecvChunks(self):
@@ -409,7 +418,7 @@ class DataGenConnection():
         """
         print("clientRecvChunks S_CNKLST")
         msg_id, msg, msg_len = self._recv_msg()
-        if not msg_id == self.S_CNKLST:
+        if not msg_id == self._S_CNKLST:
             self.warnings += 1
             raise DataGenError('ERROR clientRecvChunks' + str(msg_id) + ' ' + str(msg_len) + ' ' + msg)
         msg_chunks, problem = self._extractChunksFromMsg(msg)
@@ -417,6 +426,47 @@ class DataGenConnection():
             self.warnings += 1
             print("WARN clientRecvChunks problem with", msg, msg_chunks)
         return msg_chunks, problem
+
+    def clientReportTiming(self, timing_dict):
+        """Send a small dictionary of string keys and float time values.
+
+        Parameters
+        ----------
+        timing_dict : TimingDict
+            TimingDict object to send.
+
+        """
+        print("clientReportTiming C_TIMDCT", timing_dict)
+        time_msg = ''
+        c_sep = self.COMPLEXSEP
+        time_msg += str(timing_dict.count)
+        for tkey, tval in timing_dict.times.items():
+            time_msg += c_sep + str(tkey) + c_sep + str(tval)
+        self._send_msg(self._C_TIMDCT, time_msg)
+        return
+
+    def servRecvTiming(self):
+        """Receive the dictionary of timing information from the client
+
+        Return
+        ------
+        timing_dict : TimingDict
+            TimingDict object
+        """
+        print("servRecvTiming C_TIMDCT")
+        msg_id, msg, msg_len = self._recv_msg()
+        if msg_id != self._C_TIMDCT:
+            self.warnings += 1
+            raise DataGenError(f'ERROR servRecvTiming {str(msg_id)}:{str(msg_len)} {msg}')
+        msg_split = msg.split(self.COMPLEXSEP)
+        timing_dict = TimingDict()
+        timing_dict.count = int(msg_split[0])
+
+        # msg_split contains an alternating sequence of key then
+        # value starting at msg_split[1]
+        for j in range(1, len(msg_split) - 1, 2):
+            timing_dict.add(msg_split[j], msg_split[j+1])
+        return timing_dict
 
     def clientReportChunksComplete(self, chunk_list):
         """Send a list of compled chunks to the server and
@@ -438,12 +488,12 @@ class DataGenConnection():
         """
         print("clientReportChunksComplete C_CKCOMP", chunk_list)
         chunk_msg, completed_chunks = self._buildChunksMsg(chunk_list)
-        self._send_msg(self.C_CKCOMP, chunk_msg)
+        self._send_msg(self._C_CKCOMP, chunk_msg)
         leftover = []
         if len(completed_chunks) != len(chunk_list):
             leftover = set(chunk_list) - set(completed_chunks)
         if len(leftover) == 0:
-            self._send_msg(self.C_CKCFIN, '')
+            self._send_msg(self._C_CKCFIN, '')
         return leftover
 
     def servRecvChunksComplete(self):
@@ -462,8 +512,8 @@ class DataGenConnection():
         """
         print("servRecvChunksComplete C_CKCOMP")
         msg_id, msg, msg_len = self._recv_msg()
-        if not msg_id == self.C_CKCOMP:
-            if msg_id == self.C_CKCFIN:
+        if not msg_id == self._C_CKCOMP:
+            if msg_id == self._C_CKCFIN:
                 # All chunks were sent
                 return [], True, False
             else:

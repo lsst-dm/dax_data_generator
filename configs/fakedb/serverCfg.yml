@@ -5,6 +5,9 @@ server:
 fakeDataGenerator:
 # --chunk 3525 --visits 30 --objects 10000 example_spec.py
   arguments: '--visits 30 --objects 1000'
+  visits: 30
+  objects: 1000
+  seed: 1
   baseCfgDir: configs/fakedb
   cfgFileName: fakeGenSpec.py
 

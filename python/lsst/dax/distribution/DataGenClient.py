@@ -29,6 +29,8 @@ import subprocess
 
 from .DataGenConnection import DataGenConnection
 from .DataIngest import DataIngest
+from lsst.dax.data_generator import DataGenerator
+from lsst.dax.data_generator import TimingDict
 
 
 class DataGenClient:
@@ -50,7 +52,8 @@ class DataGenClient:
     ----
     This class is used to connect to the DataGenServer and uses the information
     the server provides to generate appropriate fake chunks while reporting
-    what chunks have been created and registered with the ingest system.
+    what chunks have been created and registered with the ingest system back to
+    the server.
     """
 
     def __init__(self, host, port, target_dir='fakeData', chunks_per_req=5):
@@ -63,23 +66,29 @@ class DataGenClient:
         self._cl_conn = None # DataGenConnection
         self._cfg_file_name = 'gencfg.py' # name of the local config file for the generator
         self._cfg_file_contents = None # contents of the config file.
-        #self._datagenpy = '~/work/dax_data_generator/bin/datagen.py' # TODO: MUST stop hard coding this &&&
-        self._datagenpy = '~/dax_data_generator/bin/datagen.py' # TODO: MUST stop hard coding this &&&
         self._pt_cfg_dir = 'partitionCfgs' # sub-dir of _targetDir for partitioner configs
         self._pt_cfg_dict = None # Dictionary that stores partioner config files.
         self.makeDir(self._target_dir)
         self.makeDir(os.path.join(self._target_dir, self._pt_cfg_dir))
 
-        # Values set from transferred self._cfgFileContents
+        # Values set from transferred self._cfgFileContents (see _readDatagenConfig)
         self._spec = None # spec from exec(self._cfgFileContents)
         self._chunker = None # chunker from exec(self._cfgFileContents)
-        self._edge_width = None # Width of edges in edge only generation.
+        self._edge_width = None # float Width of edges in edge only generation.
+        # DataGenerator, cannot be initialized until '_spec' received from server
+        self._data_gen = None
+        self._objects = None # int number of objects set
+        self._visits = None # int number of visits
+        self._seed = None # int random number seed
 
         # Ingest values
         self._ingest = None
         self._skip_ingest = True
         self._db_name = ''
         self._transaction_id = -1
+
+        # timing information
+        self._timing_dict = TimingDict()
 
     def _setIngest(self, ingest_dict):
         """Create ingest object from ingest_dict values.
@@ -126,8 +135,7 @@ class DataGenClient:
             fn : str
             The name to use for the file.
         """
-        typeStr = 'CT_'
-        if edge_only: typeStr = 'EO_'
+        typeStr = "EO_" if edge_only else "CT_"
         # If the tabelName is a wildcard, don't use typeStr
         if table_name == '*': typeStr = ''
         fn = 'chunk' + str(chunk_id) + '_' + typeStr + table_name + '.' + ext
@@ -198,6 +206,10 @@ class DataGenClient:
     def _readDatagenConfig(self):
         """ Create a Chunker and spec using the same configuration file as the datagen.py.
         """
+        # Load the python configuration file used to generate the synthetic data.
+        # spec defines tables and columns.
+        # chunker defines the partitioning scheme
+        # edge_width should be at least as wide as the partitioning overlap.
         spec_globals = {}
         exec(self._cfg_file_contents, spec_globals)
         assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
@@ -208,6 +220,7 @@ class DataGenClient:
         self._edge_width = spec_globals['edge_width']
         print("_cfgFileContents=", self._cfg_file_contents)
         print("_spec=", self._spec)
+        self._data_gen = DataGenerator(self._spec)
 
     def findCsvInTargetDir(self, chunk_id, neighbor_chunks):
         """Find files required csv to generate overlap for chunk_id.
@@ -381,6 +394,26 @@ class DataGenClient:
                         return False
         return True
 
+    def _datGenChunk(self, chunk_id, edge_only):
+        row_counts = {"CcdVisit": self._visits, "Object": self._objects}
+
+        # ForcedSource count is defined by visits and objects.
+        if("ForcedSource" in self._spec):
+            row_counts["ForcedSource"] = None
+
+        self._data_gen.timingdict = TimingDict()
+        tables = self._data_gen.make_chunk(chunk_id, num_rows=row_counts, seed=self._seed,
+                                    edge_width=self._edge_width, edge_only=edge_only)
+        self._data_gen.timingdict.increment()
+        self._timing_dict.combine(self._data_gen.timingdict)
+        print("tables=", tables)
+
+        for table_name, table in tables.items():
+            edge_type = "EO" if edge_only else "CT"
+            fname = "chunk{:d}_{:s}_{:s}.csv".format(chunk_id, edge_type, table_name)
+            fname = os.path.join(self._target_dir, fname)
+            table.to_csv(fname, header=False, index=False)
+
     def _generateChunk(self, chunk_id, edge_only=False):
         """Generate the csv files for a chunk.
 
@@ -431,15 +464,14 @@ class DataGenClient:
             # Delete files for this chunk if they exist.
             if not self.removeFilesForChunk( chunk_id, edge_only=True, complete=True):
                 print("WARN failed to remove all files for chunk=", chunk_id)
-        # Genrate the chunk parquet files.
-        options = " "
-        if edge_only:
-            options += " --edgeonly "
-        cmdStr = ("python " + self._datagenpy + options +
-            " --chunk " + str(chunk_id) + " " + self._gen_arg_str + " " + self._cfg_file_name)
-        genResult, genOut = self.runProcess(cmdStr)
-        if genResult != 0:
-            print("ERROR Generator failed for", chunk_id, " cmd=", cmdStr, "out=", genOut)
+        # Genrate the chunk csv files.
+        try:
+            self._datGenChunk(chunk_id, edge_only)
+        except IndexError as ie:
+            print(f"ERROR Generator failed for {chunk_id} error={ie}")
+            return 'failed'
+        except RuntimeError as re:
+            print(f"ERROR Generator failed for {chunk_id} error={re}")
             return 'failed'
         return 'success'
 
@@ -460,6 +492,7 @@ class DataGenClient:
         for chunk_id in chunk_recv_set:
             # Generate the csv files for the chunk
             if self._generateChunk(chunk_id, edge_only=False) != 'failed':
+                self._timing_dict.increment() # increment the count of chunks
                 created_chunks.append(chunk_id)
         return created_chunks
 
@@ -550,6 +583,7 @@ class DataGenClient:
         # --in chunk404_EO_Object.csv --in chunk403_CT_Object.csv
         info_list = [] # A list of tuples (tblName, fullPathFile)
         for cfg in self._pt_cfg_dict.items():
+            st_time = self._timing_dict.start()
             # Determine the table name from the config file name.
             cfgFName = cfg[1][0]
             tblName = os.path.splitext(cfgFName)[0]
@@ -585,9 +619,12 @@ class DataGenClient:
                     info_list.append((tblName, full_path))
                 else:
                     os.remove(full_path)
+            self._timing_dict.end("overlap", st_time)
         for info in info_list:
             print("info=", info, "0=", info[0], "1=", info[1])
+            st_time = self._timing_dict.start()
             self._addChunkToTransaction(chunkId, table=info[0], f_path=info[1])
+            self._timing_dict.end("ingest", st_time)
         return True
 
     def _startTransaction(self):
@@ -693,11 +730,12 @@ class DataGenClient:
             s.connect((self._host, self._port))
             self._cl_conn = DataGenConnection(s)
             self._cl_conn.clientReqInit()
-            self._name, self._gen_arg_str, self._cfg_file_contents, ingest_dict = self._cl_conn.clientRespInit()
+            self._name, self._objects, self._visits, self._seed, self._cfg_file_contents, ingest_dict = self._cl_conn.clientRespInit()
             print("ingest_dict=", ingest_dict)
             self._setIngest(ingest_dict)
-            print("name=", self._name, self._gen_arg_str, ":\n", self._cfg_file_contents)
-            print("skip_ingest=", self._skip_ingest)
+            print("cfg_file_contents:\n",self._cfg_file_contents)
+            print(f'name={self._name} objects={self._objects} visits={self._visits} seed={self._seed}'
+                  f'skip_ingest={self._skip_ingest}')
             # Read the datagen config file to get access to an identical chunker and spec.
             self._readDatagenConfig()
             # Write the configuration file
@@ -748,7 +786,9 @@ class DataGenClient:
                 # Create chunks received in the list
                 createdChunks = self._createRecvChunks(chunkRecvSet)
                 # Create edge only chunks as needed.
+                st_time = self._timing_dict.start()
                 haveAllCsvChunks = self._createNeighborChunks(createdChunks)
+                self._timing_dict.end("neighborChunks", st_time)
                 # Generate overlap tables and files for ingest (happens within
                 # the transaction).
                 # Start the transaction
@@ -780,6 +820,11 @@ class DataGenClient:
                 if len(ingestedChunks) == 0:
                     print("ERROR no chunks were successfully ingested, ending program")
                     loop = False
+
+                # client sends timing info back to server.
+                print(self._timing_dict.report())
+                self._cl_conn.clientReportTiming(self._timing_dict)
+                self._timing_dict = TimingDict()
 
                 # Client sends the list of completed chunks back
                 self._sendIngestedChunksToServer(ingestedChunks)

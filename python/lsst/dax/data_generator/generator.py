@@ -25,6 +25,7 @@ import pandas as pd
 
 from collections import defaultdict
 from . import columns
+from .timingdict import TimingDict
 
 __all__ = ["DataGenerator"]
 
@@ -55,6 +56,7 @@ class DataGenerator:
 
         self.spec = spec
         self.tables = spec.keys()
+        self.timingdict = TimingDict()
 
     @staticmethod
     def _resolve_table_order(spec):
@@ -155,11 +157,13 @@ class DataGenerator:
                 # RaDecGenerator needs to run first to determine the
                 # length of the table.
                 if isinstance(generator, columns.RaDecGenerator):
+                    st_time = self.timingdict.start()
                     col_info.block = col_info.generator(chunk_id, table_length, seed, edge_width, edge_only)
                     blockLength = len(col_info.block[0])
                     if table_length != blockLength:
                         # Reducing length to what was generated for RA and Dec
                         table_length = blockLength
+                    self.timingdict.end("gen_raDecGen", st_time)
                 cols.append(col_info)
             table_columns[table] = cols
             rows_per_table[table] = table_length
@@ -171,6 +175,7 @@ class DataGenerator:
             output_columns = {}
             for col_info in cols:
                 print(f"Working on table={table} col_info={col_info.col_names}")
+                st_time = self.timingdict.start()
                 split_column_names = col_info.col_names.split(",")
                 for name in split_column_names:
                     output_columns[name] = []
@@ -191,6 +196,7 @@ class DataGenerator:
                             prereq_row=preq_rw,
                             prereq_tables=prereq_table_contents)
                         self._add_to_list(col_info.block, output_columns, split_column_names)
+                self.timingdict.end(f"gen_{table}_{col_info.col_names}", st_time)
 
             for name in output_columns.keys():
                 temp = np.concatenate(output_columns[name])

@@ -25,26 +25,30 @@ import time
 
 from . import DataGenConnection
 from . import DataIngest
+from lsst.dax.data_generator import TimingDict
 
 
 class ServerTestThrd(threading.Thread):
     """Class for testing the server side of messaging
     """
 
-    def __init__(self, host, port, name, arg_string, cfg_file_contents,
-                 maxCount, chunkListA, pCfgFiles, ingest_dict):
+    def __init__(self, host, port, name, objects, visits, seed, cfg_file_contents,
+                 maxCount, chunkListA, pCfgFiles, ingest_dict, timing_dict):
         super().__init__()
         self.success = None
         self.warnings = 0
         self.host = host
         self.port = port
         self.name = name
-        self.arg_string = arg_string
+        self.objects = objects
+        self.visits = visits
+        self.seed = seed
         self.cfg_file_contents = cfg_file_contents
         self.maxCount = maxCount
         self.chunkListA = chunkListA
         self.pCfgFiles = pCfgFiles
         self.ingest_dict = ingest_dict
+        self.timing_dict = timing_dict
 
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -59,7 +63,8 @@ class ServerTestThrd(threading.Thread):
             # receive init from client
             serv.servReqInit()
             # server sending back configuration information for datagenerator
-            serv.servRespInit(self.name, self.arg_string, self.cfg_file_contents, self.ingest_dict)
+            serv.servRespInit(self.name, self.objects, self.visits, self.seed,
+                              self.cfg_file_contents, self.ingest_dict)
             # client requests partioner configuration files.
             pCfgDone = False
             while not pCfgDone:
@@ -79,6 +84,13 @@ class ServerTestThrd(threading.Thread):
                 self.success = False
                 raise RuntimeError("serv test failed", self.name, maxCount)
             serv.servSendChunks(self.chunkListA)
+            # Receive timing information from client
+            timing_dict = serv.servRecvTiming()
+            print("timing_dict", timing_dict)
+            if timing_dict != self.timing_dict:
+                self.success = False
+                raise RuntimeError("serv test failed timing_dict mismatch",
+                                   timing_dict, "\n", self.timing_dict)
             # receive completed chunks from client
             completed_chunks = []
             finished = False
@@ -100,35 +112,42 @@ class ClientTestThrd(threading.Thread):
     """Class for testing the client side of messaging
     """
 
-    def __init__(self, host, port, name, arg_string, cfg_file_contents,
-                 maxCount, chunkListA, pCfgFiles, ingest_dict):
+    def __init__(self, host, port, name, objects, visits, seed, cfg_file_contents,
+                 maxCount, chunkListA, pCfgFiles, ingest_dict, timing_dict):
         super().__init__()
         self.success = None
         self.warnings = 0
         self.host = host
         self.port = port
         self.name = name
-        self.arg_string = arg_string
+        self.objects = objects
+        self.visits = visits
+        self.seed = seed
         self.cfg_file_contents = cfg_file_contents
         self.maxCount = maxCount
         self.chunkListA = chunkListA
         self.pCfgFiles = pCfgFiles
         self.ingest_dict = ingest_dict
+        self.timing_dict = timing_dict
 
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((self.host, self.port))
             client = DataGenConnection.DataGenConnection(s)
             client.clientReqInit()
-            name, arg_string, cfg_file_contents, ingest_dict = client.clientRespInit()
+            name, objects, visits, seed, cfg_file_contents, ingest_dict = client.clientRespInit()
             print("ingest_dict=", ingest_dict)
-            if (name == self.name and arg_string == self.arg_string
+            # Check that the values sent over the connection match what should have been sent.
+            if (name == self.name
+                and objects == self.objects
+                and visits == self.visits
+                and seed == self.seed
                 and cfg_file_contents == self.cfg_file_contents
                 and ingest_dict == self.ingest_dict):
                 pass
             else:
                 self.success = False
-                raise RuntimeError("Client test failed", name, arg_string, cfg_file_contents)
+                raise RuntimeError("Client test failed", name, cfg_file_contents)
             # Request partioner configuration files from server
             pCfgIndex = 0
             pCfgDict = {}
@@ -158,6 +177,8 @@ class ClientTestThrd(threading.Thread):
             else:
                 print("chunks read success")
             self.warnings += client.warnings
+            # send back timing information
+            client.clientReportTiming(self.timing_dict)
             # Send the list of completed chunks back
             completedChunks = chunkListARecv.copy()
             while len(completedChunks) > 0:
@@ -168,14 +189,18 @@ class ClientTestThrd(threading.Thread):
         if self.success is None: self.success = True
 
 
-def testDataGenConnection(port, name, arg_string, cfg_file_contents, maxCount,
-                          chunkListA, pCfgFiles, ingest_dict):
-    """Short test to check that inputs to one side match outputs on the other"""
+def testDataGenConnection(port, name, objects, visits, seed, cfg_file_contents, maxCount,
+                          chunkListA, pCfgFiles, ingest_dict, timing_dict):
+    """Short test to check that inputs to one side match outputs on the other.
+    Both the client thread and server thread are given the same information.
+    If transmitted information doesn't match what is expected, there is a
+    problem with encoding/decoding.
+    """
     host = "127.0.0.1"
-    servThrd = ServerTestThrd(host, port, name, arg_string, cfg_file_contents,
-                              maxCount, chunkListA, pCfgFiles, ingest_dict)
-    clientThrd = ClientTestThrd(host, port, name, arg_string, cfg_file_contents,
-                                maxCount, chunkListA, pCfgFiles, ingest_dict)
+    servThrd = ServerTestThrd(host, port, name, objects, visits, seed, cfg_file_contents,
+                              maxCount, chunkListA, pCfgFiles, ingest_dict, timing_dict)
+    clientThrd = ClientTestThrd(host, port, name, objects, visits, seed, cfg_file_contents,
+                                maxCount, chunkListA, pCfgFiles, ingest_dict, timing_dict)
     servThrd.start()
     time.sleep(1)
     clientThrd.start()
@@ -202,18 +227,26 @@ def connectionTest():
                  2:("junk_cfg", "blah blah junk\n more stuff")}
     ingest_dict = {'host':'mt.st.com', 'port':2461, 'auth': '1234',
                             'db':'afake_db', 'skip': False}
-    success, s_warn1, c_warn1 = testDataGenConnection(14242, 'qt', '--visits 30 --objects 10000',
+    timing_dict = TimingDict()
+    timing_dict.add('gen_o', 345.23)
+    timing_dict.add('gen_fs', 981.23)
+    timing_dict.add('conv', 12.9999)
+    timing_dict.add('trans', 42.1)
+    timing_dict.add('del', 0.123)
+    timing_dict.increment()
+    success, s_warn1, c_warn1 = testDataGenConnection(14242, 'qt', 10000, 30, 178,
                           'bunch of json file entries', 28, cListA,
-                          pCfgFiles, ingest_dict)
+                          pCfgFiles, ingest_dict, timing_dict)
     if not success:
         print("First test failed")
         exit(1)
 
     ingest_dict = {'host':'mt.st.edu', 'port':0, 'auth': '',
                    'db':'diff_db', 'skip': True}
-    success, s_warn2, c_warn2 = testDataGenConnection(14242, 'qt', '--visits 30 --objects 10000',
+    timing_dict = TimingDict()
+    success, s_warn2, c_warn2 = testDataGenConnection(14242, 'qt', 10000, 30, 1,
                           'bunch of json file entries', 28, cListA,
-                          pCfgFiles, ingest_dict)
+                          pCfgFiles, ingest_dict, timing_dict)
 
     print("success=", success, "serv_warn=", s_warn1, s_warn2, "client_warn=", c_warn1, c_warn2)
 

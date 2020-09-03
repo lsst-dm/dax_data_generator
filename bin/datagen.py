@@ -45,8 +45,7 @@ if __name__ == "__main__":
     print("tables=", tables)
 
     for table_name, table in tables.items():
-        edgeType = "CT"  # complete
-        if edge_only: edgeType = "EO" # edge only
-        table.to_csv("chunk{:d}_{:s}_{:s}.csv".format(chunk_id, edgeType, table_name),
+        edge_type = "EO" if edge_only else "CT"
+        table.to_csv("chunk{:d}_{:s}_{:s}.csv".format(chunk_id, edge_type, table_name),
                      header=False, index=False)
 

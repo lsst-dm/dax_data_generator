@@ -32,6 +32,7 @@ from enum import Enum
 from .DataGenConnection import DataGenConnection
 from .DataGenConnection import DataGenError
 from .DataIngest import DataIngest
+from lsst.dax.data_generator import TimingDict
 
 
 class GenerationStage(Enum):
@@ -131,10 +132,12 @@ class DataGenServer:
         # lock to protect _sequence, _clients
         self._client_lock = threading.Lock()
         # lock to protect _total_generated_chunks, _chunksToSend,
-        # _chunksToSendSet
+        # _chunksToSendSet, _timing_dict
         self._list_lock = threading.Lock()
         # All the chunks generated so far
         self._total_generated_chunks = set()
+        # Store timing data from clients
+        self._timing_dict = TimingDict()
 
         # Read configuration to set other values.
         with open(self._cfgFileName, 'r') as cfgFile:
@@ -146,8 +149,10 @@ class DataGenServer:
         self._base_cfg_dir = os.path.abspath(self._cfg['fakeDataGenerator']['baseCfgDir'])
         # The arguments that will be passed from server to
         # clients to dax_data_generator/bin/datagen.py.
-        self._cfg_fake_args = self._cfg['fakeDataGenerator']['arguments']
-        print("port=", self._port, self._cfg_fake_args)
+        self._visits = self._cfg['fakeDataGenerator']['visits']
+        self._objects = self._cfg['fakeDataGenerator']['objects']
+        self._seed = self._cfg['fakeDataGenerator']['seed']
+        print(f'port={self._port} objects={self._objects} visits={self._visits}')
 
         # The name and contents of the configuration file that will be passed
         # from server to clients to dax_data_generator/bin/datagen.py.
@@ -199,8 +204,10 @@ class DataGenServer:
                 chunk_info = ChunkInfo(chunk)
                 self._chunks_to_send[chunk] = chunk_info
                 self._chunks_to_send_set.add(chunk)
+        self._chunks_to_send_total = len(self._chunks_to_send_set)
+        self._limbo_count = 0 # number of chunks that had problems being created.
         print("len(totalChunks)=", len(total_chunks),
-              "len(self._chunksToSendSet)=", len(self._chunks_to_send_set))
+              "_chunks_to_send_total=", self._chunks_to_send_total)
 
         # Track all client connections so it is possible to
         # determine when the server's job is finished.
@@ -313,7 +320,8 @@ class DataGenServer:
             # receive init from client
             sv_conn.servReqInit()
             # server sending back configuration information
-            sv_conn.servRespInit(name, self._cfg_fake_args, self._fakeCfgData, self._ingest_dict)
+            sv_conn.servRespInit(name, self._objects, self._visits, self._seed,
+                                 self._fakeCfgData, self._ingest_dict)
             # client requests partioner configuration files, starting with
             # pCfgIndex=0 and incrementing it until pCfgName==""
             pCfgDone = False
@@ -328,6 +336,7 @@ class DataGenServer:
                     pCfgContents = ""
                     pCfgDone = True
                 sv_conn.servSendPartionCfgFile(pCfgIndex, pCfgName, pCfgContents)
+
             # client requesting chunk list
             while self._loop and not out_of_chunks:
                 clientReqChunkCount = sv_conn.servRecvReqChunks()
@@ -349,6 +358,9 @@ class DataGenServer:
                     out_of_chunks = True
                     conn.close()
                 else:
+                    # receive timing information from client
+                    client_times = sv_conn.servRecvTiming()
+                    print("client times ", client_times.report())
                     # receive completed chunks from client
                     completed_chunks = []
                     finished = False
@@ -369,6 +381,18 @@ class DataGenServer:
                             for missing in diff:
                                 cInfo = self._chunks_to_send[missing]
                                 cInfo.gen_stage = GenerationStage.LIMBO
+                                self._limbo_count += 1
+                with self._list_lock:
+                    total_to_send = self._chunks_to_send_total
+                    to_send_count = len(self._chunks_to_send_set)
+                    completed_count = len(self._total_generated_chunks)
+                    limbo_count = self._limbo_count
+                    self._timing_dict.combine(client_times)
+                print('Chunks total        =', total_to_send)
+                print('Chunks left to send =', to_send_count)
+                print('Chunks finished     =', completed_count)
+                print('Chunks in limbo     =', limbo_count)
+                print('Chunks processing   =', (total_to_send - (to_send_count + completed_count + limbo_count)))
         except socket.gaierror as e:
             print("breaking connection", addr, name, "socket.gaierror:", e)
         except socket.error as e:
@@ -462,6 +486,7 @@ class DataGenServer:
         print("Chunks assigned=", counts[GenerationStage.ASSIGNED])
         print("Chunks unassigned=", counts[GenerationStage.UNASSIGNED])
         print("Chunks limbo=", counts[GenerationStage.LIMBO])
+        print("\n", self._timing_dict.report())
         # Publish database if all chunks were generated.
         if self._skip_ingest:
             print("skipping publishing")
