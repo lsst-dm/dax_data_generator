@@ -23,12 +23,23 @@ import argparse
 import getopt
 import sys
 
+import lsst.dax.distribution.chunklistfile as chunklistfile
 from lsst.dax.distribution.DataGenServer import DataGenServer
 
 def usage():
-    print("-h, --help  help")
-    print("-k, --skipIngest  skip trying to ingest anything")
-    print("-s, --skipSchema  skip sending schema, needed when schema was already sent.")
+    print('-h, --help  help')
+    print('-k, --skipIngest  skip trying to ingest anything')
+    print('-s, --skipSchema  skip sending schema, needed when schema was already sent.')
+    print('-o, --outDir      output log directory default "~/log/"')
+    print('-i, --inDir       input directory, only "target.out" must exist\n'
+          '                  ex: "~/log/" which would look for\n'
+          '                      ~/log/target.out, ~/log/completed.out,\n'
+          '                      ~/log/assigned.out, and ~/log/imbo.out')
+    print('-r, --raw  string describing targets chunk ids such as "0:10000" or "0,1,3,466"')
+    print('')
+    print('If niether -i or -r are specified, target list will include all valid chunks ids.')
+    print('If -r and -i are both specified, target list will be union of target file and\n'
+          '-r option while completed, assigned, and limbo lists created from the files found.')
 
 def server():
     """Temporary main function call.
@@ -40,11 +51,14 @@ def server():
     """
     argumentList = sys.argv[1:]
     print("argumentList=", argumentList)
-    options = "hksc:"
+    options = "hksc:i:"
     long_options = ["help", "skipIngest", "skipSchema", "configfile"]
     skip_ingest = False
     skip_schema = False
-    configFile = "configs/fakedb/serverCfg.yml"
+    config_file = "configs/fakedb/serverCfg.yml"
+    in_dir = None
+    out_dir = "~/log/"
+    raw = None
     try:
         arguments, values = getopt.getopt(argumentList, options, long_options)
         print("arguments=", arguments)
@@ -57,13 +71,31 @@ def server():
             elif arg in ("-s", "--skipSchema"):
                 skip_schema = True
             elif arg in ("-c", "--configfile"):
-                configFile = val
+                config_file = val
+            elif arg in ("-o", "--outDir"):
+                out_dir = val
+            elif arg in ("-i", "--inDir"):
+                in_dir = val
+            elif arg in ("-r", "--raw"):
+                raw = val
     except getopt.error as err:
         print (str(err))
         exit(1)
     print("skip_ingest=", skip_ingest, "skip_schema=", skip_schema, "values=", values)
+    print(f"configfile={config_file} in_dir={in_dir} raw={raw}")
+    # If in_dir is defined (empty string is valid), see if files can be found
+    if not in_dir is None:
+        # Throws if targetf not found
+        targetf, completedf, assignedf, limbof = chunklistfile.ChunkLogs.checkFiles(in_dir)
+        print(f"target={targetf} completed={completedf} assigned={assignedf} limbo={limbof}")
+        clfs = chunklistfile.ChunkLogs(targetf, completedf, assignedf, limbof)
+    else:
+        clfs = chunklistfile.ChunkLogs(None)
+    #&&& chunklistfile.ChunkLogs
+    #&&&clfs = chunklistfile.ChunkLogs(dummyf)
     # 0-50000 would be all chunks for stripes = 200 substripes = 5
-    dgServ = DataGenServer(configFile, 0, 2000, skip_ingest, skip_schema)
+    #&&&dgServ = DataGenServer(config_file, 0, 2000, skip_ingest, skip_schema)
+    dgServ = DataGenServer(config_file, clfs, out_dir, skip_ingest, skip_schema)
     dgServ.start()
 
 if __name__ == "__main__":

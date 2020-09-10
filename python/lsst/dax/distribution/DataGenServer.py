@@ -32,6 +32,8 @@ from enum import Enum
 from .DataGenConnection import DataGenConnection
 from .DataGenConnection import DataGenError
 from .DataIngest import DataIngest
+from .chunklistfile import ChunkLogs
+from .chunklistfile import ChunkListFile
 from lsst.dax.data_generator import TimingDict
 
 
@@ -87,16 +89,12 @@ class DataGenServer:
     ----------
     cfg_file_name : string
         The name of the server configuration file
-    min_chunk_num : int
-        The bottom end of the range of chunkIds to generate.
-    max_chunk_num : int
-        The top end of the range of chunks to generate.
-        TODO: Both min_chunk_num and max_chunk_num should be replaced by a file
-            containing chunkIds to generate with a format like:
-            "50-99, 105, 110, 140-300", that accepts ranges and
-            individual chunkIds. This progam can then generate a file in this
-            format containing failed chunkIds, which can then be fed back to
-            the program.
+    chunk_logs_in : ChunkLogs
+        Data from previously generated log files or user input that identifies
+        which chunks should be generated.
+    log_dir : str
+        Directory where chunk logs will be written. If it is None, no log
+        files will be written. Empty string is valid.
     skip_ingest : bool
         When true, do not try to pass generated files to the ingest system.
     skip_schema : bool
@@ -117,12 +115,15 @@ class DataGenServer:
     should terminate the program.
     """
 
-    def __init__(self, cfg_file_name, min_chunk_num, max_chunk_num,
+    #&&& config_file, clfs, out_dir, skip_ingest, skip_schema
+    #&&&def __init__(self, cfg_file_name, min_chunk_num, max_chunk_num,
+    #&&&             skip_ingest, skip_schema):
+    def __init__(self, cfg_file_name, chunk_logs_in, log_dir,
                  skip_ingest, skip_schema):
         self._cfgFileName = cfg_file_name
         # Set of all chunkIds to generate. sphgeom::Chunker is used to limit
         # the list to valid chunks.
-        total_chunks = set(range(min_chunk_num, max_chunk_num))
+        #&&&total_chunks = set(range(min_chunk_num, max_chunk_num))
         self._skip_ingest = skip_ingest
         self._skip_schema = skip_schema
         # Set to false to stop accepting and end the program
@@ -195,19 +196,35 @@ class DataGenServer:
         assert 'chunker' in spec_globals, "Specification file must define a variable 'chunker'."
         chunker = spec_globals['chunker']
         all_chunks = chunker.getAllChunks()
-        self._chunks_to_send = {} # Dictionary of information on chunks to send
-        # Set of chunks to send, desirable to have in order but not essential.
-        self._chunks_to_send_set = set()
+        #&&&self._chunks_to_send = {} # Dictionary of information on chunks to send
+        #&&& Set of chunks to send, desirable to have in order but not essential.
+        #&&&self._chunks_to_send_set = set()
         print("Finding valid chunk numbers...")
-        for chunk in total_chunks:
-            if chunk in all_chunks:
-                chunk_info = ChunkInfo(chunk)
-                self._chunks_to_send[chunk] = chunk_info
-                self._chunks_to_send_set.add(chunk)
+        #&&&for chunk in total_chunks:
+        #&&&    if chunk in all_chunks:
+        #&&&        chunk_info = ChunkInfo(chunk)
+        #&&&        self._chunks_to_send[chunk] = chunk_info
+        #&&&        self._chunks_to_send_set.add(chunk)
+        # Use provided information to build the set of chunks to generate.
+        chunk_logs_in.build(all_chunks)
+        # Use the input information/files to create the output logs.
+        #&&& HERE put addCompleted() and friend calls in where needed.
+        self._chunk_logs = chunk_logs_in.createOutput(log_dir)
+        if not log_dir is None:
+            # Start logging
+            self._chunk_logs.write()
+        # Set of chunks to send
+        self._chunks_to_send_set = self._chunk_logs.result_set.copy()
         self._chunks_to_send_total = len(self._chunks_to_send_set)
         self._limbo_count = 0 # number of chunks that had problems being created.
-        print("len(totalChunks)=", len(total_chunks),
-              "_chunks_to_send_total=", self._chunks_to_send_total)
+        # Dictionary of information about chunks being sent.
+        # self._chunks_to_send only includes information about this run.
+        # self._chunk_logs may include information from previous runs.
+        self._chunks_to_send = {}
+        for chunk in self._chunks_to_send_set:
+            chunk_info = ChunkInfo(chunk)
+            self._chunks_to_send[chunk] = chunk_info
+        print("_chunks_to_send_total=", self._chunks_to_send_total)
 
         # Track all client connections so it is possible to
         # determine when the server's job is finished.
@@ -350,6 +367,7 @@ class DataGenServer:
                         cInfo.gen_stage = GenerationStage.ASSIGNED
                         cInfo.client_id = name
                         cInfo.client_addr = addr
+                    self._chunk_logs.addAssigned(chunksForClient)
                     for chunk in chunksForClient:
                         self._chunks_to_send_set.discard(chunk)
                 sv_conn.servSendChunks(chunksForClient)
@@ -370,6 +388,7 @@ class DataGenServer:
                         completed_chunks.extend(completedC)
                     # Mark completed chunks as finished
                     with self._list_lock:
+                        self._chunk_logs.addCompleted(completed_chunks)
                         for completed in completed_chunks:
                             self._total_generated_chunks.add(completed)
                             cInfo = self._chunks_to_send[completed]
@@ -378,6 +397,7 @@ class DataGenServer:
                     if len(diff) > 0:
                         # Mark missing chunks as being in limbo.
                         with self._list_lock:
+                            self._chunk_logs.addLimbo(diff)
                             for missing in diff:
                                 cInfo = self._chunks_to_send[missing]
                                 cInfo.gen_stage = GenerationStage.LIMBO
@@ -474,6 +494,7 @@ class DataGenServer:
         print("starting")
         self._servAccept()
         print("Done, generated ", self._total_generated_chunks)
+
         print("chunks failed chunks:", self.chunksInState([GenerationStage.LIMBO, GenerationStage.ASSIGNED]))
         counts = {GenerationStage.UNASSIGNED:0,
             GenerationStage.ASSIGNED:0,
@@ -482,6 +503,9 @@ class DataGenServer:
         for chk in self._chunks_to_send:
             chk_info = self._chunks_to_send[chk]
             counts[chk_info.gen_stage] += 1
+
+        print(self._chunk_logs.report())
+
         print("Chunks generated=", counts[GenerationStage.FINISHED])
         print("Chunks assigned=", counts[GenerationStage.ASSIGNED])
         print("Chunks unassigned=", counts[GenerationStage.UNASSIGNED])
