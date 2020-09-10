@@ -23,6 +23,7 @@
 import numpy as np
 import pandas as pd
 import math
+from astropy.coordinates import SkyCoord
 
 from collections import defaultdict
 from . import columns
@@ -159,11 +160,14 @@ class DataGenerator:
             generated_data_per_box = []
             boxes = self._make_subchunk_boxes(chunk_id, edge_width=edge_width,
                                                                   edge_only=edge_only)
+            chunk_center = SkyCoord(ra_center, dec_center, frame="icrs", unit="deg")
+
             for box_n, box in enumerate(boxes):
                 assert(box.area() > 0)
                 box_rowcount = int(chunk_density * box.area())
                 unique_box_id = chunk_id*8 + box_n
                 output = self._generate_table_block(box, column_generators,
+                                                    chunk_center=chunk_center,
                                                     row_count=box_rowcount,
                                                     prereq_rows=prereq_rows,
                                                     prereq_tables=output_tables,
@@ -220,11 +224,8 @@ class DataGenerator:
 
         return boxes
 
-    def _generate_table_block(self, box, column_generators, row_count, unique_box_id, **kwargs):
-
-        # XXX: these need to be reworked
-        prereq_rows = None
-        prereq_tables = []
+    def _generate_table_block(self, box, column_generators, row_count, unique_box_id,
+                              chunk_center, prereq_tables=None, **kwargs):
 
         output_columns = {}
 
@@ -234,22 +235,12 @@ class DataGenerator:
             for name in split_column_names:
                 output_columns[name] = []
 
-            if prereq_rows is None:
-                prereq_tbls = {t: output_tables[t] for t in prereq_tables}
-                block = column_generator(
-                    box, row_count, self.seed,
-                    prereq_tables=prereq_tbls)
-                self._add_to_list(block, output_columns, split_column_names)
-            else:
-                prereq_table_contents = {t: output_tables[t] for t in prereq_tables}
-                for n in range(len(output_tables[prereq_rows])):
-                    preq_rw = output_tables[prereq_rows].iloc[n]
-                    block = column_generator(
-                        box, row_count, self.seed,
-                        unique_box_id=unique_box_id,
-                        prereq_row=preq_rw,
-                        prereq_tables=prereq_table_contents)
-                    self._add_to_list(block, output_columns, split_column_names)
+            block = column_generator(
+                box, row_count, self.seed,
+                chunk_center=chunk_center,
+                unique_box_id=unique_box_id,
+                prereq_tables=prereq_tables)
+            self._add_to_list(block, output_columns, split_column_names)
 
         return output_columns
 

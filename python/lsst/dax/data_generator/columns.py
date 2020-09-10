@@ -374,41 +374,32 @@ class ForcedSourceGenerator(ColumnGenerator):
         self.visit_radius = visit_radius
         self.column_val = column_val
 
-    def __call__(self, chunk_id, length, seed, prereq_row=None, prereq_tables=None):
-        assert prereq_row is not None, "ForcedSourceGenerator requires rows from Object."
+    def __call__(self, box, length, seed, prereq_row=None, prereq_tables=None, unique_box_id=0,
+                 chunk_center=None):
         assert prereq_tables is not None, "ForcedSourceGenerator requires the Visit table."
+        assert chunk_center is not None, "Must supply chunk center"
 
-        np.random.seed(calcSeedFrom(chunk_id, seed, self.column_val))
+        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_val))
 
         visit_table = prereq_tables['CcdVisit']
-        object_record = prereq_row
+        object_table = prereq_tables['Object']
 
-        # deltas - distance between 2 points on the sphere for everything in the table
-        deltas = (SkyCoord(ra=visit_table['ra'], dec=visit_table['decl'], unit="deg")
-                  .separation(SkyCoord(ra=object_record['ra'], dec=object_record['decl'],
-                  unit="deg")).degree)
-        n_matching_visits = np.sum(deltas < self.visit_radius)
 
-        objectId = np.zeros(n_matching_visits, dtype=int) + int(object_record['objectId'])
-        psFlux = np.random.randn(n_matching_visits)
-        psFluxSigma = np.zeros(n_matching_visits) + 0.1
-        ccdVisitId = np.zeros(n_matching_visits, dtype=int)
+        visit_skycoords = SkyCoord(ra=visit_table['ra'], dec=visit_table['decl'], unit="deg")
+        visit_deltas = chunk_center.separation(visit_skycoords).degree
+        sel_matching_visits, = np.where(visit_deltas < self.visit_radius)
+        n_matching_visits = len(sel_matching_visits)
 
-        index_position = 0
-        for filter_name in self.filters:
-            sel, = np.where((visit_table['filterName'] == filter_name) &
-                            (deltas < self.visit_radius))
 
-            matching_filter_visitIds = visit_table['ccdVisitId'][sel]
+        out_objectIds = np.repeat(object_table['objectId'], n_matching_visits)
+        out_ccdVisitIds = np.tile(visit_table['ccdVisitId'].iloc[sel_matching_visits], len(object_table))
 
-            if(len(matching_filter_visitIds) == 0):
-                continue
+        n_rows_total = n_matching_visits * len(object_table)
+        psFlux = np.repeat(object_table['mag_g'], n_matching_visits)  + np.random.randn(n_rows_total)
+        psFluxSigma = np.zeros(n_rows_total) + 0.1
 
-            n_filter_visits = len(matching_filter_visitIds)
-            output_indices = slice(index_position, index_position + n_filter_visits)
-            ccdVisitId[output_indices] = matching_filter_visitIds
-            psFlux[output_indices] += object_record['mag_{:s}'.format(filter_name)]
-            index_position += n_filter_visits
+        assert len(out_objectIds) == n_rows_total
+        assert len(out_ccdVisitIds) == n_rows_total
 
-        return (objectId, ccdVisitId, psFlux, psFluxSigma)
+        return (out_objectIds, out_ccdVisitIds, psFlux, psFluxSigma)
 

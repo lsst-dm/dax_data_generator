@@ -24,8 +24,7 @@ spec = {
         "density": UniformSpatialModel(1000),
     },
     "ForcedSource": {
-        "prereq_row": "Object",
-        "prereq_tables": ["CcdVisit"],
+        "prereq_tables": ["CcdVisit", "Object"],
         "columns": {
             "objectId,ccdVisitId,psFlux,psFlux_Sigma":
                 columns.ForcedSourceGenerator(visit_radius=1.4, filters="ugriz"),
