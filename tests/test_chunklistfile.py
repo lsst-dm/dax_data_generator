@@ -6,7 +6,7 @@ import lsst.dax.distribution.chunklistfile as chunklistfile
 
 class TData:
     def __init__(self):
-        self.good_raw = "3:15,30,77,108,55,0,999"
+        self.good_raw = "3:15\n30\n77\n108\n55\n0\n999"
         # valid_ids are chunks that exist in the partitioning scheme
         self.valid_ids = [0,1,2,3,4,10,15,30,55,999,543,1000]
         self.merged_set = set([0,3,4,10,15,30,55,999])
@@ -19,7 +19,7 @@ class TData:
         self.result_expected = set([3,10,55,0,999])
         # Produced set for ok_raw should match good_set despite
         # extra elements
-        self.ok_raw = "3:15,30,77,108,5,6,55,0,999"
+        self.ok_raw = "3:15\n30\n77\n108\n5\n6\n55\n0\n999"
 
         # for testing ChunkLogs, tests use self.valid_ids
         self.lists_raw = "9:100"
@@ -27,8 +27,8 @@ class TData:
         self.lists_expected = [10,15,30,55]
 
         # These should fail
-        self.bad_raw_a = "3s:15,30,77"
-        self.bad_raw_b = "3:15,3w0,77"
+        self.bad_raw_a = "3s:15\n30\n77"
+        self.bad_raw_b = "3:15\n3w0\n77"
 
 class ChunkListFileTests(unittest.TestCase):
 
@@ -130,7 +130,6 @@ class ChunkListFileTests(unittest.TestCase):
     def testChunkFileLists(self):
         tdata = TData()
         clogs = chunklistfile.ChunkLogs(None, raw = tdata.lists_raw)
-        #&&&clogs.build(tdata.valid_ids, tdata.lists_raw)
         clogs.build(tdata.valid_ids)
         self.assertSetEqual(clogs.result_set, set(tdata.lists_expected))
         print(clogs.report())

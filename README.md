@@ -186,3 +186,31 @@ export LSST_LOG_CONFIG=$PWD/log4cxx.replication.properties
 qserv-replica-master-http --debug --config=$CONFIG --instance-id=mono --qserv-db-password=CHANGEME >& $QSERV_INSTALL_DIR/var/log/qserv-replica-master-http.log&
 qserv-replica-worker worker --debug --config=$CONFIG --instance-id=mono --qserv-db-password=CHANGEME >& $QSERV_INSTALL_DIR/var/log/qserv-replica-worker.log&
 ps -auxwww | grep "qserv-replica-"
+
+
+Restarting a Problem Run with Log Files
+=======================================
+The chunks are written to chunk log files in the provided log directory
+(default '~/log').
+If there are any problems the log files can be moved to a new
+directory (possibly edited) and used as input files to continue.
+
+Simply put if there a problem is encountered with:
+  bin/datagenserver.py -o "~/log/" -r "0:200000"
+It can be restarted with:
+  bin/datagenserver.py -i "~/log/" -o "~/new_log/"
+Note that the original log directory is the input and a new output log
+directory is defined. Also, it's likely the log files will need to be
+edited.
+
+The log files are:
+    target.clg - all chunks that should be created
+    assigned.clg - all chunks that were assigned to clients to be created
+    completed.clg - all chunks that were created
+    limbo.clg - chunks that clients failed to create
+The limbo.clg file is likely incomplete. Anything in assigned.clg but not in
+completed.clg should be checked by hand. If the chunk has been created and is
+complete, it should be added to completed.clg and removed from limbo.clg.
+If the chunk doesn't exist or is incomplete, it should be removed from the
+database, assigned.clg, limbo.clg, and completed.clg so that it will be
+generated on the next run.

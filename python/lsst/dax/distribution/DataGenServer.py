@@ -115,15 +115,11 @@ class DataGenServer:
     should terminate the program.
     """
 
-    #&&& config_file, clfs, out_dir, skip_ingest, skip_schema
-    #&&&def __init__(self, cfg_file_name, min_chunk_num, max_chunk_num,
-    #&&&             skip_ingest, skip_schema):
     def __init__(self, cfg_file_name, chunk_logs_in, log_dir,
                  skip_ingest, skip_schema):
         self._cfgFileName = cfg_file_name
         # Set of all chunkIds to generate. sphgeom::Chunker is used to limit
         # the list to valid chunks.
-        #&&&total_chunks = set(range(min_chunk_num, max_chunk_num))
         self._skip_ingest = skip_ingest
         self._skip_schema = skip_schema
         # Set to false to stop accepting and end the program
@@ -196,19 +192,10 @@ class DataGenServer:
         assert 'chunker' in spec_globals, "Specification file must define a variable 'chunker'."
         chunker = spec_globals['chunker']
         all_chunks = chunker.getAllChunks()
-        #&&&self._chunks_to_send = {} # Dictionary of information on chunks to send
-        #&&& Set of chunks to send, desirable to have in order but not essential.
-        #&&&self._chunks_to_send_set = set()
         print("Finding valid chunk numbers...")
-        #&&&for chunk in total_chunks:
-        #&&&    if chunk in all_chunks:
-        #&&&        chunk_info = ChunkInfo(chunk)
-        #&&&        self._chunks_to_send[chunk] = chunk_info
-        #&&&        self._chunks_to_send_set.add(chunk)
         # Use provided information to build the set of chunks to generate.
         chunk_logs_in.build(all_chunks)
         # Use the input information/files to create the output logs.
-        #&&& HERE put addCompleted() and friend calls in where needed.
         self._chunk_logs = chunk_logs_in.createOutput(log_dir)
         if not log_dir is None:
             # Start logging

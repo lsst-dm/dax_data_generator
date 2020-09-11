@@ -36,10 +36,23 @@ class ChunkListFile:
             f_raw = list_file.read()
         self.parse(f_raw)
 
-    def parse(self, raw):
+    def parse(self, raw, separator='\n'):
         """Parse the raw string for chunk numbers to put in chunk_set.
+
+        Parameters
+        ----------
+        raw : str
+            String to parse for chunk id numbers.
+        separator : str optional
+            Character or string used to separate id numbers. The normal
+            separator is '\n' but ',' is more appropriate for strings
+            entered on the command line.
+
+        Note
+        ----
+        Extra separators are ignored.
         """
-        split_raw = raw.split(',')
+        split_raw = raw.split(separator)
         for st in split_raw:
             if ':' in st:
                 st_split = st.split(':')
@@ -50,12 +63,12 @@ class ChunkListFile:
                         tmp = val_a
                         val_a = val_b
                         val_b = tmp
-                    for j in range(val_a, val_b + 1): #&&& probbaly a pythonic way to do this.
+                    for j in range(val_a, val_b + 1):
                         self.chunk_set.add(j)
                 else:
                     raise ValueError(f"value error in st={st} {st_split}")
             elif not st or st.isspace():
-                pass #ignore empty file and multiple commas in a row
+                pass #ignore empty file and multiple separator in a row
             else:
                 val = int(st)
                 self.chunk_set.add(val)
@@ -84,7 +97,7 @@ class ChunkListFile:
     def toStrDsk(self, aset):
         """Return a string of aset to write to disk.
         """
-        return '' if not aset else ','.join(str(j) for j in aset)
+        return '' if not aset else '\n'.join(str(j) for j in aset)
 
     def write(self):
         """Write the set to file, overwriting previous file.
@@ -111,7 +124,7 @@ class ChunkListFile:
         # Only write to file if a file has already been opened for writing.
         if self.file_wopen:
             with open(self._fname, 'a') as list_file:
-                list_file.write("," + self.toStrDsk(needed))
+                list_file.write('\n' + self.toStrDsk(needed))
 
 
 class ChunkLogs:
@@ -126,8 +139,8 @@ class ChunkLogs:
     (essentially logs). These files can be used as inputs to this class,
     allowing a new instance of the program to continue from the
     previous state.
-        The files are appended with simple comma separated integer lists #&&& change to newline
-    to make appending values simple. Extra commas are ignored.
+        The files are appended with simple '\n' separated integer lists
+    to make appending values simple. Extra '\n' are ignored.
 
     Parameters
     ----------
@@ -187,8 +200,6 @@ class ChunkLogs:
         rpt += f' Problem:  {len(problem_set)}'
         return rpt
 
-
-    #&&&def build(self, all_valid_chunks, target_raw=None):
     def build(self, all_valid_chunks):
         """Build this object from paramters and files.
 
@@ -197,8 +208,6 @@ class ChunkLogs:
         all_valid_chunks : list of int
             List of all valid chunks, used to remove invalid chunk ids
             from target.
-        #&&&target_raw : str
-        #&&&    If not None, create _target from this string.
 
         Note
         ------
@@ -208,11 +217,10 @@ class ChunkLogs:
 
         #Handle raw string input
         raw_in = None
-        #&&&if not target_raw is None:
-        #&&&    self._target_raw = target_raw
         if self._target_raw:
             raw_in = ChunkListFile(None)
-            raw_in.parse(self._target_raw)
+            # Use comma for separator since this came from the command line.
+            raw_in.parse(self._target_raw, ',')
 
         if self._target._fname:
             # Use the file, if provided. If raw text input
@@ -363,7 +371,6 @@ class ChunkLogs:
         ----
         These will be written to disk if the file already started.
         """
-        print ("&&& addAssigned {chunk_ids}")
         self._assigned.add(chunk_ids)
 
     def addCompleted(self, chunk_ids):
@@ -378,7 +385,6 @@ class ChunkLogs:
         ----
         These will be written to disk if the file already started.
         """
-        print ("&&& addCompleted {chunk_ids}")
         self._completed.add(chunk_ids)
 
     def addLimbo(self, chunk_ids):
