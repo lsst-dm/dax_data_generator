@@ -106,32 +106,32 @@ class ChunkListFileTests(unittest.TestCase):
         clf_target.write()
 
         # base ChunkFilesList off of clf_target and write
-        clfs = chunklistfile.ChunkLogs(dummyf)
-        clfs.build(tdata.valid_ids)
+        clogs = chunklistfile.ChunkLogs(dummyf)
+        clogs.build(tdata.valid_ids)
         # create outputs
-        clfs_out = clfs.createOutput("/tmp/tclfs_")
-        clfs_out.write()
+        clogs_out = clogs.createOutput("/tmp/")
+        clogs_out.write()
 
-        clfs_out.addCompleted(tdata.completed)
-        clfs_out.addLimbo(tdata.limbo)
-        clfs_out.addAssigned(tdata.assigned)
+        clogs_out.addCompleted(tdata.completed)
+        clogs_out.addLimbo(tdata.limbo)
+        clogs_out.addAssigned(tdata.assigned)
 
-        clfs_read = chunklistfile.ChunkLogs("/tmp/tclfs_target.out",
-                                            "/tmp/tclfs_completed.out",
-                                            "/tmp/tclfs_assigned.out",
-                                            "/tmp/tclfs_limbo.out")
-        clfs_read.build(tdata.valid_ids)
-        self.assertSetEqual(clfs_out._target.chunk_set, clfs_read._target.chunk_set)
-        self.assertSetEqual(clfs_out._completed.chunk_set, clfs_read._completed.chunk_set)
-        self.assertSetEqual(clfs_out._assigned.chunk_set, clfs_read._assigned.chunk_set)
-        self.assertSetEqual(clfs_out._limbo.chunk_set, clfs_read._limbo.chunk_set)
+        tf, cf, af, lf = chunklistfile.ChunkLogs.createNames("/tmp")
+        clogs_read = chunklistfile.ChunkLogs(tf, cf, af, lf)
 
-        self.assertSetEqual(clfs_read.result_set, set(tdata.result_expected))
+        clogs_read.build(tdata.valid_ids)
+        self.assertSetEqual(clogs_out._target.chunk_set, clogs_read._target.chunk_set)
+        self.assertSetEqual(clogs_out._completed.chunk_set, clogs_read._completed.chunk_set)
+        self.assertSetEqual(clogs_out._assigned.chunk_set, clogs_read._assigned.chunk_set)
+        self.assertSetEqual(clogs_out._limbo.chunk_set, clogs_read._limbo.chunk_set)
+
+        self.assertSetEqual(clogs_read.result_set, set(tdata.result_expected))
 
     def testChunkFileLists(self):
         tdata = TData()
-        clogs = chunklistfile.ChunkLogs(None)
-        clogs.build(tdata.valid_ids, tdata.lists_raw)
+        clogs = chunklistfile.ChunkLogs(None, raw = tdata.lists_raw)
+        #&&&clogs.build(tdata.valid_ids, tdata.lists_raw)
+        clogs.build(tdata.valid_ids)
         self.assertSetEqual(clogs.result_set, set(tdata.lists_expected))
         print(clogs.report())
 

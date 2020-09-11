@@ -40,9 +40,10 @@ def usage():
     print('If niether -i or -r are specified, target list will include all valid chunks ids.')
     print('If -r and -i are both specified, target list will be union of target file and\n'
           '-r option while completed, assigned, and limbo lists created from the files found.')
+    print('test ex: bin/datagenserver.py -k -o "~/log/" -r "0:2000"')
 
 def server():
-    """Temporary main function call.
+    """Temporary main function call. &&&
     TODO: The next step is to have the chunks to be created read in from files
     and have this program produce a files of that format for created chunks
     and chunks that should be created. That way, after the server runs
@@ -51,7 +52,7 @@ def server():
     """
     argumentList = sys.argv[1:]
     print("argumentList=", argumentList)
-    options = "hksc:i:"
+    options = "hksc:i:o:r:"
     long_options = ["help", "skipIngest", "skipSchema", "configfile"]
     skip_ingest = False
     skip_schema = False
@@ -82,20 +83,23 @@ def server():
         print (str(err))
         exit(1)
     print("skip_ingest=", skip_ingest, "skip_schema=", skip_schema, "values=", values)
-    print(f"configfile={config_file} in_dir={in_dir} raw={raw}")
+    print(f"configfile={config_file} in_dir={in_dir} raw={raw}\n")
     # If in_dir is defined (empty string is valid), see if files can be found
     if not in_dir is None:
         # Throws if targetf not found
         targetf, completedf, assignedf, limbof = chunklistfile.ChunkLogs.checkFiles(in_dir)
         print(f"target={targetf} completed={completedf} assigned={assignedf} limbo={limbof}")
-        clfs = chunklistfile.ChunkLogs(targetf, completedf, assignedf, limbof)
+        clfs = chunklistfile.ChunkLogs(targetf, completedf, assignedf, limbof, raw)
     else:
-        clfs = chunklistfile.ChunkLogs(None)
+        clfs = chunklistfile.ChunkLogs(None, raw=raw)
     #&&& chunklistfile.ChunkLogs
     #&&&clfs = chunklistfile.ChunkLogs(dummyf)
     # 0-50000 would be all chunks for stripes = 200 substripes = 5
     #&&&dgServ = DataGenServer(config_file, 0, 2000, skip_ingest, skip_schema)
     dgServ = DataGenServer(config_file, clfs, out_dir, skip_ingest, skip_schema)
+    if dgServ.chunksToSendTotal() == 0:
+        print("No chunks to generate, exiting.")
+        exit(0)
     dgServ.start()
 
 if __name__ == "__main__":

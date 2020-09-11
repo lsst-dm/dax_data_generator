@@ -231,6 +231,11 @@ class DataGenServer:
         self._active_client_count = 0
         self._active_client_mtx = threading.Lock()
 
+    def chunksToSendTotal(self):
+        """Return the total number of chunks to send.
+        """
+        return self._chunks_to_send_total
+
     def _readPartionerCfgDir(self, partioner_cfg_dir):
         """Read in all the files ending with cfg in partioner_cfg_dir.
 
@@ -355,6 +360,7 @@ class DataGenServer:
                 sv_conn.servSendPartionCfgFile(pCfgIndex, pCfgName, pCfgContents)
 
             # client requesting chunk list
+            client_times = None
             while self._loop and not out_of_chunks:
                 clientReqChunkCount = sv_conn.servRecvReqChunks()
                 chunksForClient = []
@@ -407,7 +413,8 @@ class DataGenServer:
                     to_send_count = len(self._chunks_to_send_set)
                     completed_count = len(self._total_generated_chunks)
                     limbo_count = self._limbo_count
-                    self._timing_dict.combine(client_times)
+                    if client_times:
+                        self._timing_dict.combine(client_times)
                 print('Chunks total        =', total_to_send)
                 print('Chunks left to send =', to_send_count)
                 print('Chunks finished     =', completed_count)

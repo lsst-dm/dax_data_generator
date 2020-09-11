@@ -19,6 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
+
 
 class ChunkListFile:
     """Read and write a set of chunks to a file.
@@ -85,7 +87,7 @@ class ChunkListFile:
         return '' if not aset else ','.join(str(j) for j in aset)
 
     def write(self):
-        """Write the set to file.
+        """Write the set to file, overwriting previous file.
         """
         if not self._fname:
             print("ChunkFileList cannot be written since it doesn't have a name.")
@@ -124,12 +126,34 @@ class ChunkLogs:
     (essentially logs). These files can be used as inputs to this class,
     allowing a new instance of the program to continue from the
     previous state.
-        The files are appended with simple comma separated integer lists
-    to make appending values simple.
+        The files are appended with simple comma separated integer lists #&&& change to newline
+    to make appending values simple. Extra commas are ignored.
 
+    Parameters
+    ----------
+    target : str
+        Name of target set input file, can be None. If None, the target
+        set of chunk ids will include all valid chunk ids. 'raw' can
+        modify the input set from target.
+    completed : str
+        Name of completed set input file, can be None or empty. All the
+        chunk ids in this file has been completed and doesn't need to
+        be generated again.
+    assigned : str
+        Name of assigned set input file, can be None or empty. All the
+        chunk ids in this file were assigned to clients to be created.
+        Any file in the assigned list and not in the completed list had
+        an issue being generated and needs to be removed from this file,
+        and possibly the limbo file, by hand before being generated.
+    limbo : str
+        Name of limbo set input file, can be None or empty. All the
+        chunk ids where the client could not generate or register the
+        chunk are placed here. These need to be checked by hand before
+        trying to generate them. Once checked, they also need to be
+        removed from the assigned file.
     """
 
-    def __init__(self, target, completed=None, assigned=None, limbo=None):
+    def __init__(self, target, completed=None, assigned=None, limbo=None, raw=None):
         # Chunks that need to be created.
         self._target    = ChunkListFile(target)
         # Chunks that were completed in a previous run.
@@ -138,6 +162,12 @@ class ChunkLogs:
         self._assigned  = ChunkListFile(assigned)
         # Chunks where other chunks in the group did complete.
         self._limbo     = ChunkListFile(limbo)
+        # raw text list from command line
+        self._target_raw = raw
+
+        # self.build() will use this the above information to create
+        # the result_set, which includes all chunk ids that need
+        # to be created.
         self.result_set = set()
 
     def report(self):
@@ -158,9 +188,8 @@ class ChunkLogs:
         return rpt
 
 
-
-
-    def build(self, all_valid_chunks, target_raw=None):
+    #&&&def build(self, all_valid_chunks, target_raw=None):
+    def build(self, all_valid_chunks):
         """Build this object from paramters and files.
 
         Parameters
@@ -168,8 +197,8 @@ class ChunkLogs:
         all_valid_chunks : list of int
             List of all valid chunks, used to remove invalid chunk ids
             from target.
-        target_raw : str
-            If not None, create _target from this string.
+        #&&&target_raw : str
+        #&&&    If not None, create _target from this string.
 
         Note
         ------
@@ -177,16 +206,35 @@ class ChunkLogs:
         all invalid, completed, assigned, and limbo chunks removed.
         """
 
+        #Handle raw string input
+        raw_in = None
+        #&&&if not target_raw is None:
+        #&&&    self._target_raw = target_raw
+        if self._target_raw:
+            raw_in = ChunkListFile(None)
+            raw_in.parse(self._target_raw)
+
         if self._target._fname:
+            # Use the file, if provided. If raw text input
+            # was provided, use the intersection of that and the
+            # target file.
             self._target.read()
-        elif not target_raw:
+            if raw_in:
+                self._target.chunk_set.intersection_update(raw_in.chunk_set)
+        elif raw_in:
+            # Use provided raw string
+            self._target = raw_in
+        else:
             # Target is all valid chunks
             self._target.chunk_set = set(all_valid_chunks)
-        else:
-            # Parse provided raw string
-            self._target.parse(target_raw)
+        # Make sure no invalid chunks are in the ltarget set.
         self._target.intersectWithValid(all_valid_chunks)
 
+        # result_set is the target set with all chunks found in
+        # complete, assigned, and limbo removed. Technically
+        # this could just be target - assigned, but users
+        # are expected to edit the files and ingesting the
+        # same chunk twice could be bad.
         self.result_set = self._target.chunk_set.copy()
 
         # Remove chunks from result_set if they are in completed,
@@ -205,13 +253,41 @@ class ChunkLogs:
         for item in lst:
             item.write()
 
+    @staticmethod
+    def createNames(path_header):
+        """Create chunk log file names
+
+        Parameters
+        ----------
+        path_header : str
+            path to give to the output files.
+
+        Return
+        ------
+        target : str
+            Target file name
+        completed : str
+            Completed file name
+        assigned : str
+            Assigned file name
+        limbo : str
+            Limbo file name
+        """
+        if path_header is None:
+            path_header = ''
+        target = os.path.join(path_header, "target.clg")
+        completed = os.path.join(path_header, "completed.clg")
+        assigned = os.path.join(path_header, "assigned.clg")
+        limbo = os.path.join(path_header, "limbo.clg")
+        return target, completed, assigned, limbo
+
     def createOutput(self, path_header):
         """Create an output ChunkLogs object base on this one.
 
         Parameters
         ----------
         path_header : str
-            path and prefix to give to the output files.
+            path to give to the output files.
 
         Note
         ----
@@ -219,25 +295,61 @@ class ChunkLogs:
         object's chunk_set's.
         This function does not write the files, write(self)
         needs to be called the files would be:
-            path_header = "~/log/fdb_" would create files
-            ~/log/fdb_target.out
-            ~/log/fdb_completed.out
-            ~/log/fdb_assigned.out
-            ~/log/fdb_limbo.out
+            path_header = "~/log/" would create files
+            ~/log/target.clg
+            ~/log/completed.clg
+            ~/log/assigned.clg
+            ~/log/limbo.clg
         """
         if path_header is None:
             path_header = ''
-        newcls = ChunkLogs(
-            path_header + "target.out",
-            path_header + "completed.out",
-            path_header + "assigned.out",
-            path_header + "limbo.out")
-        newcls._target.chunk_set = self._target.chunk_set.copy()
-        newcls._completed.chunk_set = self._completed.chunk_set.copy()
-        newcls._assigned.chunk_set = self._assigned.chunk_set.copy()
-        newcls._limbo.chunk_set = self._limbo.chunk_set.copy()
-        newcls.result_set = self.result_set.copy()
-        return newcls
+        targf, compf, assif, limbf = ChunkLogs.createNames(path_header)
+        logs_out = ChunkLogs(targf, compf, assif, limbf)
+        logs_out._target.chunk_set = self._target.chunk_set.copy()
+        logs_out._completed.chunk_set = self._completed.chunk_set.copy()
+        logs_out._assigned.chunk_set = self._assigned.chunk_set.copy()
+        logs_out._limbo.chunk_set = self._limbo.chunk_set.copy()
+        logs_out.result_set = self.result_set.copy()
+        return logs_out
+
+    @staticmethod
+    def checkFiles(in_dir):
+        """Check if the files exist in in_dir.
+
+        Parameters
+        ----------
+        in_dir : str
+            The directory where input log files should be found.
+
+        Returns
+        -------
+        targf : str
+            Target set log file name.
+        compf : str
+            Completed set log file name (may be None).
+        assif: str
+            Assigned set log file name (may be None).
+        limbf : str
+            Limbo set log file name (may be None).
+        If directory or target file don't exist, raise FileNotFound.
+        """
+        targf, compf, assif, limbf = ChunkLogs.createNames(in_dir)
+        # Check if in_dir exists
+        if not os.path.exists(in_dir):
+            raise FileNotFoundError(in_dir)
+        # Check if targf exists
+        if os.path.exists(targf):
+            print("found target file {targf}")
+        else:
+            raise FileNotFoundError(targf)
+        lst = [compf, assif, limbf]
+        for f in lst:
+            if os.path.exists(f):
+                print(f"found {f}")
+            else:
+                print(f"not found {f} setting to None")
+                f = None
+        return targf, compf, assif, limbf
 
     def addAssigned(self, chunk_ids):
         """Add chunk_ids to assigned chunk set.
@@ -251,6 +363,7 @@ class ChunkLogs:
         ----
         These will be written to disk if the file already started.
         """
+        print ("&&& addAssigned {chunk_ids}")
         self._assigned.add(chunk_ids)
 
     def addCompleted(self, chunk_ids):
@@ -265,7 +378,7 @@ class ChunkLogs:
         ----
         These will be written to disk if the file already started.
         """
-        self._assigned.add(chunk_ids)
+        print ("&&& addCompleted {chunk_ids}")
         self._completed.add(chunk_ids)
 
     def addLimbo(self, chunk_ids):
