@@ -25,27 +25,22 @@ import sys
 
 import lsst.dax.distribution.chunklogs as chunklogs
 
-def usage():
-    print('-h, --help  help')
-    print('-k, --skipIngest  skip trying to ingest anything')
-    print('-s, --skipSchema  skip sending schema, needed when schema was already sent.')
-    print('-o, --outDir      output log directory default "~/log/"')
-    print('-i, --inDir       input directory, only "target.clg" must exist\n'
-          '                  ex: "~/in/" which would look for\n'
-          '                      ~/in/target.clg, ~/in/completed.clg,\n'
-          '                      ~/in/assigned.clg, and ~/in/imbo.clg')
-    print('-r, --raw  string describing targets chunk ids such as "0:10000" or "0,1,3,466"')
-    print('')
-    print('If niether -i or -r are specified, target list will include all valid chunks ids.')
-    print('If -r and -i are both specified, target list will be union of target file and\n'
-          '-r option while completed, assigned, and limbo lists created from the files found.')
-    print('test ex: bin/datagenserver.py -k -o "~/log/" -r "0:2000"')
-    print('\nSee README.md "Restarting a Problem Run with Log Files" for information')
-    print('on using log files to continue a previous run with problems.')
 
-def server():
-    """Start the server.
-    """
+def usage():
+    print()
+    print('Analyze the log files and produce a list of chunk_ids that had problems.')
+    print('Essentially, any chunk_id found in assigned.clg but not in completed.clg')
+    print('needs to be checked.')
+    print('-h, --help  help')
+    print('-i, --inDir       input directory, only "target.clg" must exist\n'
+          '                  ex: "~/log/" which would look for\n'
+          '                      ~/log/target.clg, ~/log/completed.clg,\n'
+          '                      ~/log/assigned.clg, and ~/log/imbo.clg')
+    print('\nSee README.md "Restarting a Problem Run with Log Files" for information')
+    print('on using log files to continue a previous run that had problems.')
+
+
+if __name__ == "__main__":
     argumentList = sys.argv[1:]
     print("argumentList=", argumentList)
     options = "hi:"
@@ -57,11 +52,12 @@ def server():
         for arg, val in arguments:
             if arg in ("-h", "--help"):
                 usage()
-                return False
+                exit(1)
             elif arg in ("-i", "--inDir"):
                 in_dir = val
     except getopt.error as err:
-        print (str(err))
+        print(str(err))
+        print(usage())
         exit(1)
     print(f"in_dir={in_dir}\n")
     # If in_dir is defined (empty string is valid), see if files can be found
@@ -71,7 +67,4 @@ def server():
     clogs = chunklogs.ChunkLogs(targetf, completedf, assignedf, limbof, None)
     clogs.build(None)
     print(clogs.report())
-
-if __name__ == "__main__":
-    server()
 
