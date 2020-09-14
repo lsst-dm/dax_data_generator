@@ -24,7 +24,6 @@ import getopt
 import sys
 
 import lsst.dax.distribution.chunklogs as chunklogs
-from lsst.dax.distribution.DataGenServer import DataGenServer
 
 def usage():
     print('-h, --help  help')
@@ -49,14 +48,9 @@ def server():
     """
     argumentList = sys.argv[1:]
     print("argumentList=", argumentList)
-    options = "hksc:i:o:r:"
-    long_options = ["help", "skipIngest", "skipSchema", "configfile", "outDir", "inDir", "raw"]
-    skip_ingest = False
-    skip_schema = False
-    config_file = "configs/fakedb/serverCfg.yml"
-    in_dir = None
-    out_dir = "~/log/"
-    raw = None
+    options = "hi:"
+    long_options = ["help", "inDir"]
+    in_dir = "~/log/"
     try:
         arguments, values = getopt.getopt(argumentList, options, long_options)
         print("arguments=", arguments)
@@ -64,37 +58,19 @@ def server():
             if arg in ("-h", "--help"):
                 usage()
                 return False
-            elif arg in ("-k", "--skipIngest"):
-                skip_ingest = True
-            elif arg in ("-s", "--skipSchema"):
-                skip_schema = True
-            elif arg in ("-c", "--configfile"):
-                config_file = val
-            elif arg in ("-o", "--outDir"):
-                out_dir = val
             elif arg in ("-i", "--inDir"):
                 in_dir = val
-            elif arg in ("-r", "--raw"):
-                raw = val
     except getopt.error as err:
         print (str(err))
         exit(1)
-    print("skip_ingest=", skip_ingest, "skip_schema=", skip_schema, "values=", values)
-    print(f"configfile={config_file} in_dir={in_dir} raw={raw}\n")
+    print(f"in_dir={in_dir}\n")
     # If in_dir is defined (empty string is valid), see if files can be found
-    if not in_dir is None:
-        # Throws if targetf not found
-        targetf, completedf, assignedf, limbof = chunklogs.ChunkLogs.checkFiles(in_dir)
-        print(f"target={targetf} completed={completedf} assigned={assignedf} limbo={limbof}")
-        clfs = chunklogs.ChunkLogs(targetf, completedf, assignedf, limbof, raw)
-    else:
-        clfs = chunklogs.ChunkLogs(None, raw=raw)
-    # 0-50000 would be all chunks for stripes = 200 substripes = 5
-    dgServ = DataGenServer(config_file, clfs, out_dir, skip_ingest, skip_schema)
-    if dgServ.chunksToSendTotal() == 0:
-        print("No chunks to generate, exiting.")
-        exit(0)
-    dgServ.start()
+    # Throws if targetf not found
+    targetf, completedf, assignedf, limbof = chunklogs.ChunkLogs.checkFiles(in_dir)
+    print(f"target={targetf}\ncompleted={completedf}\nassigned={assignedf}\nlimbo={limbof}\n")
+    clogs = chunklogs.ChunkLogs(targetf, completedf, assignedf, limbof, None)
+    clogs.build(None)
+    print(clogs.report())
 
 if __name__ == "__main__":
     server()

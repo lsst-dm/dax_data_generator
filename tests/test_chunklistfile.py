@@ -1,7 +1,7 @@
 
 import unittest
 
-import lsst.dax.distribution.chunklistfile as chunklistfile
+import lsst.dax.distribution.chunklogs as chunklogs
 
 
 class TData:
@@ -35,7 +35,7 @@ class ChunkListFileTests(unittest.TestCase):
     def testParse(self):
         dummyf = "/tmp/dummy"
         tdata = TData()
-        clf = chunklistfile.ChunkListFile(dummyf)
+        clf = chunklogs.ChunkListFile(dummyf)
 
         clf.parse(tdata.good_raw)
         self.assertSetEqual(clf.chunk_set, tdata.good_set)
@@ -43,11 +43,11 @@ class ChunkListFileTests(unittest.TestCase):
         clf.intersectWithValid(tdata.valid_ids)
         self.assertSetEqual(clf.chunk_set, tdata.merged_set)
 
-        clf_ok = chunklistfile.ChunkListFile(dummyf)
+        clf_ok = chunklogs.ChunkListFile(dummyf)
         clf_ok.parse(tdata.ok_raw)
         self.assertSetEqual(clf_ok.chunk_set, tdata.good_set)
 
-        clf_bad_a = chunklistfile.ChunkListFile(dummyf)
+        clf_bad_a = chunklogs.ChunkListFile(dummyf)
         threw = False
         try:
             clf_bad_a.parse(tdata.bad_raw_a)
@@ -55,7 +55,7 @@ class ChunkListFileTests(unittest.TestCase):
             threw = True
         self.assertTrue(threw)
 
-        clf_bad_b = chunklistfile.ChunkListFile(dummyf)
+        clf_bad_b = chunklogs.ChunkListFile(dummyf)
         threw = False
         try:
             clf_bad_b.parse(tdata.bad_raw_b)
@@ -63,14 +63,14 @@ class ChunkListFileTests(unittest.TestCase):
             threw = True
         self.assertTrue(threw)
 
-        clf_empty = chunklistfile.ChunkListFile(dummyf)
+        clf_empty = chunklogs.ChunkListFile(dummyf)
         clf_empty.parse('')
         self.assertTrue(not clf_empty.chunk_set)
 
     def testAdd(self):
         dummyf = "/tmp/dummy"
         tdata = TData()
-        clf = chunklistfile.ChunkListFile(dummyf)
+        clf = chunklogs.ChunkListFile(dummyf)
 
         clf.parse(tdata.good_raw)
         self.assertSetEqual(clf.chunk_set, tdata.good_set)
@@ -84,13 +84,13 @@ class ChunkListFileTests(unittest.TestCase):
         dummyf = "/tmp/tmpchunktest"
         tdata = TData()
 
-        clf = chunklistfile.ChunkListFile(dummyf)
+        clf = chunklogs.ChunkListFile(dummyf)
         clf.parse(tdata.good_raw)
         clf.write()
         to_add = set([341, 342, 343])
         clf.add(to_add)
 
-        clf_r = chunklistfile.ChunkListFile(dummyf)
+        clf_r = chunklogs.ChunkListFile(dummyf)
         clf_r.read()
         # test that what was read matches what was written,
         # including 'add'.
@@ -101,12 +101,12 @@ class ChunkListFileTests(unittest.TestCase):
         dummyf = "/tmp/tmpchunktest"
         tdata = TData()
 
-        clf_target = chunklistfile.ChunkListFile(dummyf)
+        clf_target = chunklogs.ChunkListFile(dummyf)
         clf_target.parse(tdata.good_raw)
         clf_target.write()
 
         # base ChunkFilesList off of clf_target and write
-        clogs = chunklistfile.ChunkLogs(dummyf)
+        clogs = chunklogs.ChunkLogs(dummyf)
         clogs.build(tdata.valid_ids)
         # create outputs
         clogs_out = clogs.createOutput("/tmp/")
@@ -116,8 +116,8 @@ class ChunkListFileTests(unittest.TestCase):
         clogs_out.addLimbo(tdata.limbo)
         clogs_out.addAssigned(tdata.assigned)
 
-        tf, cf, af, lf = chunklistfile.ChunkLogs.createNames("/tmp")
-        clogs_read = chunklistfile.ChunkLogs(tf, cf, af, lf)
+        tf, cf, af, lf = chunklogs.ChunkLogs.createNames("/tmp")
+        clogs_read = chunklogs.ChunkLogs(tf, cf, af, lf)
 
         clogs_read.build(tdata.valid_ids)
         self.assertSetEqual(clogs_out._target.chunk_set, clogs_read._target.chunk_set)
@@ -129,7 +129,7 @@ class ChunkListFileTests(unittest.TestCase):
 
     def testChunkFileLists(self):
         tdata = TData()
-        clogs = chunklistfile.ChunkLogs(None, raw = tdata.lists_raw)
+        clogs = chunklogs.ChunkLogs(None, raw = tdata.lists_raw)
         clogs.build(tdata.valid_ids)
         self.assertSetEqual(clogs.result_set, set(tdata.lists_expected))
         print(clogs.report())
