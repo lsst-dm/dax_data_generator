@@ -19,12 +19,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import argparse
 import getopt
 import sys
 
 import lsst.dax.distribution.chunklogs as chunklogs
 from lsst.dax.distribution.DataGenServer import DataGenServer
+
 
 def usage():
     print('-h, --help  help')
@@ -43,6 +43,7 @@ def usage():
     print('test ex: bin/datagenserver.py -k -o "~/log/" -r "0:2000"')
     print('\nSee README.md "Restarting a Problem Run with Log Files" for information')
     print('on using log files to continue a previous run with problems.')
+
 
 def server():
     """Start the server.
@@ -77,12 +78,12 @@ def server():
             elif arg in ("-r", "--raw"):
                 raw = val
     except getopt.error as err:
-        print (str(err))
+        print(str(err))
         exit(1)
     print("skip_ingest=", skip_ingest, "skip_schema=", skip_schema, "values=", values)
     print(f"configfile={config_file} in_dir={in_dir} raw={raw}\n")
     # If in_dir is defined (empty string is valid), see if files can be found
-    if not in_dir is None:
+    if in_dir is not None:
         # Throws if targetf not found
         targetf, completedf, assignedf, limbof = chunklogs.ChunkLogs.checkFiles(in_dir)
         print(f"target={targetf} completed={completedf} assigned={assignedf} limbo={limbof}")
@@ -95,6 +96,7 @@ def server():
         print("No chunks to generate, exiting.")
         exit(0)
     dgServ.start()
+
 
 if __name__ == "__main__":
     server()

@@ -8,9 +8,6 @@ from astropy.coordinates import SkyCoord
 
 from .chunker import Chunker
 
-
-
-
 __all__ = ["ColumnGenerator", "ObjIdGenerator", "FilterGenerator",
            "RaDecGenerator", "MagnitudeGenerator", "ForcedSourceGenerator",
            "VisitIdGenerator", "mergeBlocks"]
@@ -110,8 +107,8 @@ def containsBlock(block_a, block_b):
 
 class SimpleBox:
     """
-    A simple RA DEC box where raA is always smaller than raB and decA is always smaller than decB and
-    the units are degrees.
+    A simple RA DEC box where raA is always smaller than raB and
+    decA is always smaller than decB and the units are degrees.
 
     Parameters
     ----------
@@ -139,15 +136,18 @@ class SimpleBox:
             tmp = decA
             decA = decB
             decB = tmp
-        if (decA > 90.0): decA = 90.0
-        if (decA < -90.0): decA = -90.0
-        if (decB > 90.0): decB = 90.0
-        if (decB < -90.0): decB = -90.0
-
+        if (decA > 90.0):
+            decA = 90.0
+        if (decA < -90.0):
+            decA = -90.0
+        if (decB > 90.0):
+            decB = 90.0
+        if (decB < -90.0):
+            decB = -90.0
 
     def __repr__(self):
         return ('{raA=' + str(self.raA) + ' raB=' + str(self.raB) +
-               ' decA=' + str(self.decA) + ' decB=' + str(self.decB) + '}')
+                ' decA=' + str(self.decA) + ' decB=' + str(self.decB) + '}')
 
     def __str__(self):
         return self.__repr__()
@@ -279,7 +279,7 @@ class RaDecGenerator(ColumnGenerator):
         ra_delta = raB - raA
         if ra_delta < 0:
             raA = raA - 360.0
-            ra_delta = raB -raA
+            ra_delta = raB - raA
         decA = chunk_box.getLat().getA().asDegrees()
         decB = chunk_box.getLat().getB().asDegrees()
 
@@ -473,9 +473,9 @@ class ForcedSourceGenerator(ColumnGenerator):
 
         # deltas - distance between 2 points on the sphere for everything in the table
         deltas = (SkyCoord(ra=visit_table['ra'], dec=visit_table['decl'], unit="deg")
-                .separation(SkyCoord(ra=object_record['ra'], dec=object_record['decl'], unit="deg")).degree)
+                  .separation(SkyCoord(ra=object_record['ra'], dec=object_record['decl'],
+                  unit="deg")).degree)
         n_matching_visits = np.sum(deltas < self.visit_radius)
-
 
         objectId = np.zeros(n_matching_visits, dtype=int) + int(object_record['objectId'])
         psFlux = np.random.randn(n_matching_visits)

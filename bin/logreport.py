@@ -19,7 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import argparse
 import getopt
 import sys
 
@@ -41,13 +40,13 @@ def usage():
 
 
 if __name__ == "__main__":
-    argumentList = sys.argv[1:]
-    print("argumentList=", argumentList)
+    argument_list = sys.argv[1:]
+    print("argumentList=", argument_list)
     options = "hi:"
     long_options = ["help", "inDir"]
     in_dir = "~/log/"
     try:
-        arguments, values = getopt.getopt(argumentList, options, long_options)
+        arguments, values = getopt.getopt(argument_list, options, long_options)
         print("arguments=", arguments)
         for arg, val in arguments:
             if arg in ("-h", "--help"):

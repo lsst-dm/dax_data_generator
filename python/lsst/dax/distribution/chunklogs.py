@@ -71,7 +71,8 @@ class ChunkListFile:
                 else:
                     raise ValueError(f"value error in st={st} {st_split}")
             elif not st or st.isspace():
-                pass #ignore empty file and multiple separator in a row
+                # ignore empty file and multiple separator in a row
+                pass
             else:
                 val = int(st)
                 self.chunk_set.add(val)
@@ -171,13 +172,13 @@ class ChunkLogs:
 
     def __init__(self, target, completed=None, assigned=None, limbo=None, raw=None):
         # Chunks that need to be created.
-        self._target    = ChunkListFile(target)
+        self._target = ChunkListFile(target)
         # Chunks that were completed in a previous run.
         self._completed = ChunkListFile(completed)
         # Chunks that were assigned to workers but not registered complete.
-        self._assigned  = ChunkListFile(assigned)
+        self._assigned = ChunkListFile(assigned)
         # Chunks where other chunks in the group did complete.
-        self._limbo     = ChunkListFile(limbo)
+        self._limbo = ChunkListFile(limbo)
         # raw text list from command line
         self._target_raw = raw
 
@@ -242,7 +243,7 @@ class ChunkLogs:
             # Target is all valid chunks
             self._target.chunk_set = set(all_valid_chunks)
         # Make sure no invalid chunks are in the ltarget set.
-        if not all_valid_chunks is None:
+        if all_valid_chunks is not None:
             self._target.intersectWithValid(all_valid_chunks)
 
         # result_set is the target set with all chunks found in

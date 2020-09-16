@@ -8,15 +8,15 @@ class TData:
     def __init__(self):
         self.good_raw = "3:15\n30\n77\n108\n55\n0\n999"
         # valid_ids are chunks that exist in the partitioning scheme
-        self.valid_ids = [0,1,2,3,4,10,15,30,55,999,543,1000]
-        self.merged_set = set([0,3,4,10,15,30,55,999])
-        self.good_set = set([3,4,5,6,7,8,9,10,11,12,13,14,15,30,77,108,55,0,999])
-        self.completed = [4,5,6,7,8,9]
+        self.valid_ids = [0, 1, 2, 3, 4, 10, 15, 30, 55, 999, 543, 1000]
+        self.merged_set = set([0, 3, 4, 10, 15, 30, 55, 999])
+        self.good_set = set([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 30, 77, 108, 55, 0, 999])
+        self.completed = [4, 5, 6, 7, 8, 9]
         self.limbo = []
-        self.assigned = [15,30]
+        self.assigned = [15, 30]
         # result_expected = (good_set intersection valid_ids)
         #                 - (completed + limbo + assigned)
-        self.result_expected = set([3,10,55,0,999])
+        self.result_expected = set([3, 10, 55, 0, 999])
         # Produced set for ok_raw should match good_set despite
         # extra elements
         self.ok_raw = "3:15\n30\n77\n108\n5\n6\n55\n0\n999"
@@ -24,11 +24,12 @@ class TData:
         # for testing ChunkLogs, tests use self.valid_ids
         self.lists_raw = "9:100"
         # intersection of self.valid_ids and self.lists_raw
-        self.lists_expected = [10,15,30,55]
+        self.lists_expected = [10, 15, 30, 55]
 
         # These should fail
         self.bad_raw_a = "3s:15\n30\n77"
         self.bad_raw_b = "3:15\n3w0\n77"
+
 
 class ChunkListFileTests(unittest.TestCase):
 
@@ -129,18 +130,8 @@ class ChunkListFileTests(unittest.TestCase):
 
     def testChunkFileLists(self):
         tdata = TData()
-        clogs = chunklogs.ChunkLogs(None, raw = tdata.lists_raw)
+        clogs = chunklogs.ChunkLogs(None, raw=tdata.lists_raw)
         clogs.build(tdata.valid_ids)
         self.assertSetEqual(clogs.result_set, set(tdata.lists_expected))
         print(clogs.report())
-
-
-
-
-
-
-
-
-
-
 

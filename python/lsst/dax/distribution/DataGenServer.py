@@ -19,11 +19,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import getopt
 import itertools
 import os
 import socket
-import sys
 import threading
 import yaml
 
@@ -172,7 +170,7 @@ class DataGenServer:
         ingest_port = self._cfg['ingest']['port']
         ingest_auth = self._cfg['ingest']['authKey']
         self._ingest_dict = {'host':ingest_host, 'port':ingest_port, 'auth':ingest_auth,
-                            'db':self._db_name, 'skip':self._skip_ingest}
+                             'db':self._db_name, 'skip':self._skip_ingest}
         # Read ingest config files.
         self._ingest_cfg_dir = os.path.join(self._base_cfg_dir, self._cfg['ingest']['cfgDir'])
         print("ingest addr=", ingest_host, ":", ingest_port)
@@ -197,13 +195,13 @@ class DataGenServer:
         chunk_logs_in.build(all_chunks)
         # Use the input information/files to create the output logs.
         self._chunk_logs = chunk_logs_in.createOutput(log_dir)
-        if not log_dir is None:
+        if log_dir is not None:
             # Start logging
             self._chunk_logs.write()
         # Set of chunks to send
         self._chunks_to_send_set = self._chunk_logs.result_set.copy()
         self._chunks_to_send_total = len(self._chunks_to_send_set)
-        self._limbo_count = 0 # number of chunks that had problems being created.
+        self._limbo_count = 0  # number of chunks that had problems being created.
         # Dictionary of information about chunks being sent.
         # self._chunks_to_send only includes information about this run.
         # self._chunk_logs may include information from previous runs.
@@ -406,7 +404,8 @@ class DataGenServer:
                 print('Chunks left to send =', to_send_count)
                 print('Chunks finished     =', completed_count)
                 print('Chunks in limbo     =', limbo_count)
-                print('Chunks processing   =', (total_to_send - (to_send_count + completed_count + limbo_count)))
+                print('Chunks processing   =', (total_to_send -
+                                               (to_send_count + completed_count + limbo_count)))
         except socket.gaierror as e:
             print("breaking connection", addr, name, "socket.gaierror:", e)
         except socket.error as e:
@@ -491,9 +490,9 @@ class DataGenServer:
 
         print("chunks failed chunks:", self.chunksInState([GenerationStage.LIMBO, GenerationStage.ASSIGNED]))
         counts = {GenerationStage.UNASSIGNED:0,
-            GenerationStage.ASSIGNED:0,
-            GenerationStage.FINISHED:0,
-            GenerationStage.LIMBO:0}
+                  GenerationStage.ASSIGNED:0,
+                  GenerationStage.FINISHED:0,
+                  GenerationStage.LIMBO:0}
         for chk in self._chunks_to_send:
             chk_info = self._chunks_to_send[chk]
             counts[chk_info.gen_stage] += 1
