@@ -30,8 +30,6 @@ from enum import Enum
 from .DataGenConnection import DataGenConnection
 from .DataGenConnection import DataGenError
 from .DataIngest import DataIngest
-from .chunklogs import ChunkLogs
-from .chunklogs import ChunkListFile
 from lsst.dax.data_generator import TimingDict
 
 
