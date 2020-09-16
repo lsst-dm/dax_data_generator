@@ -165,6 +165,8 @@ class DataGenerator:
             for box_n, box in enumerate(boxes):
                 assert(box.area() > 0)
                 box_rowcount = int(chunk_density * box.area())
+                if(box_rowcount == 0):
+                    continue
                 unique_box_id = chunk_id*8 + box_n
                 output = self._generate_table_block(box, column_generators,
                                                     chunk_center=chunk_center,

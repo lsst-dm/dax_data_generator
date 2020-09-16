@@ -391,11 +391,11 @@ class ForcedSourceGenerator(ColumnGenerator):
         n_matching_visits = len(sel_matching_visits)
 
 
-        out_objectIds = np.repeat(object_table['objectId'], n_matching_visits)
-        out_ccdVisitIds = np.tile(visit_table['ccdVisitId'].iloc[sel_matching_visits], len(object_table))
+        out_objectIds = np.repeat(object_table['objectId'].values, n_matching_visits)
+        out_ccdVisitIds = np.tile(visit_table['ccdVisitId'].iloc[sel_matching_visits].values, len(object_table))
 
         n_rows_total = n_matching_visits * len(object_table)
-        psFlux = np.repeat(object_table['mag_g'], n_matching_visits)  + np.random.randn(n_rows_total)
+        psFlux = np.repeat(object_table['mag_g'].values, n_matching_visits)  + np.random.randn(n_rows_total)
         psFluxSigma = np.zeros(n_rows_total) + 0.1
 
         assert len(out_objectIds) == n_rows_total
