@@ -9,6 +9,8 @@ num_stripes = 200
 num_substripes = 5
 chunker = Chunker(0, num_stripes, num_substripes)
 
+# From lsst.sphgeom
+RAD_PER_DEG = 0.0174532925199432957692369076849
 
 class TestDataGenerator(unittest.TestCase):
 
@@ -16,23 +18,22 @@ class TestDataGenerator(unittest.TestCase):
         generator_spec = {
             "Object": {
                 "columns": {"objectId": columns.ObjIdGenerator(),
-                            "ra,decl": columns.RaDecGenerator(chunker),
+                            "ra,decl": columns.RaDecGenerator(),
                             "mag_u,mag_g,mag_r": columns.MagnitudeGenerator(n_mags=3)
                             },
                 "density": UniformSpatialModel(50),
-                "chunker": chunker
             }
         }
-        chunk_id = 5000
-
-        generator = DataGenerator(generator_spec)
-
+        chunk_id = 3525
         seed = 1
+
+        generator = DataGenerator(generator_spec, chunker, seed=seed)
+
         edge_width = 0.017 # degrees
-        data = generator.make_chunk(chunk_id, num_rows=50, seed=seed,
-                                    edge_width=edge_width, edge_only=False)
+        data = generator.make_chunk(chunk_id, edge_width=edge_width, edge_only=False)
+        chunk_area = chunker.getChunkBounds(chunk_id).getArea() / RAD_PER_DEG**2
         self.assertIn('Object', data.keys())
-        self.assertEqual(len(data['Object']), 50)
+        self.assertAlmostEqual(len(data["Object"]), int(50 * chunk_area), delta=1)
 
     def testResolveTableOrder(self):
         generator_spec = {
@@ -53,60 +54,51 @@ class TestDataGenerator(unittest.TestCase):
             "CcdVisit": {
                 "columns": {"ccdVisitId": columns.VisitIdGenerator(),
                             "filterName": columns.FilterGenerator(filters="ugr"),
-                            "ra,decl": columns.RaDecGenerator(chunker)
+                            "ra,decl": columns.RaDecGenerator()
                             },
                 "density": UniformSpatialModel(50),
-                "chunker": chunker
             },
         }
         chunk_id = 5000
         seed = 1
         edge_width = 0.017 # degrees
-        generator = DataGenerator(generator_spec)
-        chunk_table = generator.make_chunk(chunk_id, num_rows=50, seed=seed,
-                                           edge_width=edge_width, edge_only=False)
+        generator = DataGenerator(generator_spec, chunker, seed=seed)
+        chunk_area = chunker.getChunkBounds(chunk_id).getArea() / RAD_PER_DEG**2
+        chunk_table = generator.make_chunk(chunk_id, edge_width=edge_width, edge_only=False)
         self.assertIn("CcdVisit", chunk_table.keys())
-        self.assertEqual(len(chunk_table["CcdVisit"]), 50)
+        self.assertAlmostEqual(len(chunk_table["CcdVisit"]), int(50 * chunk_area), delta=1)
 
     def testForcedSource(self):
 
         generator_spec = {
             "Object": {
                 "columns": {"objectId": columns.ObjIdGenerator(),
-                            "ra,decl": columns.RaDecGenerator(chunker),
+                            "ra,decl": columns.RaDecGenerator(),
                             "mag_u,mag_g,mag_r": columns.MagnitudeGenerator(n_mags=3)
                             },
                 "density": UniformSpatialModel(100),
-                "chunker": chunker
             },
             "CcdVisit": {
                 "columns": {"ccdVisitId": columns.VisitIdGenerator(),
                             "filterName": columns.FilterGenerator(filters="ugr"),
-                            "ra,decl": columns.RaDecGenerator(chunker)
+                            "ra,decl": columns.RaDecGenerator()
                             },
                 "density": UniformSpatialModel(80),
-                "chunker": chunker
             },
             "ForcedSource": {
-                "prereq_row": "Object",
-                "prereq_tables": ["CcdVisit"],
+                "prereq_tables": ["CcdVisit", "Object"],
                 "columns": {
                     "objectId,ccdVisitId,psFlux,psFlux_Sigma":
                         columns.ForcedSourceGenerator(visit_radius=3.0, filters="ugr"),
                 },
-                "chunker": chunker
             }
         }
 
         chunk_id = 3525
-        generator = DataGenerator(generator_spec)
-        row_counts = {"CcdVisit": 80,
-                      "Object": 100,
-                      "ForcedSource": 0}
         seed = 1
+        generator = DataGenerator(generator_spec, chunker, seed=seed)
         edge_width = 0.017 # degrees
-        chunk_tables = generator.make_chunk(chunk_id, num_rows=50, seed=seed,
-                                            edge_width=edge_width, edge_only=False)
+        chunk_tables = generator.make_chunk(chunk_id, edge_width=edge_width, edge_only=False)
         self.assertIn("ForcedSource", chunk_tables.keys())
         self.assertIn("Object", chunk_tables.keys())
         self.assertIn("CcdVisit", chunk_tables.keys())
