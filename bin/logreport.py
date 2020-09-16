@@ -44,7 +44,7 @@ if __name__ == "__main__":
     print("argumentList=", argument_list)
     options = "hi:"
     long_options = ["help", "inDir"]
-    in_dir = "~/log/"
+    in_dir = ""
     try:
         arguments, values = getopt.getopt(argument_list, options, long_options)
         print("arguments=", arguments)

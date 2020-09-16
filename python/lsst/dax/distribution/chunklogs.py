@@ -59,17 +59,16 @@ class ChunkListFile:
         for st in split_raw:
             if ':' in st:
                 st_split = st.split(':')
-                if len(st_split) == 2:
-                    val_a = int(st_split[0])
-                    val_b = int(st_split[1])
-                    if val_a > val_b:
-                        tmp = val_a
-                        val_a = val_b
-                        val_b = tmp
-                    for j in range(val_a, val_b + 1):
-                        self.chunk_set.add(j)
-                else:
+                if len(st_split) != 2:
                     raise ValueError(f"value error in st={st} {st_split}")
+                val_a = int(st_split[0])
+                val_b = int(st_split[1])
+                if val_a > val_b:
+                    tmp = val_a
+                    val_a = val_b
+                    val_b = tmp
+                for j in range(val_a, val_b + 1):
+                    self.chunk_set.add(j)
             elif not st or st.isspace():
                 # ignore empty file and multiple separator in a row
                 pass

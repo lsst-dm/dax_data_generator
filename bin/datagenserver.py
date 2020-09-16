@@ -30,7 +30,7 @@ def usage():
     print('-h, --help  help')
     print('-k, --skipIngest  skip trying to ingest anything')
     print('-s, --skipSchema  skip sending schema, needed when schema was already sent.')
-    print('-o, --outDir      output log directory default "~/log/"')
+    print('-o, --outDir      output log directory defaults to current directory')
     print('-i, --inDir       input directory, only "target.clg" must exist\n'
           '                  ex: "~/in/" which would look for\n'
           '                      ~/in/target.clg, ~/in/completed.clg,\n'
@@ -56,7 +56,7 @@ def server():
     skip_schema = False
     config_file = "configs/fakedb/serverCfg.yml"
     in_dir = None
-    out_dir = "~/log/"
+    out_dir = ""
     raw = None
     try:
         arguments, values = getopt.getopt(argumentList, options, long_options)

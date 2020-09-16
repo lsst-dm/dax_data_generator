@@ -191,7 +191,7 @@ ps -auxwww | grep "qserv-replica-"
 Restarting a Problem Run with Log Files
 =======================================
 The chunks are written to chunk log files in the provided log directory
-(default '~/log').
+(default is current directory).
 If there are any problems the log files can be moved to a new
 directory (possibly edited) and used as input files to continue.
 
@@ -200,7 +200,7 @@ Simply put if there a problem is encountered with:
 It can be restarted with:
   bin/datagenserver.py -i "~/log/" -o "~/new_log/"
 Note that the original log directory is the input and a new output log
-directory is defined. Also, it's likely the log files will need to be
+directory is defined. It is likely the log files will need to be
 edited.
 
 The log files are:
