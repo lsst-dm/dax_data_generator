@@ -221,7 +221,7 @@ class ChunkLogs:
         all invalid, completed, assigned, and limbo chunks removed.
         """
 
-        #Handle raw string input
+        # Handle raw string input
         raw_in = None
         if self._target_raw:
             raw_in = ChunkListFile(None)
@@ -229,19 +229,19 @@ class ChunkLogs:
             raw_in.parse(self._target_raw, ',')
 
         if self._target._fname:
-            # Use the file, if provided. If raw text input
+            # Read the target file. If raw text input
             # was provided, use the intersection of that and the
             # target file.
             self._target.read()
             if raw_in:
                 self._target.chunk_set.intersection_update(raw_in.chunk_set)
         elif raw_in:
-            # Use provided raw string
+            # Since there's no target file, use provided raw string by itself.
             self._target = raw_in
         else:
-            # Target is all valid chunks
+            # Nothing provided by user, the target is all valid chunks.
             self._target.chunk_set = set(all_valid_chunks)
-        # Make sure no invalid chunks are in the ltarget set.
+        # Make sure no invalid chunks are in the target set.
         if all_valid_chunks is not None:
             self._target.intersectWithValid(all_valid_chunks)
 
