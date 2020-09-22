@@ -209,7 +209,7 @@ class DataGenerator:
         box_east = SimpleBox(raA, raA + edge_widthRA, decA + edge_width, decB - edge_width)
         box_west = SimpleBox(raB - edge_widthRA, raB, decA + edge_width, decB - edge_width)
         box_south = SimpleBox(raA, raB, decA, decA + edge_width)
-        box_middle = SimpleBox(box_east.raB, box_west.raA, box_north.decB, box_south.decA)
+        box_middle = SimpleBox(box_east.raB, box_west.raA, box_south.decB, box_north.decA)
         entire_box = SimpleBox(raA, raB, decA, decB)
 
         edge_boxes = [box_north, box_east, box_west, box_south]

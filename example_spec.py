@@ -21,7 +21,7 @@ spec = {
                     "filterName": columns.FilterGenerator(filters="ugriz"),
                     "ra,decl": columns.RaDecGenerator(ignore_edge_only=True)
                     },
-        "density": UniformSpatialModel(1000),
+        "density": UniformSpatialModel(100),
     },
     "ForcedSource": {
         "prereq_tables": ["CcdVisit", "Object"],

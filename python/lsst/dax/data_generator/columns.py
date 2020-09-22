@@ -384,6 +384,10 @@ class ForcedSourceGenerator(ColumnGenerator):
         visit_table = prereq_tables['CcdVisit']
         object_table = prereq_tables['Object']
 
+        objects_inside_box = object_table[(object_table['ra'] >= box.raA) &
+                                          (object_table['ra'] < box.raB) &
+                                          (object_table['decl'] >= box.decA) &
+                                          (object_table['decl'] < box.decB)]
 
         visit_skycoords = SkyCoord(ra=visit_table['ra'], dec=visit_table['decl'], unit="deg")
         visit_deltas = chunk_center.separation(visit_skycoords).degree
@@ -391,11 +395,12 @@ class ForcedSourceGenerator(ColumnGenerator):
         n_matching_visits = len(sel_matching_visits)
 
 
-        out_objectIds = np.repeat(object_table['objectId'].values, n_matching_visits)
-        out_ccdVisitIds = np.tile(visit_table['ccdVisitId'].iloc[sel_matching_visits].values, len(object_table))
+        out_objectIds = np.repeat(objects_inside_box['objectId'].values, n_matching_visits)
+        out_ccdVisitIds = np.tile(visit_table['ccdVisitId'].iloc[sel_matching_visits].values,
+                                  len(objects_inside_box))
 
-        n_rows_total = n_matching_visits * len(object_table)
-        psFlux = np.repeat(object_table['mag_g'].values, n_matching_visits)  + np.random.randn(n_rows_total)
+        n_rows_total = n_matching_visits * len(objects_inside_box)
+        psFlux = np.repeat(objects_inside_box['mag_g'].values, n_matching_visits)  + np.random.randn(n_rows_total)
         psFluxSigma = np.zeros(n_rows_total) + 0.1
 
         assert len(out_objectIds) == n_rows_total
