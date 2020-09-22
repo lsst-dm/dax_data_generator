@@ -142,7 +142,6 @@ class DataGenerator:
         table_columns = {}
 
         for table in resolved_order:
-            #cols = table_columns[table]
             column_generators = self.spec[table]["columns"]
             prereq_rows = self.spec[table].get("prereq_row", None)
             prereq_tables = self.spec[table].get("prereq_tables", [])
@@ -158,8 +157,8 @@ class DataGenerator:
                 chunk_density = density_model.get_density_at_point(ra_center, dec_center)
 
             generated_data_per_box = []
-            boxes = self._make_subchunk_boxes(chunk_id, edge_width=edge_width,
-                                                                  edge_only=edge_only)
+            boxes = self._make_boxes(chunk_id, edge_width=edge_width,
+                                              edge_only=edge_only)
             chunk_center = SkyCoord(ra_center, dec_center, frame="icrs", unit="deg")
 
             for box_n, box in enumerate(boxes):
@@ -184,7 +183,7 @@ class DataGenerator:
 
         return output_tables
 
-    def _make_subchunk_boxes(self, chunk_id, edge_width=0, edge_only=False):
+    def _make_boxes(self, chunk_id, edge_width=0, edge_only=False):
 
         # sphgeom Box from Chunker::getChunkBoundingBox
         chunk_box = self.chunker.getChunkBounds(chunk_id)
@@ -194,35 +193,38 @@ class DataGenerator:
         ra_delta = raB - raA
         if ra_delta < 0:
             raA = raA - 360.0
-            ra_delta = raB -raA
+            ra_delta = raB - raA
         decA = chunk_box.getLat().getA().asDegrees()
         decB = chunk_box.getLat().getB().asDegrees()
 
-        boxes = []
         print("chunk=", chunk_id, "bbox=", chunk_box.__repr__())
 
-        if edge_width > 0.0:
-            # Correct the edge_width for declination so there is at least
-            # edge_width at both the top and bottom of the east and west blocks.
-            edge_raA = edge_width / math.cos(decA + edge_width)
-            edge_raB = edge_width / math.cos(decB - edge_width)
-            edge_widthRA = max(edge_raA, edge_raB)
+        # Correct the edge_width for declination so there is at least
+        # edge_width at both the top and bottom of the east and west blocks.
+        edge_raA = edge_width / math.cos(decA + edge_width)
+        edge_raB = edge_width / math.cos(decB - edge_width)
+        edge_widthRA = max(edge_raA, edge_raB)
 
-            box_north = SimpleBox(raA, raB, decB - edge_width, decB)
-            box_east = SimpleBox(raA, raA + edge_widthRA, decA + edge_width, decB - edge_width)
-            box_west = SimpleBox(raB - edge_widthRA, raB, decA + edge_width, decB - edge_width)
-            box_south =SimpleBox(raA, raB, decA, decA + edge_width)
+        box_north = SimpleBox(raA, raB, decB - edge_width, decB)
+        box_east = SimpleBox(raA, raA + edge_widthRA, decA + edge_width, decB - edge_width)
+        box_west = SimpleBox(raB - edge_widthRA, raB, decA + edge_width, decB - edge_width)
+        box_south = SimpleBox(raA, raB, decA, decA + edge_width)
+        box_middle = SimpleBox(box_east.raB, box_west.raA, box_north.decB, box_south.decA)
+        entire_box = SimpleBox(raA, raB, decA, decB)
 
-            boxes.extend([box_north, box_east, box_west, box_south])
+        edge_boxes = [box_north, box_east, box_west, box_south]
+        edge_area = sum(x.area() for x in edge_boxes)
+        entire_area = entire_box.area()
 
-            if(not edge_only):
-                # Middle
-                box_middle = SimpleBox(box_east.raB, box_west.raA,
-                                       box_north.decB, box_south.decA)
-                boxes.append(box_middle)
-        else:
-            entire_box = SimpleBox(raA, raB, decA, decB)
+        ratio_edge_to_entire = edge_area/entire_area
+
+        boxes = []
+        if(ratio_edge_to_entire > 0.90 or edge_width <= 0.0):
             boxes.append(entire_box)
+        else:
+            boxes.extend(edge_boxes)
+            if(not edge_only):
+                boxes.append(box_middle)
 
         return boxes
 
