@@ -140,8 +140,15 @@ class DataGenerator:
 
         resolved_order = self._resolve_table_order(self.spec)
         table_columns = {}
+        tables_loaded_from_file = []
 
         for table in resolved_order:
+            if("from_file" in self.spec[table]):
+                output_tables[table] = pd.read_csv(self.spec[table]["from_file"], header=None,
+                                                  names=self.spec[table]["columns"].split(","))
+                tables_loaded_from_file.append(table)
+                continue
+
             column_generators = self.spec[table]["columns"]
             prereq_rows = self.spec[table].get("prereq_row", None)
             prereq_tables = self.spec[table].get("prereq_tables", [])
@@ -180,6 +187,11 @@ class DataGenerator:
 
 
             output_tables[table] = pd.concat(generated_data_per_box)
+
+        # We don't want to write out tables that were pre-generated and
+        # loaded from a file
+        for table in tables_loaded_from_file:
+            del output_tables[table]
 
         return output_tables
 
