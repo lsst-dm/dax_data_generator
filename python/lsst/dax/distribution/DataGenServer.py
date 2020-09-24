@@ -167,8 +167,8 @@ class DataGenServer:
         ingest_host = self._cfg['ingest']['host']
         ingest_port = self._cfg['ingest']['port']
         ingest_auth = self._cfg['ingest']['authKey']
-        self._ingest_dict = {'host':ingest_host, 'port':ingest_port, 'auth':ingest_auth,
-                             'db':self._db_name, 'skip':self._skip_ingest}
+        self._ingest_dict = {'host': ingest_host, 'port': ingest_port, 'auth': ingest_auth,
+                             'db': self._db_name, 'skip': self._skip_ingest}
         # Read ingest config files.
         self._ingest_cfg_dir = os.path.join(self._base_cfg_dir, self._cfg['ingest']['cfgDir'])
         print("ingest addr=", ingest_host, ":", ingest_port)

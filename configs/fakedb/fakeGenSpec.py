@@ -28,3 +28,9 @@ spec = {
         },
     }
 }
+
+directors = {
+    "Object": {
+        "ForcedSource": "objectId"
+    }
+}
