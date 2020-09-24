@@ -321,6 +321,46 @@ class MagnitudeGenerator(ColumnGenerator):
         magCols = convertBlockToRows(magRows)
         return magCols
 
+class UniformGenerator(ColumnGenerator):
+    """
+    Parameters
+    ----------
+    n_mags : int
+        Number of magnitude columns to make.
+    min_mag : float
+        Minimum value for generated magnitudes.
+    max_mag : float
+        Maximum value for generated magnitudes.
+    column_val : int
+        Arbitrary integer that should be different from other
+        column values. Used in random number generation.
+
+    Note
+    ----
+    Currently generates a flat magnitude distribution. Should properly
+    be some power law.
+    If there is more than one call to this in a single table, there will
+    be correlation between rows as the same random numbers will be used.
+    """
+
+    def __init__(self, n_columns=1, min_val=0, max_val=1, column_val=7):
+        self.n_columns = n_columns
+        self.min_val = min_val
+        self.max_val = max_val
+        self.column_val = column_val  # arbitrary, but different from other columns
+
+    def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
+
+        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_val))
+
+        # This needs to be made row by row not column by column, as
+        # row by row results in repeatable values when doing edges first.
+        columns = []
+        delta_value = self.max_val - self.min_val
+        for _ in range(self.n_columns):
+            values = delta_value * np.random.rand(length) + self.min_val
+            columns.append(values)
+        return columns
 
 class FilterGenerator(ColumnGenerator):
     """Class to generate random filter columns.
@@ -393,6 +433,7 @@ class ForcedSourceGenerator(ColumnGenerator):
         visit_deltas = chunk_center.separation(visit_skycoords).degree
         sel_matching_visits, = np.where(visit_deltas < self.visit_radius)
         n_matching_visits = len(sel_matching_visits)
+        print(f"Found {n_matching_visits} matching visits")
 
 
         out_objectIds = np.repeat(objects_inside_box['objectId'].values, n_matching_visits)
@@ -400,7 +441,7 @@ class ForcedSourceGenerator(ColumnGenerator):
                                   len(objects_inside_box))
 
         n_rows_total = n_matching_visits * len(objects_inside_box)
-        psFlux = np.repeat(objects_inside_box['mag_g'].values, n_matching_visits)  + np.random.randn(n_rows_total)
+        psFlux = np.repeat(objects_inside_box['gPsFlux'].values, n_matching_visits)  + np.random.randn(n_rows_total)
         psFluxSigma = np.zeros(n_rows_total) + 0.1
 
         assert len(out_objectIds) == n_rows_total

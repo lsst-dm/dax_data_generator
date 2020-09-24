@@ -10,7 +10,7 @@ spec = {
     "Object": {
         "columns": {"objectId": columns.ObjIdGenerator(),
                     "ra,decl": columns.RaDecGenerator(),
-                    "mag_u,mag_g,mag_r,mag_i,mag_z": columns.MagnitudeGenerator(n_mags=5)
+                    "uPsFlux,gPsFlux,rPsFlux,iPsFlux,zPsFlux,yPsFlux": columns.MagnitudeGenerator(n_mags=5)
                     },
         "density": UniformSpatialModel(1000),
     },
