@@ -38,13 +38,15 @@ def edgeOnlyContainedInComplete(chunk_id, object_count, visit_count, edge_width,
     if("ForcedSource" in spec):
         row_counts["ForcedSource"] = None
     tablesComplete = dataGen.make_chunk(chunk_id,
-                                        edge_width=edge_width, edge_only=False)
+                                        edge_width=edge_width, edge_only=False,
+                                        return_pregenerated=True)
 
     row_counts = {"CcdVisit": visit_count, "Object": object_count}
     if("ForcedSource" in spec):
         row_counts["ForcedSource"] = None
     tablesEdgeOnly = dataGen.make_chunk(chunk_id,
-                                        edge_width=edge_width, edge_only=True)
+                                        edge_width=edge_width, edge_only=True,
+                                        return_pregenerated=True)
 
     print("visits len:", len(tablesComplete["CcdVisit"]))
     print("forced len:", len(tablesComplete["ForcedSource"]))

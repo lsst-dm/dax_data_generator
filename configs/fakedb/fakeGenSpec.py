@@ -15,11 +15,8 @@ spec = {
         "density": UniformSpatialModel(1000),
     },
     "CcdVisit": {
-        "columns": {"ccdVisitId": columns.VisitIdGenerator(),
-                    "filterName": columns.FilterGenerator(filters="ugriz"),
-                    "ra,decl": columns.RaDecGenerator(ignore_edge_only=True)
-                    },
-        "density": UniformSpatialModel(1000),
+        "from_file": "visit_table_chunk3525.csv",
+        "columns": "ccdVisitId,filterName,ra,decl"
     },
     "ForcedSource": {
         "prereq_tables": ["CcdVisit", "Object"],

@@ -115,7 +115,7 @@ class DataGenerator:
                 raise ValueError("Column name implies multiple returns, "
                                  "but generator only returned one")
 
-    def make_chunk(self, chunk_id, edge_width=0.017, edge_only=False):
+    def make_chunk(self, chunk_id, edge_width=0.017, edge_only=False, return_pregenerated=False):
         """Generate synthetic data for one chunk.
 
         Parameters
@@ -188,10 +188,11 @@ class DataGenerator:
 
             output_tables[table] = pd.concat(generated_data_per_box)
 
-        # We don't want to write out tables that were pre-generated and
-        # loaded from a file
-        for table in tables_loaded_from_file:
-            del output_tables[table]
+        # Unless the user asks for it, we don't want to write out tables that
+        # were pre-generated and loaded from a file.
+        if not return_pregenerated:
+            for table in tables_loaded_from_file:
+                del output_tables[table]
 
         return output_tables
 

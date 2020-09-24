@@ -25,7 +25,7 @@ spec = {
 }
 
 spec["CcdVisit"] = {
-    "from_file": "CcdVisit_precomputed.csv",
+    "from_file": "visit_table.csv",
     "columns": "ccdVisitId,filterName,ra,decl"
 }
 
