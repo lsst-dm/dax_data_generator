@@ -95,6 +95,9 @@ class DataGenServer:
         When true, do not try to pass generated files to the ingest system.
     skip_schema : bool
         When true, expect attempts to send schemas to ingest to fail.
+    keep_csv : bool
+        When true, hold onto intermediate files and directories instead of
+        deleting them.
 
     Notes
     -----
@@ -112,12 +115,13 @@ class DataGenServer:
     """
 
     def __init__(self, cfg_file_name, chunk_logs_in, log_dir,
-                 skip_ingest, skip_schema):
+                 skip_ingest, skip_schema, keep_csv):
         self._cfgFileName = cfg_file_name
         # Set of all chunkIds to generate. sphgeom::Chunker is used to limit
         # the list to valid chunks.
         self._skip_ingest = skip_ingest
         self._skip_schema = skip_schema
+        self._keep_csv = keep_csv
         # Set to false to stop accepting and end the program
         self._loop = True
         # Sequence count, incremented to provide unique client names
@@ -168,7 +172,7 @@ class DataGenServer:
         ingest_port = self._cfg['ingest']['port']
         ingest_auth = self._cfg['ingest']['authKey']
         self._ingest_dict = {'host': ingest_host, 'port': ingest_port, 'auth': ingest_auth,
-                             'db': self._db_name, 'skip': self._skip_ingest}
+                             'db': self._db_name, 'skip': self._skip_ingest, 'keep': self._keep_csv}
         # Read ingest config files.
         self._ingest_cfg_dir = os.path.join(self._base_cfg_dir, self._cfg['ingest']['cfgDir'])
         print("ingest addr=", ingest_host, ":", ingest_port)
@@ -487,10 +491,10 @@ class DataGenServer:
         print("Done, generated ", self._total_generated_chunks)
 
         print("chunks failed chunks:", self.chunksInState([GenerationStage.LIMBO, GenerationStage.ASSIGNED]))
-        counts = {GenerationStage.UNASSIGNED:0,
-                  GenerationStage.ASSIGNED:0,
-                  GenerationStage.FINISHED:0,
-                  GenerationStage.LIMBO:0}
+        counts = {GenerationStage.UNASSIGNED: 0,
+                  GenerationStage.ASSIGNED: 0,
+                  GenerationStage.FINISHED: 0,
+                  GenerationStage.LIMBO: 0}
         for chk in self._chunks_to_send:
             chk_info = self._chunks_to_send[chk]
             counts[chk_info.gen_stage] += 1

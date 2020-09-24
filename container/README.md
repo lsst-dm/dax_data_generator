@@ -14,16 +14,16 @@ Many clients can (and should) be run simultaneously. The only configuration
 clients need is how to connect to the server. (see the last example for
 setting host and port number when starting a client)
 
-Assuming the container is build off the `master` branch of the package, do tis
+Assuming the container is build off the `master` branch of the package, do this
 from the top directory of the package:
 ```
-container/build container master
+container/build.sh container master
 ```
 
 To build a branch for a ticket. The ticket branch MUST BE IN GITHUB as
 any local changes to the branch are ignored.
 ```
-container/build container tickets/DM-26409 --no-cache
+container/build.sh container tickets/DM-26409 --no-cache
 ```
 '--no-cache' is useful when the code in github changes
 

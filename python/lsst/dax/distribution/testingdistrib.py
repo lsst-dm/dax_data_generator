@@ -106,7 +106,9 @@ class ServerTestThrd(threading.Thread):
                 raise RuntimeError("mismatch in sent vs received lists", self.name, diff)
             self.warnings += serv.warnings
         print("ServerTestThrd.run finished")
-        if self.success is None: self.success = True
+        if self.success is None:
+            self.success = True
+
 
 class ClientTestThrd(threading.Thread):
     """Class for testing the client side of messaging
@@ -184,9 +186,9 @@ class ClientTestThrd(threading.Thread):
             while len(completedChunks) > 0:
                 completedChunks = client.clientReportChunksComplete(completedChunks)
 
-
         print("ClientTestThrd.run finished")
-        if self.success is None: self.success = True
+        if self.success is None:
+            self.success = True
 
 
 def testDataGenConnection(port, name, objects, visits, seed, cfg_file_contents, maxCount,
@@ -221,12 +223,12 @@ def testDataGenConnection(port, name, objects, visits, seed, cfg_file_contents, 
     return success, servThrd.warnings, clientThrd.warnings
 
 def connectionTest():
-    cListA = range(26,235)
-    pCfgFiles = {0:("obj.cfg", "a lot of obj cfg info"),
-                 1:("fs.cfg", "some forcedSource info"),
-                 2:("junk_cfg", "blah blah junk\n more stuff")}
-    ingest_dict = {'host':'mt.st.com', 'port':2461, 'auth': '1234',
-                            'db':'afake_db', 'skip': False}
+    cListA = range(26, 235)
+    pCfgFiles = {0: ("obj.cfg", "a lot of obj cfg info"),
+                 1: ("fs.cfg", "some forcedSource info"),
+                 2: ("junk_cfg", "blah blah junk\n more stuff")}
+    ingest_dict = {'host': 'mt.st.com', 'port': 2461, 'auth': '1234',
+                   'db': 'afake_db', 'skip': False, 'keep': True}
     timing_dict = TimingDict()
     timing_dict.add('gen_o', 345.23)
     timing_dict.add('gen_fs', 981.23)
@@ -241,8 +243,8 @@ def connectionTest():
         print("First test failed")
         exit(1)
 
-    ingest_dict = {'host':'mt.st.edu', 'port':0, 'auth': '',
-                   'db':'diff_db', 'skip': True}
+    ingest_dict = {'host': 'mt.st.edu', 'port': 0, 'auth': '',
+                   'db': 'diff_db', 'skip': True, 'keep': False}
     timing_dict = TimingDict()
     success, s_warn2, c_warn2 = testDataGenConnection(14242, 'qt', 10000, 30, 1,
                           'bunch of json file entries', 28, cListA,
