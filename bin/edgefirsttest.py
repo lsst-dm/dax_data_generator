@@ -106,8 +106,6 @@ if __name__ == "__main__":
             success = False
         if not testing.tst_mergeBlocks():
             success = False
-        if not testing.tst_RaDecGenerator():
-            success = False
 
     if not success:
         print("Failed low level tests.")

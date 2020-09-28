@@ -128,8 +128,8 @@ class ColumnGeneratorTests(unittest.TestCase):
                 self.assertIn(res_row_obj, output_obj_ids)
                 self.assertIn(res_row_visit, output_ccdvisits)
 
-    @unittest.skip("temporary skip after column refactor")
-    def testRaDecGenerator(self):
+    def testConvertBlockToRows(self):
         self.assertTrue(testing.tst_convertBlockToRows(False))
+
+    def testMergeBlocks(self):
         self.assertTrue(testing.tst_mergeBlocks(False))
-        self.assertTrue(testing.tst_RaDecGenerator(False, 1000))

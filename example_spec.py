@@ -11,7 +11,7 @@ spec = {
     "Object": {
         "columns": {"objectId": columns.ObjIdGenerator(),
                     "ra,decl": columns.RaDecGenerator(),
-                    "uPsFlux,gPsFlux,rPsFlux,iPsFlux,zPsFlux,yPsFlux": columns.MagnitudeGenerator(n_mags=5)
+                    "uPsFlux,gPsFlux,rPsFlux,iPsFlux,zPsFlux,yPsFlux": columns.MagnitudeGenerator(n_mags=6)
                     },
         "density": UniformSpatialModel(1000),
     },
@@ -25,7 +25,7 @@ spec = {
 }
 
 spec["CcdVisit"] = {
-    "from_file": "visit_table.csv",
+    "from_file": "visit_table_chunk3525.csv",
     "columns": "ccdVisitId,filterName,ra,decl"
 }
 

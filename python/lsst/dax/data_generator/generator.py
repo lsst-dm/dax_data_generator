@@ -145,7 +145,7 @@ class DataGenerator:
         for table in resolved_order:
             if("from_file" in self.spec[table]):
                 output_tables[table] = pd.read_csv(self.spec[table]["from_file"], header=None,
-                                                  names=self.spec[table]["columns"].split(","))
+                                                   names=self.spec[table]["columns"].split(","))
                 tables_loaded_from_file.append(table)
                 continue
 
@@ -165,7 +165,7 @@ class DataGenerator:
 
             generated_data_per_box = []
             boxes = self._make_boxes(chunk_id, edge_width=edge_width,
-                                              edge_only=edge_only)
+                                     edge_only=edge_only)
             chunk_center = SkyCoord(ra_center, dec_center, frame="icrs", unit="deg")
 
             for box_n, box in enumerate(boxes):
