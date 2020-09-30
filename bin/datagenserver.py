@@ -28,19 +28,22 @@ from lsst.dax.distribution.DataGenServer import DataGenServer
 
 def usage():
     print('-h, --help  help')
-    print('-k, --skipIngest  skip trying to ingest anything')
-    print('-s, --skipSchema  skip sending schema, needed when schema was already sent.')
-    print('-o, --outDir      output log directory defaults to current directory')
-    print('-i, --inDir       input directory, only "target.clg" must exist\n'
+    print('-k, --skipIngest  Skip trying to ingest anything')
+    print('-s, --skipSchema  Skip sending schema, needed when schema was already sent.')
+    print('-o, --outDir      Output log directory defaults to current directory')
+    print('-i, --inDir       Input directory, only "target.clg" must exist\n'
           '                  ex: "~/in/" which would look for\n'
           '                      ~/in/target.clg, ~/in/completed.clg,\n'
           '                      ~/in/assigned.clg, and ~/in/imbo.clg')
-    print('-r, --raw  string describing targets chunk ids such as "0:10000" or "0,1,3,466"')
+    print('-r, --raw         String describing targets chunk ids such as "0:10000"\n'
+          '                  or "0,1,3,466"')
+    print('-z, --keepCsv     Hold onto intermediate csv files for debugging.')
     print('')
     print('If niether -i or -r are specified, target list will include all valid chunks ids.')
     print('If -r and -i are both specified, target list will be union of target file and\n'
-          '-r option while completed, assigned, and limbo lists created from the files found.')
-    print('test ex: bin/datagenserver.py -k -o "~/log/" -r "0:2000"')
+          '-r option while completed, assigned, and limbo lists are created from the files\n'
+          'found.')
+    print('test ex: bin/datagenserver.py -k -z -o "~/log/" -r "0:2000"')
     print('\nSee README.md "Restarting a Problem Run with Log Files" for information')
     print('on using log files to continue a previous run with problems.')
 
@@ -50,14 +53,15 @@ def server():
     """
     argumentList = sys.argv[1:]
     print("argumentList=", argumentList)
-    options = "hksc:i:o:r:"
-    long_options = ["help", "skipIngest", "skipSchema", "configfile", "outDir", "inDir", "raw"]
+    options = "hksc:i:o:r:z"
+    long_options = ["help", "skipIngest", "skipSchema", "configfile", "outDir", "inDir", "raw", "keepCsv"]
     skip_ingest = False
     skip_schema = False
     config_file = "configs/fakedb/serverCfg.yml"
     in_dir = None
     out_dir = ""
     raw = None
+    keep_csv = False
     try:
         arguments, values = getopt.getopt(argumentList, options, long_options)
         print("arguments=", arguments)
@@ -77,6 +81,8 @@ def server():
                 in_dir = val
             elif arg in ("-r", "--raw"):
                 raw = val
+            elif arg in ("-z", "--keepCsv"):
+                keep_csv = True
     except getopt.error as err:
         print(str(err))
         exit(1)
@@ -91,7 +97,7 @@ def server():
     else:
         clfs = chunklogs.ChunkLogs(None, raw=raw)
     # 0-50000 would be all chunks for stripes = 200 substripes = 5
-    dgServ = DataGenServer(config_file, clfs, out_dir, skip_ingest, skip_schema)
+    dgServ = DataGenServer(config_file, clfs, out_dir, skip_ingest, skip_schema, keep_csv)
     if dgServ.chunksToSendTotal() == 0:
         print("No chunks to generate, exiting.")
         exit(0)

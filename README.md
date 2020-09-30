@@ -203,6 +203,8 @@ Note that the original log directory is the input and a new output log
 directory is defined. It is likely the log files will need to be
 edited.
 
+Running bin/logreport.py -i "~/log/" will list all problem chunks.
+
 The log files are:
     target.clg - all chunks that should be created
     assigned.clg - all chunks that were assigned to clients to be created

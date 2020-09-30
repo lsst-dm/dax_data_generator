@@ -26,6 +26,8 @@ import re
 import shutil
 import socket
 import subprocess
+import traceback
+from pathlib import PurePosixPath
 
 from .DataGenConnection import DataGenConnection
 from .DataIngest import DataIngest
@@ -62,30 +64,32 @@ class DataGenClient:
         self._name = "-1"
         self._target_dir = os.path.abspath(target_dir)
         self._chunksPerReq = chunks_per_req
-        self._gen_arg_str = None # Arguments from the server for the generator.
-        self._cl_conn = None # DataGenConnection
-        self._cfg_file_name = 'gencfg.py' # name of the local config file for the generator
-        self._cfg_file_contents = None # contents of the config file.
-        self._pt_cfg_dir = 'partitionCfgs' # sub-dir of _targetDir for partitioner configs
-        self._pt_cfg_dict = None # Dictionary that stores partioner config files.
+        self._gen_arg_str = None  # Arguments from the server for the generator.
+        self._cl_conn = None  # DataGenConnection
+        self._cfg_file_name = 'gencfg.py'  # name of the local config file for the generator
+        self._cfg_file_contents = None  # contents of the config file.
+        self._pt_cfg_dir = 'partitionCfgs'  # sub-dir of _targetDir for partitioner configs
+        self._pt_cfg_dict = None  # Dictionary that stores partioner config files.
         self.makeDir(self._target_dir)
         self.makeDir(os.path.join(self._target_dir, self._pt_cfg_dir))
 
         # Values set from transferred self._cfgFileContents (see _readDatagenConfig)
-        self._spec = None # spec from exec(self._cfgFileContents)
-        self._chunker = None # chunker from exec(self._cfgFileContents)
-        self._edge_width = None # float Width of edges in edge only generation.
+        self._spec = None  # spec from exec(self._cfgFileContents)
+        self._directors = None  # directors from exec(self._cfgFileContents)
+        self._chunker = None  # chunker from exec(self._cfgFileContents)
+        self._edge_width = None  # float Width of edges in edge only generation.
         # DataGenerator, cannot be initialized until '_spec' received from server
         self._data_gen = None
-        self._objects = None # int number of objects set
-        self._visits = None # int number of visits
-        self._seed = None # int random number seed
+        self._objects = None  # int number of objects set
+        self._visits = None  # int number of visits
+        self._seed = None  # int random number seed
 
         # Ingest values
         self._ingest = None
         self._skip_ingest = True
         self._db_name = ''
         self._transaction_id = -1
+        self._keep_csv = True  # keep intermediate files for debugging
 
         # timing information
         self._timing_dict = TimingDict()
@@ -101,7 +105,8 @@ class DataGenClient:
             'port' : int, ingest port number.
             'auth' : str, ingest authorization.
             'db'   : str, name of the databse being created
-            'skip  : bool, true if ingest is being skipped.
+            'skip' : bool, true if ingest is being skipped.
+            'keep' : bool, true if intermediate files should be kept.
 
         Note
         ----
@@ -111,6 +116,7 @@ class DataGenClient:
         self._ingest = DataIngest(ingd['host'], ingd['port'], ingd['auth'])
         self._skip_ingest = ingd['skip']
         self._db_name = ingd['db']
+        self._keep_csv = ingd['keep']
 
     def createFileName(self, chunk_id, table_name, ext, edge_only=False, use_targ_path=False):
         """Create a consistent file name given the input parameters.
@@ -137,7 +143,8 @@ class DataGenClient:
         """
         typeStr = "EO_" if edge_only else "CT_"
         # If the tabelName is a wildcard, don't use typeStr
-        if table_name == '*': typeStr = ''
+        if table_name == '*':
+            typeStr = ''
         fn = 'chunk' + str(chunk_id) + '_' + typeStr + table_name + '.' + ext
         if use_targ_path:
             fn = os.path.join(self._target_dir, fn)
@@ -213,9 +220,11 @@ class DataGenClient:
         spec_globals = {}
         exec(self._cfg_file_contents, spec_globals)
         assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
+        assert 'directors' in spec_globals, "Specification file must define a variable 'directors'."
         assert 'chunker' in spec_globals, "Specification file must define a variable 'chunker'."
         assert 'edge_width' in spec_globals, "Specification file must define a variable 'edge_width'."
         self._spec = spec_globals['spec']
+        self._directors = spec_globals['directors']
         self._chunker = spec_globals['chunker']
         self._edge_width = spec_globals['edge_width']
         print("_cfgFileContents=", self._cfg_file_contents)
@@ -252,7 +261,7 @@ class DataGenClient:
         neededEdgeOnly = []
         # Find the relevant files in self._targetDir.
         findCsv = self.createFileName(chunk_id, '*', 'csv', use_targ_path=True)
-        #TODO: python3 has better version of glob that would make this code cleaner.
+        # TODO: python3 has better version of glob that would make this code cleaner.
         chunkCsvPaths = glob.glob(findCsv)
         print("findCsv=", findCsv, " paths=", chunkCsvPaths)
         # Remove the path and add the files to a list
@@ -260,10 +269,11 @@ class DataGenClient:
         for fn in chunkCsvPaths:
             chunkCsvFiles.append(os.path.basename(fn))
         print("chunkCsvFiles=", chunkCsvFiles)
-        # These cannot be edgeOnly, and there must be one for each entry in self._spec['spec']
+        # These cannot be edgeOnly, and there must be one for
+        # each entry in self._spec['spec']
         for tblName in self._spec:
             fn = self.createFileName(chunk_id, tblName, 'csv', edge_only=False, use_targ_path=False)
-            if not fn in chunkCsvFiles:
+            if fn not in chunkCsvFiles:
                 print("Failed to find ", fn, "in", chunkCsvFiles)
                 success = False
                 return success, foundCsv, neededEdgeOnly
@@ -310,7 +320,7 @@ class DataGenClient:
         complete : bool
             When True, remove complete csv and parquet files
 
-        Return
+        Returns
         ------
         success : bool
             True if all files were removed.
@@ -375,7 +385,7 @@ class DataGenClient:
             print("ERROR directory creation", dirName)
             return False
         cList = neighbor_chunks.copy()
-        if not chunk_id in cList:
+        if chunk_id not in cList:
             cList.append(chunk_id)
         for cId in cList:
             # Only the 'CT' or 'EO' csv files should exist, so hard link
@@ -388,7 +398,7 @@ class DataGenClient:
                 linkName = os.path.join(self._target_dir, str(chunk_id), linkName)
                 try:
                     os.link(fn, linkName)
-                except  OSError as err:
+                except OSError as err:
                     if err.errno != errno.EEXIST:
                         print("ERROR fillChunkDir link failed", fn, linkName)
                         return False
@@ -403,7 +413,7 @@ class DataGenClient:
 
         self._data_gen.timingdict = TimingDict()
         tables = self._data_gen.make_chunk(chunk_id, num_rows=row_counts, seed=self._seed,
-                                    edge_width=self._edge_width, edge_only=edge_only)
+                                           edge_width=self._edge_width, edge_only=edge_only)
         self._data_gen.timingdict.increment()
         self._timing_dict.combine(self._data_gen.timingdict)
         print("tables=", tables)
@@ -455,14 +465,14 @@ class DataGenClient:
                     print("Removing extraneous edgeOnly files")
                     if not self.removeFilesForChunk(chunk_id, edge_only=True, complete=False):
                         print("WARN failed to remove extraneous csv for", chunk_id)
-                else: # Not a full set of complete files
+                else:  # Not a full set of complete files
                     print("Removing extraneous complete files")
                     if not self.removeFilesForChunk(chunk_id, edge_only=False, complete=True):
                         print("WARN failed to remove incomplete csv for", chunk_id)
                 return 'exists'
         else:
             # Delete files for this chunk if they exist.
-            if not self.removeFilesForChunk( chunk_id, edge_only=True, complete=True):
+            if not self.removeFilesForChunk(chunk_id, edge_only=True, complete=True):
                 print("WARN failed to remove all files for chunk=", chunk_id)
         # Genrate the chunk csv files.
         try:
@@ -492,7 +502,7 @@ class DataGenClient:
         for chunk_id in chunk_recv_set:
             # Generate the csv files for the chunk
             if self._generateChunk(chunk_id, edge_only=False) != 'failed':
-                self._timing_dict.increment() # increment the count of chunks
+                self._timing_dict.increment()  # increment the count of chunks
                 created_chunks.append(chunk_id)
         return created_chunks
 
@@ -526,7 +536,7 @@ class DataGenClient:
             print("foundCsv=", foundCsv, "fCsv=", filesCsv, " needed=", neededChunks)
             if not foundCsv:
                 print("ERROR Problems with finding essential csv for creating overlap chunk=",
-                        chunk, filesCsv)
+                      chunk, filesCsv)
                 continue
             # Create edgeOnly neededChunks
             createdAllNeeded = True
@@ -581,51 +591,104 @@ class DataGenClient:
         # --in chunk0_CT_Object.csv --in chunk402_CT_Object.csv
         # --in chunk401_CT_Object.csv --in chunk400_CT_Object.csv
         # --in chunk404_EO_Object.csv --in chunk403_CT_Object.csv
-        info_list = [] # A list of tuples (tblName, fullPathFile)
-        for cfg in self._pt_cfg_dict.items():
-            st_time = self._timing_dict.start()
-            # Determine the table name from the config file name.
-            cfgFName = cfg[1][0]
-            tblName = os.path.splitext(cfgFName)[0]
-            # The list of --in files needs to be generated. It
-            # needs to have all the .csv files for tblName.
-            inCsvFiles = []
-            reg = re.compile(r"chunk\w*_" + tblName + r"\.csv")
-            for f in files:
-                m = reg.match(f)
-                if m:
-                    inCsvFiles.append(f)
-            inStr = ""
-            for csv in inCsvFiles:
-                inStr += " --in " + csv
-            cfgFPath = os.path.join(self._target_dir, self._pt_cfg_dir, cfgFName)
-            outDir = os.path.join(ovlDir, "outdir" + tblName)
-            cmd = "sph-partition -c " + cfgFPath + " --mr.num-workers 1 "
-            cmd += " --out.dir " + outDir + " " + inStr
-            genResult, genOut = self.runProcess(cmd, cwd=ovlDir)
-            if genResult != 0:
-                # Return False, leave data for diagnostics.
-                print("ERROR failed to create chunk and overlap .txt files", genOut, "cmd=", cmd)
-                return False
-            # Delete the .txt files for chunk numbers other than chunk_id.
-            entries = os.listdir(outDir)
-            reg = re.compile(r"^chunk_" + str(chunkId) + r"(_overlap)?\.txt$")
-            for ent in entries:
-                fn = os.path.basename(ent)
-                full_path = os.path.join(outDir, ent)
-                m = reg.match(fn)
-                if m:
-                    print("keeping ", fn, tblName, full_path)
-                    info_list.append((tblName, full_path))
-                else:
-                    os.remove(full_path)
-            self._timing_dict.end("overlap", st_time)
+        # Determine which tables need to be created first.
+        info_list = []
+        for director, children in self._directors.items():
+            # Make the director table and index
+            cfg = self._pt_cfg_dict[director]
+            cfg_path = cfg[0]
+            index_path = self._callPartitioner(chunkId, director, cfg_path, ovlDir, files, info_list)
+            # create child tables using index_path
+            for child in children:
+                cfg = self._pt_cfg_dict[child]
+                cfg_path = cfg[0]
+                self._callPartitioner(chunkId, child, cfg_path, ovlDir, files, info_list, index_path)
+
+        # Add the tables to the ingest transaction
         for info in info_list:
             print("info=", info, "0=", info[0], "1=", info[1])
             st_time = self._timing_dict.start()
             self._addChunkToTransaction(chunkId, table=info[0], f_path=info[1])
             self._timing_dict.end("ingest", st_time)
         return True
+
+    def _callPartitioner(self, chunk_id, tbl_name, cfg_fname, ovl_dir, files, info_list, index_path=None):
+        """ Call sph-partition to create '.txt' files for ingest.
+
+        Parameters
+        ----------
+        chunk_id : int
+            Chunk id number.
+        tbl_name : str
+            Table name.
+        cfg_fname : str
+            Configuration file name
+        ovl_dir : str
+            Overlap directory.
+        files : list of str
+            List of generated csv files in the ovl_dir.
+        info_list : list of str
+            List of files that should be ingested.
+        index_path : str (optional)
+            Full path of the index.txt file that should be used to determine
+            what chunk child table entries belong to.
+            If this is None, the current table is a director table and an
+            index file should be generated.
+
+        Returns
+        -------
+        index_path : str
+            The Full path to the index file created for this chunk or used to
+            determine to which chunk child table rows belong.
+        """
+        st_time = self._timing_dict.start()
+        # The list of --in files needs to be generated. It
+        # needs to have all the .csv files for tblName.
+        inCsvFiles = []
+        reg = re.compile(r"chunk\w*_" + tbl_name + r"\.csv")
+        for f in files:
+            m = reg.match(f)
+            if m:
+                inCsvFiles.append(f)
+        inStr = ""
+        for csv in inCsvFiles:
+            inStr += " --in " + csv
+        cfgFPath = os.path.join(self._target_dir, self._pt_cfg_dir, cfg_fname)
+        outDir = os.path.join(ovl_dir, "outdir" + tbl_name)
+        # If index_path empty or undefined, this must be a director table.
+        index_name = f"chunk_{tbl_name.lower()}_index.txt"
+        if not index_path:
+            id_url = ""
+            index_path = os.path.join(outDir, index_name)
+        else:
+            id_url = f"--part.id-url=file://{index_path}"
+
+        # Put the pieces of the command together and call the partitioner.
+        cmd = "sph-partition -c " + cfgFPath + " --mr.num-workers 1 "
+        cmd += id_url + " --out.dir " + outDir + " " + inStr
+        genResult, genOut = self.runProcess(cmd, cwd=ovl_dir)
+        if genResult != 0:
+            # Return False, leave data for diagnostics.
+            print("ERROR failed to create chunk and overlap .txt files", genOut, "cmd=", cmd)
+            return False
+        # Delete the .txt files for files other than chunk_id
+        # and chunk_index.txt in outDir.
+        entries = os.listdir(outDir)
+        reg = re.compile(r"^chunk_" + str(chunk_id) + r"(_overlap)?\.txt$")
+        for ent in entries:
+            fn = os.path.basename(ent)
+            full_path = os.path.join(outDir, ent)
+            m = reg.match(fn)
+            if m:
+                print("keeping ", fn, tbl_name, full_path)
+                info_list.append((tbl_name, full_path))
+            else:
+                if fn == index_name:
+                    print("keeping index ", full_path)
+                else:
+                    os.remove(full_path)
+        self._timing_dict.end("overlap", st_time)
+        return index_path
 
     def _startTransaction(self):
         """ Start a transaction or raise a RuntimeException
@@ -671,7 +734,7 @@ class DataGenClient:
         t_id = self._transaction_id
         host, port = self._ingest.getChunkTargetAddr(t_id, chunk_id)
         print("Sending to", host, ":", port, "info", t_id, table, chunk_id, f_path)
-        out_str =self._ingest.sendChunkToTarget(host, port, t_id, table, f_path)
+        out_str = self._ingest.sendChunkToTarget(host, port, t_id, table, f_path)
         print("Added to Transaction ", host, ":", port, "info", out_str)
         return out_str
 
@@ -722,6 +785,24 @@ class DataGenClient:
             if len(chunks_to_send) == 0:
                 break
 
+    def deleteAllKeepConfig(self):
+        """Since ingest is complete for this batch, delete everything
+        that isn't a configuration file.
+        """
+        # Remove the chunk files
+        path = os.path.join(self._target_dir, 'chunk*.csv')
+        print("deleting ", path)
+        files = glob.glob(path)
+        for f in files:
+            os.remove(f)
+        # Remove the chunk sub directories, including their files.
+        dirs = os.listdir(self._target_dir)
+        for dir in dirs:
+            full_path = os.path.join(self._target_dir, dir)
+            if dir.isdecimal() and os.path.isdir(full_path):
+                print("deleting dir", full_path)
+                shutil.rmtree(full_path)
+
     def run(self):
         """Connect to the server and do everything until the server
         runs out of chunks for this client to generate and ingest.
@@ -730,10 +811,16 @@ class DataGenClient:
             s.connect((self._host, self._port))
             self._cl_conn = DataGenConnection(s)
             self._cl_conn.clientReqInit()
-            self._name, self._objects, self._visits, self._seed, self._cfg_file_contents, ingest_dict = self._cl_conn.clientRespInit()
+            cri = self._cl_conn.clientRespInit()
+            self._name = cri[0]
+            self._objects = cri[1]
+            self._visits = cri[2]
+            self._seed = cri[3]
+            self._cfg_file_contents = cri[4]
+            ingest_dict = cri[5]
             print("ingest_dict=", ingest_dict)
             self._setIngest(ingest_dict)
-            print("cfg_file_contents:\n",self._cfg_file_contents)
+            print("cfg_file_contents:\n", self._cfg_file_contents)
             print(f'name={self._name} objects={self._objects} visits={self._visits} seed={self._seed}'
                   f'skip_ingest={self._skip_ingest}')
             # Read the datagen config file to get access to an identical chunker and spec.
@@ -759,7 +846,16 @@ class DataGenClient:
                 if not pCfgName == "":
                     pCfgDict[pCfgIndex] = (pCfgName, pCfgContents)
                 pCfgIndex += 1
-            self._pt_cfg_dict = pCfgDict
+            self._pt_cfg_dict = {}
+            for cfg in pCfgDict.items():
+                cfg_fname = cfg[1][0]
+                # Table name should be config name with extenstion removed.
+                ext = PurePosixPath(cfg_fname).suffix
+                if ext != ".cfg":
+                    raise RuntimeError(f"Unexpected partitioner config file sent {cfg_fname}")
+                table_name = PurePosixPath(cfg_fname).stem
+                self._pt_cfg_dict[table_name] = cfg[1]
+
             # Write those files to the partitioner config directory
             pCfgDir = os.path.join(self._target_dir, self._pt_cfg_dir)
             for index, cfg_info in pCfgDict.items():
@@ -805,6 +901,7 @@ class DataGenClient:
                 except Exception as exc:
                     # Abort the transaction if possible.
                     print("ERROR transaction failed ", exc)
+                    traceback.print_exc()
                     abort = True
                 # TODO: It may be better to have the server end the transaction as
                 #       it could give a better record of which chunks got ingested.
@@ -828,4 +925,8 @@ class DataGenClient:
 
                 # Client sends the list of completed chunks back
                 self._sendIngestedChunksToServer(ingestedChunks)
+
+                # Remove files and directories if specified
+                if not self._keep_csv:
+                    self.deleteAllKeepConfig()
 
