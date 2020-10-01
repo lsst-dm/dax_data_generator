@@ -8,6 +8,9 @@ RUN source /qserv/stack/loadLSST.bash && \
     git clone https://github.com/lsst/sphgeom.git && \
     cd sphgeom && setup -k -r . && scons -j10 install && \
     cd - && \
+    git clone https://github.com/lsst/partition.git && \
+    cd partition && setup -k -r . && scons -j10 install && \
+    cd - && \
     git clone https://github.com/lsst-dm/dax_data_generator.git && \
     cd dax_data_generator && \
     git checkout {{BRANCH}} && \
