@@ -601,7 +601,9 @@ class DataGenClient:
             for child in children:
                 cfg = self._pt_cfg_dict[child]
                 cfg_path = cfg[0]
-                self._callPartitioner(chunkId, child, cfg_path, ovlDir, files, info_list, index_path)
+                if not self._callPartitioner(chunkId, child, cfg_path, ovlDir, files, info_list, index_path):
+                    print("Error calling partitioner")
+                    return False
 
         # Add the tables to the ingest transaction
         for info in info_list:
