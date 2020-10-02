@@ -40,15 +40,15 @@ if __name__ == "__main__":
     host = "127.0.0.1"
     port = 13042
 
-    argumentList = sys.argv[1:]
-    print("argumentList=", argumentList)
+    argument_list = sys.argv[1:]
+    print("argumentList=", argument_list)
     options = "hH:P:r"
     long_options = ["help", "host", "port", "retry"]
     skip_ingest = False
     skip_schema = False
     retry = False
     try:
-        arguments, values = getopt.getopt(argumentList, options, long_options)
+        arguments, values = getopt.getopt(argument_list, options, long_options)
         print("arguments=", arguments)
         for arg, val in arguments:
             if arg in ("-h", "--help"):
@@ -59,11 +59,11 @@ if __name__ == "__main__":
             elif arg in ("-P", "--port"):
                 port = int(val)
             elif arg in ("-r", "--retry"):
-                loop = True
+                retry = True
     except getopt.error as err:
-        print (str(err))
+        print(str(err))
         exit(1)
     print(f'server {host}:{port}')
-    dgClient = DataGenClient(host, port, loop)
-    dgClient.run()
+    dg_client = DataGenClient(host, port, retry=retry)
+    dg_client.run()
 
