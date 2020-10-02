@@ -26,6 +26,7 @@ import re
 import shutil
 import socket
 import subprocess
+import time
 import traceback
 from pathlib import PurePosixPath
 
@@ -58,10 +59,11 @@ class DataGenClient:
     the server.
     """
 
-    def __init__(self, host, port, target_dir='fakeData', chunks_per_req=5):
+    def __init__(self, host, port, retry=False, target_dir='fakeData', chunks_per_req=5):
         self._host = host
         self._port = port
         self._name = "-1"
+        self._retry = retry  # Retry connection if true
         self._target_dir = os.path.abspath(target_dir)
         self._chunksPerReq = chunks_per_req
         self._gen_arg_str = None  # Arguments from the server for the generator.
@@ -807,8 +809,17 @@ class DataGenClient:
         runs out of chunks for this client to generate and ingest.
         """
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            print(f"&&& host={self._host} port={self._port}")
-            s.connect((self._host, self._port))
+            print(f"host={self._host} port={self._port}")
+            connected = False
+            while not connected:
+                try:
+                    s.connect((self._host, self._port))
+                    connected = True
+                except socket.error:
+                    print(f"socket failed to connect {self._host}:{self._port}")
+                    if not self._retry:
+                        exit(1)
+                    time.sleep(5)
             self._cl_conn = DataGenConnection(s)
             self._cl_conn.clientReqInit()
             cri = self._cl_conn.clientRespInit()

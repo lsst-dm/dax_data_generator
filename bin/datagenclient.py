@@ -33,6 +33,8 @@ def usage():
     print("-h, --help  help")
     print("-H, --host  server host IP adress.")
     print("-P, --port  server port number")
+    print("-r, --retry retry connecting to server")
+
 
 if __name__ == "__main__":
     host = "127.0.0.1"
@@ -40,10 +42,11 @@ if __name__ == "__main__":
 
     argumentList = sys.argv[1:]
     print("argumentList=", argumentList)
-    options = "hH:P:"
-    long_options = ["help", "host", "port"]
+    options = "hH:P:r"
+    long_options = ["help", "host", "port", "retry"]
     skip_ingest = False
     skip_schema = False
+    retry = False
     try:
         arguments, values = getopt.getopt(argumentList, options, long_options)
         print("arguments=", arguments)
@@ -55,10 +58,12 @@ if __name__ == "__main__":
                 host = val
             elif arg in ("-P", "--port"):
                 port = int(val)
+            elif arg in ("-r", "--retry"):
+                loop = True
     except getopt.error as err:
         print (str(err))
         exit(1)
     print(f'server {host}:{port}')
-    dgClient = DataGenClient(host, port)
+    dgClient = DataGenClient(host, port, loop)
     dgClient.run()
 
