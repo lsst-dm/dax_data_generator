@@ -13,7 +13,7 @@ __all__ = ["ColumnGenerator", "ObjIdGenerator", "FilterGenerator",
            "VisitIdGenerator", "mergeBlocks"]
 
 
-def calcSeedFrom(chunk_id, seed, column_val=0):
+def calcSeedFrom(chunk_id, seed, column_seed=0):
     """Try to keep some separation between column generator seeds.
 
     Parameters
@@ -22,7 +22,7 @@ def calcSeedFrom(chunk_id, seed, column_val=0):
         Chunk id number.
     seed : int
         Random number seed.
-    column_val : int
+    column_seed : int
         Arbitrary column value, should be different from other column values.
 
     Note
@@ -30,9 +30,9 @@ def calcSeedFrom(chunk_id, seed, column_val=0):
     This is an attempt to avoid having chunks and columns having seeds
     near each other so that changing the seed value by 1 will not look
     like everyting was just shifted over by 1 chunk/column.
-    Each ColumnGenerator should have a unique arbitrary column_val.
+    Each ColumnGenerator should have a unique arbitrary column_seed.
     """
-    return (chunk_id*10000 + seed + column_val*100)
+    return (chunk_id*10000 + seed + column_seed*100)
 
 
 def mergeBlocks(block_a, block_b):
@@ -207,10 +207,10 @@ class RaDecGenerator(ColumnGenerator):
     """
     def __init__(self, ignore_edge_only=False):
         self.ignore_edge_only = ignore_edge_only
-        self.column_val = 1
+        self.column_seed = 1
         # avoid having the same ra and dec in different tables.
         if self.ignore_edge_only:
-            self.column_val = 2
+            self.column_seed = 2
 
     def __call__(self, box, length, seed, edge_width=0.0, edge_only=False, unique_box_id=0, **kwargs):
         """
@@ -234,7 +234,7 @@ class RaDecGenerator(ColumnGenerator):
         -------
         a tuple of a list of generated RA's and a list of generated Dec's.
         """
-        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_val))
+        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
 
         ra_min = box.raA
         ra_delta = box.raB - box.raA
@@ -289,7 +289,7 @@ class MagnitudeGenerator(ColumnGenerator):
         Minimum value for generated magnitudes.
     max_mag : float
         Maximum value for generated magnitudes.
-    column_val : int
+    column_seed : int
         Arbitrary integer that should be different from other
         column values. Used in random number generation.
 
@@ -301,15 +301,15 @@ class MagnitudeGenerator(ColumnGenerator):
     be correlation between rows as the same random numbers will be used.
     """
 
-    def __init__(self, n_mags=1, min_mag=0, max_mag=27.5, column_val=7):
+    def __init__(self, n_mags=1, min_mag=0, max_mag=27.5, column_seed=7):
         self.n_mags = n_mags
         self.min_mag = min_mag
         self.max_mag = max_mag
-        self.column_val = column_val  # arbitrary, but different from other columns
+        self.column_seed = column_seed  # arbitrary, but different from other columns
 
     def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
 
-        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_val))
+        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
 
         # This needs to be made row by row not column by column, as
         # row by row results in repeatable values when doing edges first.
@@ -331,7 +331,7 @@ class UniformGenerator(ColumnGenerator):
         Minimum value for generated magnitudes.
     max_mag : float
         Maximum value for generated magnitudes.
-    column_val : int
+    column_seed : int
         Arbitrary integer that should be different from other
         column values. Used in random number generation.
 
@@ -339,19 +339,17 @@ class UniformGenerator(ColumnGenerator):
     ----
     Currently generates a flat magnitude distribution. Should properly
     be some power law.
-    If there is more than one call to this in a single table, there will
-    be correlation between rows as the same random numbers will be used.
     """
 
-    def __init__(self, n_columns=1, min_val=0, max_val=1, column_val=7):
+    def __init__(self, n_columns=1, min_val=0, max_val=1, column_seed=7):
         self.n_columns = n_columns
         self.min_val = min_val
         self.max_val = max_val
-        self.column_val = column_val  # arbitrary, but different from other columns
+        self.column_seed = column_seed  # arbitrary, but different from other columns
 
     def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
 
-        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_val))
+        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
 
         # This needs to be made row by row not column by column, as
         # row by row results in repeatable values when doing edges first.
@@ -369,17 +367,17 @@ class FilterGenerator(ColumnGenerator):
     ----------
     filters : str
         String where each character is a valid filter id.
-    column_val : int
+    column_seed : int
         Arbitrary integer that should be different from other
         column values. Used in random number generation.
     """
 
-    def __init__(self, filters="ugrizy", column_val=6):
+    def __init__(self, filters="ugrizy", column_seed=6):
         self.filters = filters
-        self.column_val = column_val
+        self.column_seed = column_seed
 
     def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
-        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_val))
+        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
         return np.random.choice(list(self.filters), length)
 
 
@@ -394,32 +392,23 @@ class ForcedSourceGenerator(ColumnGenerator):
     visit_radius : float
         Distance from the visit center within which and object is
         considered part of that visit.
-    column_val : int
+    column_seed : int
         Arbitrary integer that should be different from other
         column values. Used in random number generation.
 
-    Note
-    ----
-    TODO: This is really slow. Checking all visits against all objects
-    takes forever. Sorting visits by dec may help. It's also wonky in that
-    visits with centers in neighboring chunks have no effect as they
-    are unknown here. The case where an Object gets no visits may also
-    be possible. Possibly visits should not be generated per chunk
-    but across the visible sky as 100k visit table could be generated
-    in a second or two and used for all chunks and tables.
     """
 
-    def __init__(self, filters="ugrizy", visit_radius=0.30, column_val=3):
+    def __init__(self, filters="ugrizy", visit_radius=0.30, column_seed=3):
         self.filters = filters
         self.visit_radius = visit_radius
-        self.column_val = column_val
+        self.column_seed = column_seed
 
     def __call__(self, box, length, seed, prereq_row=None, prereq_tables=None, unique_box_id=0,
                  chunk_center=None):
         assert prereq_tables is not None, "ForcedSourceGenerator requires the Visit table."
         assert chunk_center is not None, "Must supply chunk center"
 
-        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_val))
+        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
 
         visit_table = prereq_tables['CcdVisit']
         object_table = prereq_tables['Object']

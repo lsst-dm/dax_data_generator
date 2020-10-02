@@ -100,19 +100,12 @@ class ColumnGeneratorTests(unittest.TestCase):
         seed = 1
         fs_generator = columns.ForcedSourceGenerator(visit_radius=1.00)
 
-        # (array([1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8]), array([101, 102, 101, 102, 101,
-        # 102, 101, 102, 101, 102, 101, 102, 101, 102, 101, 102]), a
-
         # Expected result in the form of a list for each object,
         # containing (objectId, visitId) tuples.
         expected = [[(1, 101), (1, 102)],
                     [(2, 101), (2, 102)],
                     [(3, 101), (3, 102)],
                     [(4, 101), (4, 102)]]
-                    # [(5, 103), (5, 104)],
-                    # [(6, 103), (6, 104)],
-                    # [(7, 103), (7, 104)],
-                    # [(8, 103), (8, 104)]]
 
         box = columns.SimpleBox(0.5, 0.5, 2.5, 2.5)
         chunk_center = SkyCoord(1.5, 1.5, frame="icrs", unit="deg")

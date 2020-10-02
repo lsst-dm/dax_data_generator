@@ -127,6 +127,9 @@ class DataGenerator:
         edge_only : bool
             When True, only generate objects within edge_width of the edge
             of the chunk. When False, create all objects in the chunk.
+        return_pregenerated : bool
+            Include tables that are loaded from a file in the output
+            dictionary. This is normally only used for testing.
 
         Returns
         -------
