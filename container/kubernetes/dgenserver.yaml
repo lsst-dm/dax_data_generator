@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dgenserver
+  labels:
+    app: datagenserver
+spec:
+  template:
+    metadata:
+      labels:
+        app: datagenserver
+    spec:
+      containers:
+      - name: datagen
+        image: qserv/dax_data_generator:tickets-DM-26846
+        imagePullPolicy: Always
+        command: ["/home/qserv/dax_data_generator/scripts/run_datagenclient.sh"]
+        args:
+        - "--network=host"
+        - "--rm"
+        - "-u 1000:1000"
+      restartPolicy: Never
