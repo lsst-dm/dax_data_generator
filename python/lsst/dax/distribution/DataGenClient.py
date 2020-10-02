@@ -807,6 +807,7 @@ class DataGenClient:
         runs out of chunks for this client to generate and ingest.
         """
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            print(f"&&& host={self._host} port={self._port}")
             s.connect((self._host, self._port))
             self._cl_conn = DataGenConnection(s)
             self._cl_conn.clientReqInit()
