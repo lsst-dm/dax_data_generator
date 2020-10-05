@@ -15,8 +15,4 @@ spec:
         image: qserv/dax_data_generator:tickets-DM-26846
         imagePullPolicy: Always
         command: ["/home/qserv/dax_data_generator/scripts/run_datagenclient.sh"]
-        args:
-        - "--network=host"
-        - "--rm"
-        - "-u 1000:1000"
       restartPolicy: Never

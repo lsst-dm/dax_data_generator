@@ -47,7 +47,7 @@ class DataIngest():
         print("base_url=", self._base_url)
 
     def __repr__(self):
-        out = ("host=" + self._host + ":" + str(self._port) + "auth_key:****")
+        out = ("host=" + self._host + ":" + str(self._port) + " auth_key:****")
         return out
 
     def isIngestAlive(self):

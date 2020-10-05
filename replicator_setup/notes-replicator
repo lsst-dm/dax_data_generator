@@ -1,0 +1,69 @@
+This is only needed if you want to use the replicator to ingest on
+a local computer. QSERV_INSTALL_DIR, the stack directory and other
+parameters will need to be altered to work for the computerbeing used.
+
+replication.sql will need to have the config_worker entry modified with
+the correct ip address.
+  INSERT INTO `config_worker` VALUES ('worker', 1, 0, 'localhost', NULL, 'localhost', NULL, NULL, 'localhost', NULL, NULL, '192.168.1.143', NULL, NULL, '192.168.1.143', NULL, NULL);
+
+
+To rebuild with fresh database:
+
+kill qserv-replica-master-http and qserv-replica-worker
+ps -auxwww | grep "qserv-replica-"
+
+~/qserv-run/bin/qserv-stop.sh
+ps -auxwww | grep Wmgr
+cd
+rm -rf qserv-run
+cd stack
+. loadLSST.bash
+cd
+cd work/qserv
+setup -r . -t qserv-dev
+cd ../qserv_testdata
+setup -k -r . -t qserv-dev
+cd
+cd work/qserv
+scons -j10 install
+export QSERV_INSTALL_DIR=/home/jgates/qserv-run
+qserv-configure.py -a -R $QSERV_INSTALL_DIR
+
+mkdir $QSERV_INSTALL_DIR/var/lib/ingest/
+mkdir $QSERV_INSTALL_DIR/var/lib/export
+
+$QSERV_INSTALL_DIR/bin/qserv-start.sh
+mysql --protocol=tcp -uroot -pCHANGEME -e "CREATE DATABASE qservReplica"
+mysql --protocol=tcp -uroot -pCHANGEME -e "CREATE USER qsreplica@localhost"
+mysql --protocol=tcp -uroot -pCHANGEME -e "GRANT ALL ON qservReplica.* TO  qsreplica@localhost"
+mysql --protocol=tcp -uroot -pCHANGEME -e "UPDATE qservw_worker.Id SET id='worker'"
+
+$QSERV_INSTALL_DIR/bin/qserv-stop.sh
+ps -auxwww | grep Wmgr
+$QSERV_INSTALL_DIR/bin/qserv-status.sh
+$QSERV_INSTALL_DIR/bin/qserv-start.sh
+$QSERV_INSTALL_DIR/bin/qserv-status.sh
+
+cat /home/jgates/work/qserv/core/modules/replica/sql/replication.sql | mysql --protocol=tcp -uroot -pCHANGEME qservReplica
+
+cd $QSERV_INSTALL_DIR
+cp ~/replicator/* .
+cat ./replication.sql | mysql --protocol=tcp -uroot -pCHANGEME qservReplica
+
+export CONFIG="mysql://qsreplica@localhost:3306/qservReplica"
+export LSST_LOG_CONFIG=$PWD/log4cxx.replication.properties
+qserv-replica-master-http --debug --config=$CONFIG --instance-id=mono --qserv-db-password=CHANGEME >& $QSERV_INSTALL_DIR/var/log/qserv-replica-master-http.log&
+qserv-replica-worker worker --debug --config=$CONFIG --instance-id=mono --qserv-db-password=CHANGEME >& $QSERV_INSTALL_DIR/var/log/qserv-replica-worker.log&
+ps -auxwww | grep "qserv-replica-"
+
+
+
+If it has issues:
+mysql --protocol=tcp -uroot -pCHANGEME -e "DROP DATABASE qservReplica"
+mysql --protocol=tcp -uroot -pCHANGEME -e "CREATE DATABASE qservReplica"
+cat /home/jgates/work/qserv/core/modules/replica/sql/replication.sql | mysql --protocol=tcp -uroot -pCHANGEME qservReplica
+
+
+
+
+
