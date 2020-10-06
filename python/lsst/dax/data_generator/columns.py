@@ -13,7 +13,7 @@ __all__ = ["ColumnGenerator", "ObjIdGenerator", "FilterGenerator",
            "VisitIdGenerator", "mergeBlocks"]
 
 
-def calcSeedFrom(chunk_id, seed, column_val):
+def calcSeedFrom(chunk_id, seed, column_seed=0):
     """Try to keep some separation between column generator seeds.
 
     Parameters
@@ -22,7 +22,7 @@ def calcSeedFrom(chunk_id, seed, column_val):
         Chunk id number.
     seed : int
         Random number seed.
-    column_val : int
+    column_seed : int
         Arbitrary column value, should be different from other column values.
 
     Note
@@ -30,9 +30,9 @@ def calcSeedFrom(chunk_id, seed, column_val):
     This is an attempt to avoid having chunks and columns having seeds
     near each other so that changing the seed value by 1 will not look
     like everyting was just shifted over by 1 chunk/column.
-    Each ColumnGenerator should have a unique arbitrary column_val.
+    Each ColumnGenerator should have a unique arbitrary column_seed.
     """
-    return (chunk_id*10000 + seed + column_val*100)
+    return (chunk_id*10000 + seed + column_seed*100)
 
 
 def mergeBlocks(block_a, block_b):
@@ -156,10 +156,10 @@ class SimpleBox:
         """
         Return
         ------
-        area : float degrees
+        area : float, square degrees
         Returns the approximate area of the box on a sphere, requires degrees
         """
-        area = (self.raA - self.raB) * (self.decA - self.decB)
+        area = abs(self.raA - self.raB) * abs(self.decA - self.decB)
         avgDecDeg = (self.decA + self.decB) / 2
         avgDecRad = avgDecDeg * (math.pi/180.0)
         area = math.cos(avgDecRad) * area
@@ -168,13 +168,12 @@ class SimpleBox:
 
 class ColumnGenerator(ABC):
 
-    def __call__(self, chunk_id, length, seed):
+    def __call__(self, box, length, seed):
         """
         Parameters
         ----------
-        chunk_id : int
-            Identifier of which cell on the sky to in which
-            coordinates should be generated
+        box : SimpleBox
+            Bounding box in which to generate sources.
         length : int
             Number of coordiantes to generate
         seed : int
@@ -206,44 +205,14 @@ class RaDecGenerator(ColumnGenerator):
     It starts by generating edges first so edge_only and complete chunks
     will have matching edges.
     """
-    def __init__(self, chunker, ignore_edge_only=False):
-        self.chunker = chunker
+    def __init__(self, ignore_edge_only=False):
         self.ignore_edge_only = ignore_edge_only
-        self.columnVal = 1
+        self.column_seed = 1
         # avoid having the same ra and dec in different tables.
         if self.ignore_edge_only:
-            self.columnVal = 2
+            self.column_seed = 2
 
-    def _generateBlock(self, chunk_id, simple_box, length):
-        """ Generate 'length' number of RA and Dec data entries for 'simpleBox'
-
-        Parameters
-        ----------
-        chunk_id : int
-            Chunk id number.
-        simple_box : SimpleBox
-            Defines min and max legal RA and Dec to be generated.
-
-        Returns
-        -------
-        tuple of list of generated RA's and list of generated Dec's
-        """
-        ra_min = simple_box.raA
-        ra_delta = simple_box.raB - simple_box.raA
-        dec_min = simple_box.decA
-        dec_delta = simple_box.decB - simple_box.decA
-        ra_centers = np.random.random(length)*ra_delta + ra_min
-        dec_centers = np.random.random(length)*dec_delta + dec_min
-        ra_out = []
-        for ra in ra_centers:
-            while ra < 0.0:
-                ra += 360.0
-            while ra >= 360.0:
-                ra -= 360.0
-            ra_out.append(ra)
-        return (ra_out, dec_centers)
-
-    def __call__(self, chunk_id, length, seed, edge_width=0.0, edge_only=False):
+    def __call__(self, box, length, seed, edge_width=0.0, edge_only=False, unique_box_id=0, **kwargs):
         """
         Parameters
         ----------
@@ -265,81 +234,24 @@ class RaDecGenerator(ColumnGenerator):
         -------
         a tuple of a list of generated RA's and a list of generated Dec's.
         """
-        np.random.seed(calcSeedFrom(chunk_id, seed, self.columnVal))
+        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
 
-        # Some tables, such as ccdVisit, cannot be generated edgeOnly.
-        if self.ignore_edge_only:
-            edge_only = False
+        ra_min = box.raA
+        ra_delta = box.raB - box.raA
+        dec_min = box.decA
+        dec_delta = box.decB - box.decA
+        ra_centers = np.random.random(length)*ra_delta + ra_min
+        dec_centers = np.random.random(length)*dec_delta + dec_min
 
-        # sphgeom Box from Chunker::getChunkBoundingBox
-        chunk_box = self.chunker.getChunkBounds(chunk_id)
-        # Need to correct for RA that crosses 0.
-        raA = chunk_box.getLon().getA().asDegrees()
-        raB = chunk_box.getLon().getB().asDegrees()
-        ra_delta = raB - raA
-        if ra_delta < 0:
-            raA = raA - 360.0
-            ra_delta = raB - raA
-        decA = chunk_box.getLat().getA().asDegrees()
-        decB = chunk_box.getLat().getB().asDegrees()
+        ra_centers += 360 * (ra_centers < 0.0)
+        ra_centers -= 360 * (ra_centers >= 360.0)
 
-        boxes = {}
-        entire_box = SimpleBox(raA, raB, decA, decB)
-        boxes["entire"] = entire_box
-        print("chunk=", chunk_id, "bbox=", entire_box.__repr__())
-
-        if edge_width > 0.0:
-            # Correct the edge_width for declination so there is at least
-            # edge_width at both the top an bottom of the east and west blocks.
-            edge_raA = edge_width / math.cos(decA + edge_width)
-            edge_raB = edge_width / math.cos(decB - edge_width)
-            edge_widthRA = max(edge_raA, edge_raB)
-
-            boxes["north"] = SimpleBox(raA, raB, decB - edge_width, decB)
-            boxes["east"] = SimpleBox(raA, raA + edge_widthRA, decA + edge_width, decB - edge_width)
-            boxes["west"] = SimpleBox(raB - edge_widthRA, raB, decA + edge_width, decB - edge_width)
-            boxes["south"] = SimpleBox(raA, raB, decA, decA + edge_width)
-
-        # If the area of the entire box is only slightly larger than the sub-boxes,
-        # don't bother with separate edge calculation
-        edge_area = 0.0
-        entire_area = 0.0
-        for key, value in boxes.items():
-            if key == "entire":
-                entire_area = value.area()
-            else:
-                edge_area += value.area()
-
-        ratio_edge_to_entire = edge_area/entire_area
-        blocks = {}
-        # TODO: replace 10 with minLength and 0.90 with maxRatioEdgeToEntire
-        if (not edge_width > 0.0) or ratio_edge_to_entire > 0.90 or length < 10:
-            # Just generate the entire block
-            blocks["entire"] = self._generateBlock(chunk_id, boxes["entire"], length)
-        else:
-            lengths = {}
-            sub_length = length
-            for key, value in boxes.items():
-                if key != "entire":
-                    lengths[key] = int((value.area()/entire_area) * length)
-                    if lengths[key] < 1:
-                        lengths[key] = 1
-                    sub_length -= lengths[key]
-                    blocks[key] = self._generateBlock(chunk_id, boxes[key], lengths[key])
-            blockNS = mergeBlocks(blocks["north"], blocks["south"])
-            blockEW = mergeBlocks(blocks["east"], blocks["west"])
-            blocks["entire"] = mergeBlocks(blockNS, blockEW)
-            if not edge_only:
-                box_middle = SimpleBox(boxes["east"].raB, boxes["west"].raA,
-                                       boxes["north"].decB, boxes["south"].decA)
-                block_middle = self._generateBlock(chunk_id, box_middle, sub_length)
-                blocks["entire"] = mergeBlocks(blocks["entire"], block_middle)
-        return blocks["entire"]
+        return (ra_centers, dec_centers)
 
 
 class ObjIdGenerator(ColumnGenerator):
 
-    def __call__(self, chunk_id, length, seed, **kwargs):
+    def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
         """
         Returns
         -------
@@ -349,12 +261,12 @@ class ObjIdGenerator(ColumnGenerator):
 
         # TODO: more than 100k objects in a chunk will cause issues
         #       Replace 100000 with max_objects_per_chunk?
-        return (chunk_id * 100000) + np.arange(length)
+        return (unique_box_id * 100000) + np.arange(length)
 
 
 class VisitIdGenerator(ColumnGenerator):
 
-    def __call__(self, chunk_id, length, seed, **kwargs):
+    def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
         """
         Returns
         -------
@@ -364,7 +276,7 @@ class VisitIdGenerator(ColumnGenerator):
 
         # TODO: This shouldn't have the same issue as objects/chunk
         #       but maybe replace 100000 with max_objects_per_chunk?
-        return 10000000000 + (chunk_id * 100000) + np.arange(length)
+        return 10000000000 + (unique_box_id * 100000) + np.arange(length)
 
 
 class MagnitudeGenerator(ColumnGenerator):
@@ -377,7 +289,7 @@ class MagnitudeGenerator(ColumnGenerator):
         Minimum value for generated magnitudes.
     max_mag : float
         Maximum value for generated magnitudes.
-    column_val : int
+    column_seed : int
         Arbitrary integer that should be different from other
         column values. Used in random number generation.
 
@@ -389,26 +301,64 @@ class MagnitudeGenerator(ColumnGenerator):
     be correlation between rows as the same random numbers will be used.
     """
 
-    def __init__(self, n_mags=1, min_mag=0, max_mag=27.5, column_val=7):
+    def __init__(self, n_mags=1, min_mag=0, max_mag=27.5, column_seed=7):
         self.n_mags = n_mags
         self.min_mag = min_mag
         self.max_mag = max_mag
-        self.column_val = column_val  # arbitrary, but different from other columns
+        self.column_seed = column_seed  # arbitrary, but different from other columns
 
-    def __call__(self, chunk_id, length, seed, **kwargs):
+    def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
 
-        np.random.seed(calcSeedFrom(chunk_id, seed, self.column_val))
+        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
 
         # This needs to be made row by row not column by column, as
         # row by row results in repeatable values when doing edges first.
         magRows = []
         delta_mag = self.max_mag - self.min_mag
-        for unused in range(length):
+        for _ in range(length):
             mag = np.random.rand(self.n_mags)*delta_mag + self.min_mag
             magRows.append(mag)
         magCols = convertBlockToRows(magRows)
         return magCols
 
+class UniformGenerator(ColumnGenerator):
+    """
+    Parameters
+    ----------
+    n_mags : int
+        Number of magnitude columns to make.
+    min_mag : float
+        Minimum value for generated magnitudes.
+    max_mag : float
+        Maximum value for generated magnitudes.
+    column_seed : int
+        Arbitrary integer that should be different from other
+        column values. Used in random number generation.
+
+    Note
+    ----
+    Currently generates a flat magnitude distribution. Should properly
+    be some power law.
+    """
+
+    def __init__(self, n_columns=1, min_val=0, max_val=1, column_seed=7):
+        self.n_columns = n_columns
+        self.min_val = min_val
+        self.max_val = max_val
+        self.column_seed = column_seed  # arbitrary, but different from other columns
+
+    def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
+
+        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
+
+        # This needs to be made row by row not column by column, as
+        # row by row results in repeatable values when doing edges first.
+        columns = []
+        delta_value = self.max_val - self.min_val
+        for _ in range(self.n_columns):
+            values = delta_value * np.random.rand(length) + self.min_val
+            columns.append(values)
+        return columns
 
 class FilterGenerator(ColumnGenerator):
     """Class to generate random filter columns.
@@ -417,17 +367,17 @@ class FilterGenerator(ColumnGenerator):
     ----------
     filters : str
         String where each character is a valid filter id.
-    column_val : int
+    column_seed : int
         Arbitrary integer that should be different from other
         column values. Used in random number generation.
     """
 
-    def __init__(self, filters="ugrizy", column_val=6):
+    def __init__(self, filters="ugrizy", column_seed=6):
         self.filters = filters
-        self.column_val = column_val
+        self.column_seed = column_seed
 
-    def __call__(self, chunk_id, length, seed, **kwargs):
-        np.random.seed(calcSeedFrom(chunk_id, seed, self.column_val))
+    def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
+        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
         return np.random.choice(list(self.filters), length)
 
 
@@ -442,61 +392,49 @@ class ForcedSourceGenerator(ColumnGenerator):
     visit_radius : float
         Distance from the visit center within which and object is
         considered part of that visit.
-    column_val : int
+    column_seed : int
         Arbitrary integer that should be different from other
         column values. Used in random number generation.
 
-    Note
-    ----
-    TODO: This is really slow. Checking all visits against all objects
-    takes forever. Sorting visits by dec may help. It's also wonky in that
-    visits with centers in neighboring chunks have no effect as they
-    are unknown here. The case where an Object gets no visits may also
-    be possible. Possibly visits should not be generated per chunk
-    but across the visible sky as 100k visit table could be generated
-    in a second or two and used for all chunks and tables.
     """
 
-    def __init__(self, filters="ugrizy", visit_radius=0.30, column_val=3):
+    def __init__(self, filters="ugrizy", visit_radius=0.30, column_seed=3):
         self.filters = filters
         self.visit_radius = visit_radius
-        self.column_val = column_val
+        self.column_seed = column_seed
 
-    def __call__(self, chunk_id, length, seed, prereq_row=None, prereq_tables=None):
-        assert prereq_row is not None, "ForcedSourceGenerator requires rows from Object."
+    def __call__(self, box, length, seed, prereq_row=None, prereq_tables=None, unique_box_id=0,
+                 chunk_center=None):
         assert prereq_tables is not None, "ForcedSourceGenerator requires the Visit table."
+        assert chunk_center is not None, "Must supply chunk center"
 
-        np.random.seed(calcSeedFrom(chunk_id, seed, self.column_val))
+        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
 
         visit_table = prereq_tables['CcdVisit']
-        object_record = prereq_row
+        object_table = prereq_tables['Object']
 
-        # deltas - distance between 2 points on the sphere for everything in the table
-        deltas = (SkyCoord(ra=visit_table['ra'], dec=visit_table['decl'], unit="deg")
-                  .separation(SkyCoord(ra=object_record['ra'], dec=object_record['decl'],
-                  unit="deg")).degree)
-        n_matching_visits = np.sum(deltas < self.visit_radius)
+        objects_inside_box = object_table[(object_table['ra'] >= box.raA) &
+                                          (object_table['ra'] < box.raB) &
+                                          (object_table['decl'] >= box.decA) &
+                                          (object_table['decl'] < box.decB)]
 
-        objectId = np.zeros(n_matching_visits, dtype=int) + int(object_record['objectId'])
-        psFlux = np.random.randn(n_matching_visits)
-        psFluxSigma = np.zeros(n_matching_visits) + 0.1
-        ccdVisitId = np.zeros(n_matching_visits, dtype=int)
+        visit_skycoords = SkyCoord(ra=visit_table['ra'], dec=visit_table['decl'], unit="deg")
+        visit_deltas = chunk_center.separation(visit_skycoords).degree
+        sel_matching_visits, = np.where(visit_deltas < self.visit_radius)
+        n_matching_visits = len(sel_matching_visits)
+        print(f"Found {n_matching_visits} matching visits")
 
-        index_position = 0
-        for filter_name in self.filters:
-            sel, = np.where((visit_table['filterName'] == filter_name) &
-                            (deltas < self.visit_radius))
 
-            matching_filter_visitIds = visit_table['ccdVisitId'][sel]
+        out_objectIds = np.repeat(objects_inside_box['objectId'].values, n_matching_visits)
+        out_ccdVisitIds = np.tile(visit_table['ccdVisitId'].iloc[sel_matching_visits].values,
+                                  len(objects_inside_box))
 
-            if(len(matching_filter_visitIds) == 0):
-                continue
+        n_rows_total = n_matching_visits * len(objects_inside_box)
+        psFlux = np.repeat(objects_inside_box['gPsFlux'].values, n_matching_visits)  + np.random.randn(n_rows_total)
+        psFluxSigma = np.zeros(n_rows_total) + 0.1
 
-            n_filter_visits = len(matching_filter_visitIds)
-            output_indices = slice(index_position, index_position + n_filter_visits)
-            ccdVisitId[output_indices] = matching_filter_visitIds
-            psFlux[output_indices] += object_record['mag_{:s}'.format(filter_name)]
-            index_position += n_filter_visits
+        assert len(out_objectIds) == n_rows_total
+        assert len(out_ccdVisitIds) == n_rows_total
 
-        return (objectId, ccdVisitId, psFlux, psFluxSigma)
+        return (out_objectIds, out_ccdVisitIds, psFlux, psFluxSigma)
 

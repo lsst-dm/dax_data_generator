@@ -25,26 +25,28 @@ from lsst.dax.data_generator import DataGenerator
 from lsst.dax.data_generator import testing
 
 
-def edgeOnlyContainedInComplete(chunk_id, object_count, visit_count, edge_width, spec):
+def edgeOnlyContainedInComplete(chunk_id, object_count, visit_count, edge_width, spec, chunker):
     """ Check if all the edge only rows can be matched with identical rows
     in the complete table.
     """
 
-    dataGen = DataGenerator(spec)
     seed = 1
+    dataGen = DataGenerator(spec, chunker, seed=seed)
 
     row_counts = {"CcdVisit": visit_count, "Object": object_count}
     # ForcedSource count is defined by visits and objects.
     if("ForcedSource" in spec):
         row_counts["ForcedSource"] = None
-    tablesComplete = dataGen.make_chunk(chunk_id, num_rows=row_counts, seed=seed,
-                                        edge_width=edge_width, edge_only=False)
+    tablesComplete = dataGen.make_chunk(chunk_id,
+                                        edge_width=edge_width, edge_only=False,
+                                        return_pregenerated=True)
 
     row_counts = {"CcdVisit": visit_count, "Object": object_count}
     if("ForcedSource" in spec):
         row_counts["ForcedSource"] = None
-    tablesEdgeOnly = dataGen.make_chunk(chunk_id, num_rows=row_counts, seed=seed,
-                                        edge_width=edge_width, edge_only=True)
+    tablesEdgeOnly = dataGen.make_chunk(chunk_id,
+                                        edge_width=edge_width, edge_only=True,
+                                        return_pregenerated=True)
 
     print("visits len:", len(tablesComplete["CcdVisit"]))
     print("forced len:", len(tablesComplete["ForcedSource"]))
@@ -104,8 +106,6 @@ if __name__ == "__main__":
             success = False
         if not testing.tst_mergeBlocks():
             success = False
-        if not testing.tst_RaDecGenerator():
-            success = False
 
     if not success:
         print("Failed low level tests.")
@@ -115,10 +115,13 @@ if __name__ == "__main__":
         exec(f.read(), spec_globals)
         assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
         assert 'edge_width' in spec_globals, "Specification file must define a variable 'edge_width'."
+        assert 'chunker' in spec_globals, "Specification file must define a variable 'chunker'."
         spec = spec_globals['spec']
         edge_width = spec_globals['edge_width']
+        chunker = spec_globals['chunker']
 
-    if not edgeOnlyContainedInComplete(args.chunk, args.objects, args.visits, edge_width, spec):
+    if not edgeOnlyContainedInComplete(args.chunk, args.objects, args.visits,
+                                       edge_width, spec, chunker):
         success = False
         print("Failed row comparisons")
 
