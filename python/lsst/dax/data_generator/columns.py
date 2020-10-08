@@ -418,6 +418,8 @@ class ForcedSourceGenerator(ColumnGenerator):
                                           (object_table['decl'] >= box.decA) &
                                           (object_table['decl'] < box.decB)]
 
+        print(f"&&& visit_table['ra']={visit_table['ra']}")
+        print(f"&&& visit_table['decl']={visit_table['decl']}")
         visit_skycoords = SkyCoord(ra=visit_table['ra'], dec=visit_table['decl'], unit="deg")
         visit_deltas = chunk_center.separation(visit_skycoords).degree
         sel_matching_visits, = np.where(visit_deltas < self.visit_radius)

@@ -41,8 +41,8 @@ class DataGenConnection():
     # Message ids, must all have the same length in bytes.
     # and are followed by a 5 character integer (left padded with 0's)
     # containing the rest of the length of the message
-    MSG_LENSTR_LEN = 5
-    MAX_MSG_LEN = 90000
+    MSG_LENSTR_LEN = 10
+    MAX_MSG_LEN = 9999999990
     _C_INIT_R = 'C_INIT_R'  # client initial request
     _S_INIT_R = 'S_INIT_R'  # server initial response
     _C_PCFG_R = 'C_PCFG_R'  # client asking for partioner config file
@@ -294,6 +294,72 @@ class DataGenConnection():
         ingest_dict['keep'] = bool(keep_val != '0')
         return name, objects, visits, seed, cfg_file_contents, ingest_dict
 
+    def clientGetFiles(self, note):
+        """ Request files from the server.
+
+        Parameters
+        ----------
+        note : str
+            An indicator, for logging, about what kind of files are being
+            retrieved.
+
+        Returns
+        -------
+        file_dict : dictionary
+            Dictionary with int key and a value consisting of tuple
+            with the first element being the file name and the second
+            element being the contents of the file.
+
+        Note
+        ----
+        The client gets files from the server starting from index 0.
+        When the server has no more files to send, it sends back an empty
+        file name.
+        """
+        index = 0
+        file_dict = {}
+        fname = "nothing"
+        while not fname == "":
+            self.clientReqPartitionCfgFile(index) #&&& change name
+            i, fname, contents = self.clientRespPartionCfgFile() #&&& change name
+            if i != index:
+                self.success = False
+                print("clientGetFiles failed ", note, i, fname, contents)
+                return False, file_dict
+            if not fname == "":
+                file_dict[index] = (fname, contents)
+            index += 1
+        return True, file_dict
+
+    def servSendFiles(self, file_dict):
+        """ Send files to the client..
+
+        Parameters
+        ----------
+        file_dict : dictionary
+            Dictionary with int keys and values that are tuples
+            containing the file name and file contents.
+
+        Note
+        ----
+        Send files to the client until the client asks for an index
+        that doesn't exist. At that point send back an empty fname
+        to indicate there are no more files. The index/key starts at
+        0.
+        """
+        done = False
+        while not done:
+            index = self.servRespPartitionCfgFile() #&&& change name
+            if index in file_dict:
+                file_tpl = file_dict[index]
+                fname = file_tpl[0]
+                contents = file_tpl[1]
+            else:
+                fname = ""
+                contents = ""
+                done = True
+            self.servSendPartionCfgFile(index, fname, contents) #&&& change name
+
     def clientReqPartitionCfgFile(self, index):
         """Client request a partitioner configuration file from the server
 
@@ -309,7 +375,7 @@ class DataGenConnection():
         self._send_msg(self._C_PCFG_R, str(index))
 
     def servRespPartitionCfgFile(self):
-        """Serv recieve the partition configuration index from the client.
+        """Serv receive the partition configuration index from the client.
 
         Return
         ------

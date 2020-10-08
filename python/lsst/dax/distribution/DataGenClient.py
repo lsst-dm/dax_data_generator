@@ -229,7 +229,7 @@ class DataGenClient:
         self._edge_width = spec_globals['edge_width']
         print("_cfgFileContents=", self._cfg_file_contents)
         print("_spec=", self._spec)
-        self._data_gen = DataGenerator(self._spec)
+        self._data_gen = DataGenerator(self._spec, self._chunker)
 
     def findCsvInTargetDir(self, chunk_id, neighbor_chunks):
         """Find files required csv to generate overlap for chunk_id.
@@ -830,22 +830,25 @@ class DataGenClient:
             with open(fileName, "w") as fw:
                 fw.write(self._cfg_file_contents)
             # Request partioner configuration files from server.
-            # The server has x number of these files, so the client will keep
-            # incrementing the index and asking for a file until the server
-            # responds with an empty file name.
-            pCfgIndex = 0
-            pCfgDict = {}
-            pCfgName = "nothing"
-            while not pCfgName == "":
-                self._cl_conn.clientReqPartitionCfgFile(pCfgIndex)
-                indx, pCfgName, pCfgContents = self._cl_conn.clientRespPartionCfgFile()
-                if indx != pCfgIndex:
-                    raise RuntimeError("Client got wrong pCfgIndex=", pCfgIndex,
-                                       "indx=", indx, pCfgName)
-                print("pCfgName=", pCfgName)
-                if not pCfgName == "":
-                    pCfgDict[pCfgIndex] = (pCfgName, pCfgContents)
-                pCfgIndex += 1
+            # &&& # The server has x number of these files, so the client will keep
+            # &&& # incrementing the index and asking for a file until the server
+            # &&& # responds with an empty file name.
+            # &&& pCfgIndex = 0
+            # &&& pCfgDict = {}
+            # &&& pCfgName = "nothing"
+            # &&& while not pCfgName == "":
+            # &&&     self._cl_conn.clientReqPartitionCfgFile(pCfgIndex)
+            # &&&     indx, pCfgName, pCfgContents = self._cl_conn.clientRespPartionCfgFile()
+            # &&&     if indx != pCfgIndex:
+            # &&&         raise RuntimeError("Client got wrong pCfgIndex=", pCfgIndex,
+            # &&&                            "indx=", indx, pCfgName)
+            # &&&     print("pCfgName=", pCfgName)
+            # &&&     if not pCfgName == "":
+            # &&&         pCfgDict[pCfgIndex] = (pCfgName, pCfgContents)
+            # &&&     pCfgIndex += 1
+            cfg_success, pCfgDict = self._cl_conn.clientGetFiles("partition cfg")
+            if not cfg_success:
+                raise RuntimeError("Client failed to receive partitioner config files.")
             self._pt_cfg_dict = {}
             for cfg in pCfgDict.items():
                 cfg_fname = cfg[1][0]
@@ -855,7 +858,6 @@ class DataGenClient:
                     raise RuntimeError(f"Unexpected partitioner config file sent {cfg_fname}")
                 table_name = PurePosixPath(cfg_fname).stem
                 self._pt_cfg_dict[table_name] = cfg[1]
-
             # Write those files to the partitioner config directory
             pCfgDir = os.path.join(self._target_dir, self._pt_cfg_dir)
             for index, cfg_info in pCfgDict.items():
@@ -863,6 +865,12 @@ class DataGenClient:
                 print("writing ", index, "name=", pCfgName)
                 with open(pCfgName, "w") as fw:
                     fw.write(cfg_info[1])
+
+            # Read in pregenerated files
+            pregen_success, pregen_dict = self._cl_conn.clientGetFiles("pregen files")
+            if not pregen_success:
+                raise RuntimeError("Client failed to receive pregenerated files.")
+            # &&& write to self._Target_dir/pregen
 
             # Start creating and ingesting chunks.
             loop = True

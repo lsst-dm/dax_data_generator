@@ -23,13 +23,16 @@
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
 
-    # 1000 visits per night, 0.5 years of observing.
-    n_visits = 1000*150
+    # &&& 1000 visits per night, 0.5 years of observing.
+    # &&& n_visits = 1000*150
+    # 1000 visits/night for 1 year, full sky
+    n_visits = 1000*300
     area = 20000
-    north_only = True
+    north_only = False
 
     visit_id = np.arange(n_visits)
     filter_name = np.random.choice(["u", "g", "r", "i", "z", "y"], n_visits)
@@ -40,11 +43,13 @@ if __name__ == '__main__':
         cos_dec = np.random.rand(n_visits)
     else:
         cos_dec = 2*np.random.rand(n_visits) - 1
-    dec = np.degrees(np.arccos(cos_dec))
+    dec = np.degrees(np.arccos(cos_dec)) - 90.0
+    print("dec", dec)
+    ord = np.sort(dec)
+    plt.plot(ord)
+    plt.show()
 
     df = pd.DataFrame({"visitId": visit_id, "filter": filter_name, "ra": ra, "decl": dec})
     df.to_csv("visit_table.csv", index=False, header=False)
-
-
 
 

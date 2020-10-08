@@ -21,4 +21,7 @@ ingest:
   dbName: fakedb
   cfgDir: ingestCfgs
 
+pregenerated:
+  cfgDir: pregenerated
+
 

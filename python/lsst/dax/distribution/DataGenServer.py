@@ -185,11 +185,15 @@ class DataGenServer:
         self._clients = {}
 
         # Build dictionary of info for chunks to send to workers.
-        # Read the datagen configuration for chunker info.
         spec_globals = {}
         exec(self._fakeCfgData, spec_globals)
         assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
         assert 'chunker' in spec_globals, "Specification file must define a variable 'chunker'."
+        # Determine pregenerated file directory
+        pregenerated_dir = os.path.join(self._base_cfg_dir, self._cfg['pregenerated']['cfgDir'])
+        # Find all tables that have "from_file" defined and put them in a list so they can be sent.
+        self._pregen_file_dict = self._readPreGeneratedFiles(pregenerated_dir, spec_globals['spec'])
+        # Read in chunker info
         chunker = spec_globals['chunker']
         all_chunks = chunker.getAllChunks()
         print("Finding valid chunk numbers...")
@@ -264,13 +268,47 @@ class DataGenServer:
         print("file_dict", file_dict)
         return file_dict
 
+    def _readPreGeneratedFiles(self, pregenerated_dir, spec_globals):
+        """ Read in pregenerated files.
+
+        Parameters
+        ----------
+        pregenerated_dir : str
+            Directory where all pregenerated files can be found.
+        spec_globals : dictionary
+            Configuration dictionary containing the specifications for
+            the tables that need to be generated.
+
+        Note
+        ----
+        All tables with "from_table" defined in spec_globals will
+        get an entry in this dictionary. Any problems finding the
+        files will raise an exception and likely crash the server.
+        """
+        pregen_file_names = []
+        for tbl in spec_globals:
+            if "from_file" in spec_globals[tbl]:
+                pregen_file_names.append(spec_globals[tbl]["from_file"])
+        file_dict = {}
+        index = 0
+        for f in pregen_file_names:
+            fname = os.path.join(pregenerated_dir, f)
+            with open(fname, 'r') as file:
+                contents = file.read()
+                file_dict[index] = (f, contents)
+                index += 1
+        print("pregenerated:")
+        for key, val in file_dict.items():
+            print(f" {key} name={val[0]} len={len(val[1])}")
+        return file_dict
+
     def _servAccept(self):
         """Accept connections from clients, spinning up a new thread
         to handle each one. This ends when there are no more chunk ids
         to send and all threads have joined.
         """
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(('127.0.0.1', self._port))
+            s.bind(('', self._port))
             s.listen()
             while self._loop:
                 conn, addr = s.accept()
@@ -331,20 +369,25 @@ class DataGenServer:
             # server sending back configuration information
             sv_conn.servRespInit(name, self._objects, self._visits, self._seed,
                                  self._fakeCfgData, self._ingest_dict)
-            # client requests partioner configuration files, starting with
-            # pCfgIndex=0 and incrementing it until pCfgName==""
-            pCfgDone = False
-            while not pCfgDone:
-                pCfgIndex = sv_conn.servRespPartitionCfgFile()
-                if pCfgIndex in self._partioner_cfg_dict:
-                    pCfgTpl = self._partioner_cfg_dict[pCfgIndex]
-                    pCfgName = pCfgTpl[0]
-                    pCfgContents = pCfgTpl[1]
-                else:
-                    pCfgName = ""
-                    pCfgContents = ""
-                    pCfgDone = True
-                sv_conn.servSendPartionCfgFile(pCfgIndex, pCfgName, pCfgContents)
+            # client requests partioner configuration files
+            # &&&, starting with
+            # &&& pCfgIndex=0 and incrementing it until pCfgName==""
+            # &&& pCfgDone = False
+            # &&& while not pCfgDone:
+            # &&&     pCfgIndex = sv_conn.servRespPartitionCfgFile()
+            # &&&     if pCfgIndex in self._partioner_cfg_dict:
+            # &&&         pCfgTpl = self._partioner_cfg_dict[pCfgIndex]
+            # &&&         pCfgName = pCfgTpl[0]
+            # &&&         pCfgContents = pCfgTpl[1]
+            # &&&     else:
+            # &&&         pCfgName = ""
+            # &&&         pCfgContents = ""
+            # &&&         pCfgDone = True
+            # &&&     sv_conn.servSendPartionCfgFile(pCfgIndex, pCfgName, pCfgContents)
+            sv_conn.servSendFiles(self._partioner_cfg_dict)
+
+            # Send the pregenerated files to the client
+            sv_conn.servSendFiles(self._pregen_file_dict)
 
             # client requesting chunk list
             client_times = None
@@ -461,7 +504,7 @@ class DataGenServer:
         db_jpath = os.path.join(self._ingest_cfg_dir, db_jfile)
         print("sending db config to ingest", db_jpath)
         if not self._ingest.registerDatabase(db_jpath):
-            raise RuntimeError("Failed to send databse to ingest.", db_jpath, self._ingest)
+            raise RuntimeError("Failed to send database to ingest.", db_jpath, self._ingest)
         # Find all of the schema files in self._ingest_cfg_dir while
         # ignoring the database config file.
         entries = os.listdir(self._ingest_cfg_dir)

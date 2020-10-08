@@ -32,7 +32,7 @@ spec = {
             "uKronRad,uKronRadErr,gKronRad,gKronRadErr,rKronRad,rKronRadErr,iKronRad,iKronRadErr,zKronRad,zKronRadErr,yKronRad,yKronRadErr,kronFilter,uKronFlux,uKronFluxErr,gKronFlux,gKronFluxErr,rKronFlux,rKronFluxErr,iKronFlux,iKronFluxErr,zKronFlux,zKronFluxErr,yKronFlux,yKronFluxErr,uKronRad50,uKronRad50Err,gKronRad50,gKronRad50Err,rKronRad50,rKronRad50Err,iKronRad50,iKronRad50Err,zKronRad50,zKronRad50Err,yKronRad50,yKronRad50Err,uKronRad90,uKronRad90Err,gKronRad90,gKronRad90Err,rKronRad90,rKronRad90Err,iKronRad90,iKronRad90Err,zKronRad90,zKronRad90Err,yKronRad90,yKronRad90Err":
             columns.UniformGenerator(max_val=10, n_columns=49, column_seed=14),
             "uApN,gApN,rApN,iApN,zApN,yApN,extendedness,FLAGS1,FLAGS2":
-            columns.UniformGenerator(max_val=1, n_columns=9, column_val=15),
+            columns.UniformGenerator(max_val=1, n_columns=9, column_seed=15),
         },
 
         "density": UniformSpatialModel(50000),

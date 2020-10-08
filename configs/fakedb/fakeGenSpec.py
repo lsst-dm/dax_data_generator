@@ -32,3 +32,9 @@ directors = {
         "ForcedSource": "objectId"
     }
 }
+
+spec["CcdVisit"] = {
+    "from_file": "visit_table.csv",
+    "columns": "ccdVisitId,filterName,ra,decl"
+}
+
