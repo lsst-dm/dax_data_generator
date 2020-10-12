@@ -1,3 +1,7 @@
+See the dax_data_generator/config/<dbname> sub directory for instructions
+on building and installing each specific database.
+
+
 Distributed data generation - client and server
 ===============================================
 

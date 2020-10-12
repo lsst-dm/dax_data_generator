@@ -15,7 +15,7 @@ spec = {
         "density": UniformSpatialModel(1000),
     },
     "CcdVisit": {
-        "from_file": "visit_table_chunk3525.csv",
+        "from_file": "visit_table.csv",
         "columns": "ccdVisitId,filterName,ra,decl"
     },
     "ForcedSource": {
@@ -33,8 +33,4 @@ directors = {
     }
 }
 
-spec["CcdVisit"] = {
-    "from_file": "visit_table.csv",
-    "columns": "ccdVisitId,filterName,ra,decl"
-}
 

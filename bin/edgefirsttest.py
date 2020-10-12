@@ -80,10 +80,8 @@ def edgeOnlyContainedInComplete(chunk_id, object_count, visit_count, edge_width,
                     found = True
                     break
             if not found:
-                #$$$ print("Failed for table=", tblNameEO, " to find rowEO=", rowEO, " in complete table")
                 print(f"Failed for table={tblNameEO} to find rowEO={rowEO} in complete table")
                 return False
-        #$$$print("rowsChecked=", rowsChecked)
         print(f"rowsChecked={rowsChecked}")
     return True
 

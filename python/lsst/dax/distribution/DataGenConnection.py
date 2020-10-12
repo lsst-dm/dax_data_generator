@@ -320,8 +320,8 @@ class DataGenConnection():
         file_dict = {}
         fname = "nothing"
         while not fname == "":
-            self.clientReqPartitionCfgFile(index) #&&& change name
-            i, fname, contents = self.clientRespPartionCfgFile() #&&& change name
+            self.clientReqFile(index)
+            i, fname, contents = self.clientRespFile()
             if i != index:
                 self.success = False
                 print("clientGetFiles failed ", note, i, fname, contents)
@@ -349,7 +349,7 @@ class DataGenConnection():
         """
         done = False
         while not done:
-            index = self.servRespPartitionCfgFile() #&&& change name
+            index = self.servRespFile()
             if index in file_dict:
                 file_tpl = file_dict[index]
                 fname = file_tpl[0]
@@ -358,9 +358,9 @@ class DataGenConnection():
                 fname = ""
                 contents = ""
                 done = True
-            self.servSendPartionCfgFile(index, fname, contents) #&&& change name
+            self.servSendFile(index, fname, contents)
 
-    def clientReqPartitionCfgFile(self, index):
+    def clientReqFile(self, index):
         """Client request a partitioner configuration file from the server
 
         Parameters
@@ -371,10 +371,10 @@ class DataGenConnection():
             indicates the file does not exist. The number of files varies
             depending on the database.
         """
-        print("clientReqChunks C_PCFGR")
+        print("clientReqFile C_PCFGR")
         self._send_msg(self._C_PCFG_R, str(index))
 
-    def servRespPartitionCfgFile(self):
+    def servRespFile(self):
         """Serv receive the partition configuration index from the client.
 
         Return
@@ -382,7 +382,7 @@ class DataGenConnection():
         index : int
             Indicates which partitioner configuration file the client wants.
         """
-        print("servRespPartitionCfgFile C_PCFGR")
+        print("servRespFile C_PCFGR")
         msg_id, msg, msg_len = self._recv_msg()
         if not msg_id == self._C_PCFG_R:
             self.warnings += 1
@@ -390,7 +390,7 @@ class DataGenConnection():
                                str(msg_len) + ' ' + msg)
         return int(msg)
 
-    def servSendPartionCfgFile(self, index, file_name, file_contents):
+    def servSendFile(self, index, file_name, file_contents):
         """Send the file_name and contents to the requestor. If there are
         no more Files to send, file_name is empty.
 
@@ -404,12 +404,12 @@ class DataGenConnection():
         file_contents : str
             The contents of the configuration file. This may be empty.
         """
-        print("servSendPartionCfgFile S_PCFG_A", index, file_name, len(file_contents))
+        print("servSendFile S_PCFG_A", index, file_name, len(file_contents))
         sep = self.COMPLEXSEP
         msg = str(index) + sep + file_name + sep + file_contents
         self._send_msg(self._S_PCFG_A, msg)
 
-    def clientRespPartionCfgFile(self):
+    def clientRespFile(self):
         """Extract file name and contents from the message sent by the server.
 
         Return
@@ -422,7 +422,7 @@ class DataGenConnection():
         msg_id, msg, msg_len = self._recv_msg()
         if not msg_id == self._S_PCFG_A:
             self.warnings += 1
-            raise DataGenError('ERROR clientRespPartionCfgFile ' + str(msg_id) + ' ' +
+            raise DataGenError('ERROR clientRespFile ' + str(msg_id) + ' ' +
                                str(msg_len) + ' ' + msg)
         sep = self.COMPLEXSEP
         splt_msg = msg.split(sep)

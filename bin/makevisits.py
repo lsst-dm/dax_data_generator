@@ -21,17 +21,45 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import getopt
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+import sys
 
-if __name__ == '__main__':
 
-    # &&& 1000 visits per night, 0.5 years of observing.
-    # &&& n_visits = 1000*150
-    # 1000 visits/night for 1 year, full sky
-    n_visits = 1000*300
-    area = 20000
+def usage():
+    print('-h, --help  help')
+    print('-o, --outFile     Output file name')
+    print('-n, --numOfVisits Number of visits')
+
+
+def create_visits():
+    """Start the server.
+    """
+    argumentList = sys.argv[1:]
+    print("argumentList=", argumentList)
+    options = "ho:n:"
+    long_options = ["help", "outFile", "numOfVisits"]
+    out_file = "visit_table.csv"
+    n_visits = 1000*150  # 1000 visits/night for 0.5 years
+    try:
+        arguments, values = getopt.getopt(argumentList, options, long_options)
+        print("arguments=", arguments)
+        for arg, val in arguments:
+            if arg in ("-h", "--help"):
+                usage()
+                return False
+            elif arg in ("-o", "--outFile"):
+                out_file = val
+            elif arg in ("-n", "--numOfVisits"):
+                n_visits = val
+    except getopt.error as err:
+        print(str(err))
+        exit(1)
+    print(f"outFile={out_file} numOfVisits={n_visits}\n")
+
+    # area = 20000
     north_only = False
 
     visit_id = np.arange(n_visits)
@@ -50,6 +78,10 @@ if __name__ == '__main__':
     plt.show()
 
     df = pd.DataFrame({"visitId": visit_id, "filter": filter_name, "ra": ra, "decl": dec})
-    df.to_csv("visit_table.csv", index=False, header=False)
+    df.sort_values(by=['decl'])
+    df.to_csv(out_file, index=False, header=False)
 
+
+if __name__ == '__main__':
+    create_visits()
 

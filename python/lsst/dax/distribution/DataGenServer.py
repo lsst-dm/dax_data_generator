@@ -370,20 +370,6 @@ class DataGenServer:
             sv_conn.servRespInit(name, self._objects, self._visits, self._seed,
                                  self._fakeCfgData, self._ingest_dict)
             # client requests partioner configuration files
-            # &&&, starting with
-            # &&& pCfgIndex=0 and incrementing it until pCfgName==""
-            # &&& pCfgDone = False
-            # &&& while not pCfgDone:
-            # &&&     pCfgIndex = sv_conn.servRespPartitionCfgFile()
-            # &&&     if pCfgIndex in self._partioner_cfg_dict:
-            # &&&         pCfgTpl = self._partioner_cfg_dict[pCfgIndex]
-            # &&&         pCfgName = pCfgTpl[0]
-            # &&&         pCfgContents = pCfgTpl[1]
-            # &&&     else:
-            # &&&         pCfgName = ""
-            # &&&         pCfgContents = ""
-            # &&&         pCfgDone = True
-            # &&&     sv_conn.servSendPartionCfgFile(pCfgIndex, pCfgName, pCfgContents)
             sv_conn.servSendFiles(self._partioner_cfg_dict)
 
             # Send the pregenerated files to the client

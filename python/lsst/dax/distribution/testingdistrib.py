@@ -67,18 +67,6 @@ class ServerTestThrd(threading.Thread):
             serv.servRespInit(self.name, self.objects, self.visits, self.seed,
                               self.cfg_file_contents, self.ingest_dict)
             # client requests partioner configuration files.
-            # &&& pCfgDone = False
-            # &&& while not pCfgDone:
-            # &&&     pCfgIndex = serv.servRespPartitionCfgFile()
-            # &&&     if pCfgIndex in self.pCfgFiles:
-            # &&&         pCfgTpl = self.pCfgFiles[pCfgIndex]
-            # &&&         pCfgName = pCfgTpl[0]
-            # &&&         pCfgContents = pCfgTpl[1]
-            # &&&     else:
-            # &&&         pCfgName = ""
-            # &&&         pCfgContents = ""
-            # &&&         pCfgDone = True
-            # &&&     serv.servSendPartionCfgFile(pCfgIndex, pCfgName, pCfgContents)
             serv.servSendFiles(self.pCfgFiles)
             # client requests pre-generated files
             serv.servSendFiles(self.pregen_dict)
