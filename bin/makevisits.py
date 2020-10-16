@@ -25,12 +25,14 @@ import getopt
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pathlib
 import sys
 
 
 def usage():
     print('-h, --help  help')
     print('-o, --outFile     Output file name')
+    print('-p, --plot        plot declinations')
     print('-n, --numOfVisits Number of visits')
 
 
@@ -39,9 +41,10 @@ def create_visits():
     """
     argumentList = sys.argv[1:]
     print("argumentList=", argumentList)
-    options = "ho:n:"
-    long_options = ["help", "outFile", "numOfVisits"]
+    options = "ho:pn:"
+    long_options = ["help", "outFile", "plot", "numOfVisits"]
     out_file = "visit_table.csv"
+    plot = False
     n_visits = 1000*150  # 1000 visits/night for 0.5 years
     try:
         arguments, values = getopt.getopt(argumentList, options, long_options)
@@ -52,6 +55,8 @@ def create_visits():
                 return False
             elif arg in ("-o", "--outFile"):
                 out_file = val
+            elif arg in ("-p", "--plot"):
+                plot = True
             elif arg in ("-n", "--numOfVisits"):
                 n_visits = val
     except getopt.error as err:
@@ -73,12 +78,17 @@ def create_visits():
         cos_dec = 2*np.random.rand(n_visits) - 1
     dec = np.degrees(np.arccos(cos_dec)) - 90.0
     print("dec", dec)
-    ord = np.sort(dec)
-    plt.plot(ord)
-    plt.show()
+    if plot:
+        ord = np.sort(dec)
+        plt.plot(ord)
+        plt.show()
 
     df = pd.DataFrame({"visitId": visit_id, "filter": filter_name, "ra": ra, "decl": dec})
     df.sort_values(by=['decl'])
+
+    out_dir = pathlib.Path(out_file).parent
+    print("making directories ", out_dir)
+    pathlib.Path(out_dir).mkdir(parents=True, exist_ok=True)
     df.to_csv(out_file, index=False, header=False)
 
 
