@@ -1,0 +1,11 @@
+fakedb is used for basic testing of the datageneration system. It's
+relatively small and builds in a few minutes. If you want to build
+more than the first few chunks, remove the -r "0:2000".
+
+To build it:
+  Set the system up according to dax_data_generator/README.md, then:
+    cd dax_data_generator
+    python bin/makevisits.py -o configs/fakedb/pregenerated/visit_table.csv
+    python bin/datagenserver.py -c configs/fakedb/serverCfg.yml -r "0:2000"
+
+

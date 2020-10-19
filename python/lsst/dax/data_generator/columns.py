@@ -1,12 +1,30 @@
+#!/usr/bin/env python3
+
+# Developed for the LSST Data Management System.
+# This product includes software developed by the LSST Project
+# (http://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import math
 import numpy as np
+import pandas as pd
 from abc import ABC
-import healpy
-
 from astropy.coordinates import SkyCoord
 
-from .chunker import Chunker
 
 __all__ = ["ColumnGenerator", "ObjIdGenerator", "FilterGenerator",
            "RaDecGenerator", "MagnitudeGenerator", "ForcedSourceGenerator",
@@ -321,6 +339,7 @@ class MagnitudeGenerator(ColumnGenerator):
         magCols = convertBlockToRows(magRows)
         return magCols
 
+
 class UniformGenerator(ColumnGenerator):
     """
     Parameters
@@ -359,6 +378,7 @@ class UniformGenerator(ColumnGenerator):
             values = delta_value * np.random.rand(length) + self.min_val
             columns.append(values)
         return columns
+
 
 class FilterGenerator(ColumnGenerator):
     """Class to generate random filter columns.
@@ -404,7 +424,7 @@ class ForcedSourceGenerator(ColumnGenerator):
         self.column_seed = column_seed
 
     def __call__(self, box, length, seed, prereq_row=None, prereq_tables=None, unique_box_id=0,
-                 chunk_center=None):
+                 chunk_center=None, edge_only=False):
         assert prereq_tables is not None, "ForcedSourceGenerator requires the Visit table."
         assert chunk_center is not None, "Must supply chunk center"
 
@@ -418,19 +438,33 @@ class ForcedSourceGenerator(ColumnGenerator):
                                           (object_table['decl'] >= box.decA) &
                                           (object_table['decl'] < box.decB)]
 
-        visit_skycoords = SkyCoord(ra=visit_table['ra'], dec=visit_table['decl'], unit="deg")
+        v_radius = self.visit_radius * 1.5  # Go a little bit bigger so nothing is missed.
+        min_dec = box.decA - v_radius
+        max_dec = box.decB + v_radius
+        # If doing and edge_only chunk, there's no reason to fill the ForcedSource table
+        # as it wont be used by the partitioner to make overlap tables. Only director
+        # tables get overlap tables. Making an empty trimmed_visit table causes
+        # an empty ForcedSource table, which is easier to deal with than a missing
+        # ForcedSource table.
+        if (edge_only):
+            trimmed_visit = pd.DataFrame(data=None, columns=visit_table.columns)
+        else:
+            trimmed_visit = visit_table.loc[(visit_table['decl'] >= min_dec) &
+                                            (visit_table['decl'] <= max_dec)]
+        print(f"edge_only={edge_only} len trimmed={len(trimmed_visit)}  base={len(visit_table)}")
+
+        visit_skycoords = SkyCoord(ra=trimmed_visit['ra'], dec=trimmed_visit['decl'], unit="deg")
         visit_deltas = chunk_center.separation(visit_skycoords).degree
         sel_matching_visits, = np.where(visit_deltas < self.visit_radius)
         n_matching_visits = len(sel_matching_visits)
         print(f"Found {n_matching_visits} matching visits")
-
-
         out_objectIds = np.repeat(objects_inside_box['objectId'].values, n_matching_visits)
-        out_ccdVisitIds = np.tile(visit_table['ccdVisitId'].iloc[sel_matching_visits].values,
+        out_ccdVisitIds = np.tile(trimmed_visit['ccdVisitId'].iloc[sel_matching_visits].values,
                                   len(objects_inside_box))
 
         n_rows_total = n_matching_visits * len(objects_inside_box)
-        psFlux = np.repeat(objects_inside_box['gPsFlux'].values, n_matching_visits)  + np.random.randn(n_rows_total)
+        psFlux = (np.repeat(objects_inside_box['gPsFlux'].values, n_matching_visits) +
+                  np.random.randn(n_rows_total))
         psFluxSigma = np.zeros(n_rows_total) + 0.1
 
         assert len(out_objectIds) == n_rows_total

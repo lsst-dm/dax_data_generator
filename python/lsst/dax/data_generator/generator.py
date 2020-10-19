@@ -20,13 +20,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import numpy as np
-import pandas as pd
 import math
+import numpy as np
+import os
+import pandas as pd
 from astropy.coordinates import SkyCoord
 
-from collections import defaultdict
-from . import columns
 from .timingdict import TimingDict
 from .columns import SimpleBox
 
@@ -42,7 +41,7 @@ class TableColumnInfo:
 
     def __repr__(self):
         return ("{col_names:" + self.col_names + ' position:' + str(self.position)
-              + " generator:" + str(self.generator) + ' block:' + str(self.block))
+                + " generator:" + str(self.generator) + ' block:' + str(self.block))
 
 
 class DataGenerator:
@@ -55,13 +54,14 @@ class DataGenerator:
     No validation is performed on the generator specification.
     """
 
-    def __init__(self, spec, chunker, seed=1):
+    def __init__(self, spec, chunker, seed=1, pregen_dir=None):
 
         self.spec = spec
         self.tables = spec.keys()
         self.timingdict = TimingDict()
         self.chunker = chunker
         self.seed = seed
+        self.pregen_dir = pregen_dir
 
     @staticmethod
     def _resolve_table_order(spec):
@@ -142,20 +142,21 @@ class DataGenerator:
         output_tables = {}
 
         resolved_order = self._resolve_table_order(self.spec)
-        table_columns = {}
         tables_loaded_from_file = []
 
         for table in resolved_order:
+            st_time = self.timingdict.start()
             if("from_file" in self.spec[table]):
-                output_tables[table] = pd.read_csv(self.spec[table]["from_file"], header=None,
+                ffname = self.spec[table]["from_file"]
+                if self.pregen_dir:
+                    ffname = os.path.join(self.pregen_dir, ffname)
+                output_tables[table] = pd.read_csv(ffname, header=None,
                                                    names=self.spec[table]["columns"].split(","))
                 tables_loaded_from_file.append(table)
                 continue
 
             column_generators = self.spec[table]["columns"]
             prereq_rows = self.spec[table].get("prereq_row", None)
-            prereq_tables = self.spec[table].get("prereq_tables", [])
-            output_columns = {}
 
             if("density" not in self.spec[table]):
                 table_row_count = None
@@ -169,7 +170,6 @@ class DataGenerator:
             generated_data_per_box = []
             boxes = self._make_boxes(chunk_id, edge_width=edge_width,
                                      edge_only=edge_only)
-            chunk_center = SkyCoord(ra_center, dec_center, frame="icrs", unit="deg")
 
             for box_n, box in enumerate(boxes):
                 assert(box.area() > 0)
@@ -177,19 +177,23 @@ class DataGenerator:
                 if(box_rowcount == 0):
                     continue
                 unique_box_id = chunk_id*8 + box_n
+                box_center_ra = (box.raA + box.raB)/2.0
+                box_center_dec = (box.decA + box.decB)/2.0
+                box_center = SkyCoord(box_center_ra, box_center_dec, frame="icrs", unit="deg")
                 output = self._generate_table_block(box, column_generators,
-                                                    chunk_center=chunk_center,
+                                                    box_center=box_center,
                                                     row_count=box_rowcount,
                                                     prereq_rows=prereq_rows,
                                                     prereq_tables=output_tables,
-                                                    unique_box_id=unique_box_id)
+                                                    unique_box_id=unique_box_id,
+                                                    edge_only=edge_only)
                 for name in output.keys():
                     temp = np.concatenate(output[name])
                     output[name] = temp
                 generated_data_per_box.append(pd.DataFrame(output))
 
-
             output_tables[table] = pd.concat(generated_data_per_box)
+            self.timingdict.end(f"gen_{table}", st_time)
 
         # Unless the user asks for it, we don't want to write out tables that
         # were pre-generated and loaded from a file.
@@ -245,7 +249,7 @@ class DataGenerator:
         return boxes
 
     def _generate_table_block(self, box, column_generators, row_count, unique_box_id,
-                              chunk_center, prereq_tables=None, **kwargs):
+                              box_center, prereq_tables=None, edge_only=False, **kwargs):
 
         output_columns = {}
 
@@ -257,9 +261,10 @@ class DataGenerator:
 
             block = column_generator(
                 box, row_count, self.seed,
-                chunk_center=chunk_center,
+                chunk_center=box_center,
                 unique_box_id=unique_box_id,
-                prereq_tables=prereq_tables)
+                prereq_tables=prereq_tables,
+                edge_only=edge_only)
             self._add_to_list(block, output_columns, split_column_names)
 
         return output_columns

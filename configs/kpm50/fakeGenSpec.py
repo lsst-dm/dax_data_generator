@@ -6,7 +6,6 @@ num_substripes = 5
 chunker = Chunker(0, num_stripes, num_substripes)
 edge_width = 0.017  # degrees, must be >= overlap
 
-
 spec = {
     "Object": {
         "columns": {
@@ -44,9 +43,4 @@ spec = {
                 columns.ForcedSourceGenerator(visit_radius=1.7, filters="ugriz"),
         },
     }
-}
-
-spec["CcdVisit"] = {
-    "from_file": "visit_table.csv",
-    "columns": "ccdVisitId,filterName,ra,decl"
 }
