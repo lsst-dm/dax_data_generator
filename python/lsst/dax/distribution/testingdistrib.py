@@ -134,11 +134,11 @@ class ClientTestThrd(threading.Thread):
             print("ingest_dict=", ingest_dict)
             # Check that the values sent over the connection match what should have been sent.
             if (name == self.name
-                and objects == self.objects
-                and visits == self.visits
-                and seed == self.seed
-                and cfg_file_contents == self.cfg_file_contents
-                and ingest_dict == self.ingest_dict):
+               and objects == self.objects
+               and visits == self.visits
+               and seed == self.seed
+               and cfg_file_contents == self.cfg_file_contents
+               and ingest_dict == self.ingest_dict):
                 pass
             else:
                 self.success = False
@@ -208,7 +208,7 @@ def testDataGenConnection(port, name, objects, visits, seed, cfg_file_contents, 
         print("FAILED")
         success = False
 
-    if servThrd.warnings > 0 or clientThrd.warnings > 0 :
+    if servThrd.warnings > 0 or clientThrd.warnings > 0:
         print("There were warnings")
         print("  serv", servThrd.warnings)
         print("  client", clientThrd.warnings)

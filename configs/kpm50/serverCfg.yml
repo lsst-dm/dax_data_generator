@@ -3,12 +3,11 @@ server:
   port: 13042
 
 fakeDataGenerator:
-# --chunk 3525 --visits 30 --objects 10000 example_spec.py
-  arguments: '--visits 30 --objects 1000'
+  arguments: ''
   visits: 30
   objects: 1000
   seed: 1
-  baseCfgDir: configs/fakedb
+  baseCfgDir: configs/kpm50
   cfgFileName: fakeGenSpec.py
 
 partitioner:

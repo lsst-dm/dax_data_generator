@@ -26,8 +26,6 @@ import os
 import pandas as pd
 from astropy.coordinates import SkyCoord
 
-from collections import defaultdict
-from . import columns
 from .timingdict import TimingDict
 from .columns import SimpleBox
 
@@ -43,7 +41,7 @@ class TableColumnInfo:
 
     def __repr__(self):
         return ("{col_names:" + self.col_names + ' position:' + str(self.position)
-              + " generator:" + str(self.generator) + ' block:' + str(self.block))
+                + " generator:" + str(self.generator) + ' block:' + str(self.block))
 
 
 class DataGenerator:
@@ -183,7 +181,7 @@ class DataGenerator:
                 box_center_dec = (box.decA + box.decB)/2.0
                 box_center = SkyCoord(box_center_ra, box_center_dec, frame="icrs", unit="deg")
                 output = self._generate_table_block(box, column_generators,
-                                                    chunk_center=box_center,
+                                                    box_center=box_center,
                                                     row_count=box_rowcount,
                                                     prereq_rows=prereq_rows,
                                                     prereq_tables=output_tables,
@@ -251,7 +249,7 @@ class DataGenerator:
         return boxes
 
     def _generate_table_block(self, box, column_generators, row_count, unique_box_id,
-                              chunk_center, prereq_tables=None, edge_only=False, **kwargs):
+                              box_center, prereq_tables=None, edge_only=False, **kwargs):
 
         output_columns = {}
 
@@ -263,7 +261,7 @@ class DataGenerator:
 
             block = column_generator(
                 box, row_count, self.seed,
-                chunk_center=chunk_center,
+                chunk_center=box_center,
                 unique_box_id=unique_box_id,
                 prereq_tables=prereq_tables,
                 edge_only=edge_only)
