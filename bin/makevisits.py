@@ -37,7 +37,7 @@ def usage():
 
 
 def create_visits():
-    """Start the server.
+    """Create the visit table.
     """
     argumentList = sys.argv[1:]
     print("argumentList=", argumentList)

@@ -113,7 +113,7 @@ class ColumnGeneratorTests(unittest.TestCase):
         for object_row_id, expected_res in enumerate(expected):
             fs_output = fs_generator(box, length, seed,
                                      prereq_tables=prereq_tables,
-                                     chunk_center=chunk_center)
+                                     box_center=chunk_center)
 
             output_obj_ids, output_ccdvisits, _, _ = fs_output
             self.assertEqual(len(output_obj_ids), len(expected_res))

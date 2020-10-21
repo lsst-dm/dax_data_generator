@@ -589,9 +589,9 @@ class DataGenClient:
                 print("not a file ", os.path.join(ovlDir, e))
         # for each configuration file in self._partitionerCfgs something like this for Object chunk 0
         # sph-partition -c (cfgdir)/Object.cfg --mr.num-workers 1 --out.dir outdirObject
-        # --in chunk0_CT_Object.csv --in chunk402_CT_Object.csv
-        # --in chunk401_CT_Object.csv --in chunk400_CT_Object.csv
-        # --in chunk404_EO_Object.csv --in chunk403_CT_Object.csv
+        # --in.path chunk0_CT_Object.csv --in.path chunk402_CT_Object.csv
+        # --in.path chunk401_CT_Object.csv --in.path chunk400_CT_Object.csv
+        # --in.path chunk404_EO_Object.csv --in.path chunk403_CT_Object.csv
         # Determine which tables need to be created first.
         info_list = []
         for director, children in self._directors.items():
@@ -644,7 +644,7 @@ class DataGenClient:
             determine to which chunk child table rows belong.
         """
         st_time = self._timing_dict.start()
-        # The list of --in files needs to be generated. It
+        # The list of --in.path files needs to be generated. It
         # needs to have all the .csv files for tblName.
         inCsvFiles = []
         reg = re.compile(r"chunk\w*_" + tbl_name + r"\.csv")
@@ -654,7 +654,7 @@ class DataGenClient:
                 inCsvFiles.append(f)
         inStr = ""
         for csv in inCsvFiles:
-            inStr += " --in " + csv
+            inStr += " --in.path " + csv
         cfgFPath = os.path.join(self._pt_cfg_dir, cfg_fname)
         outDir = os.path.join(ovl_dir, "outdir" + tbl_name)
         # If index_path empty or undefined, this must be a director table.

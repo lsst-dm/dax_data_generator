@@ -449,9 +449,9 @@ class ForcedSourceGenerator(ColumnGenerator):
         self.column_seed = column_seed
 
     def __call__(self, box, length, seed, prereq_row=None, prereq_tables=None, unique_box_id=0,
-                 chunk_center=None, edge_only=False):
+                 box_center=None, edge_only=False):
         assert prereq_tables is not None, "ForcedSourceGenerator requires the Visit table."
-        assert chunk_center is not None, "Must supply chunk center"
+        assert box_center is not None, "Must supply box center"
 
         np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
 
@@ -479,7 +479,7 @@ class ForcedSourceGenerator(ColumnGenerator):
         print(f"edge_only={edge_only} len trimmed={len(trimmed_visit)}  base={len(visit_table)}")
 
         visit_skycoords = SkyCoord(ra=trimmed_visit['ra'], dec=trimmed_visit['decl'], unit="deg")
-        visit_deltas = chunk_center.separation(visit_skycoords).degree
+        visit_deltas = box_center.separation(visit_skycoords).degree
         sel_matching_visits, = np.where(visit_deltas < self.visit_radius)
         n_matching_visits = len(sel_matching_visits)
         print(f"Found {n_matching_visits} matching visits")
