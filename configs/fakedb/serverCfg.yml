@@ -18,7 +18,7 @@ ingest:
   host: 192.168.1.143
   port: 25080
   authKey: ''
-  dbName: kpm50
+  dbName: fakedb
   cfgDir: ingestCfgs
 
 pregenerated:
