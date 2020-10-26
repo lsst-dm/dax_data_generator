@@ -5,8 +5,8 @@
  "sub_chunk_id_key":"subChunkId",
  "is_director":1,
  "director_key":"objectId",
- "latitude_key":"decl",
- "longitude_key":"ra",
+ "latitude_key":"psDecl",
+ "longitude_key":"psRa",
  "schema":[
   {},
   {"name":"chunkId","type":"INT UNSIGNED NOT NULL"},

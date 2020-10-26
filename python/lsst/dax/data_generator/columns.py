@@ -27,7 +27,9 @@ from astropy.coordinates import SkyCoord
 
 
 __all__ = ["ColumnGenerator", "ObjIdGenerator", "FilterGenerator",
-           "RaDecGenerator", "MagnitudeGenerator", "ForcedSourceGenerator",
+           "RaDecGenerator", "MagnitudeGenerator",
+           "UniformGenerator", "PoissonGenerator",
+           "ForcedSourceGenerator",
            "VisitIdGenerator", "mergeBlocks"]
 
 
@@ -223,12 +225,13 @@ class RaDecGenerator(ColumnGenerator):
     It starts by generating edges first so edge_only and complete chunks
     will have matching edges.
     """
-    def __init__(self, ignore_edge_only=False):
+    def __init__(self, ignore_edge_only=False, include_err=False):
         self.ignore_edge_only = ignore_edge_only
         self.column_seed = 1
         # avoid having the same ra and dec in different tables.
         if self.ignore_edge_only:
             self.column_seed = 2
+        self.include_err = include_err
 
     def __call__(self, box, length, seed, edge_width=0.0, edge_only=False, unique_box_id=0, **kwargs):
         """
@@ -264,7 +267,13 @@ class RaDecGenerator(ColumnGenerator):
         ra_centers += 360 * (ra_centers < 0.0)
         ra_centers -= 360 * (ra_centers >= 360.0)
 
-        return (ra_centers, dec_centers)
+        if not self.include_err:
+            return (ra_centers, dec_centers)
+        else:
+            ra_err = np.random.random(length) * 2e-6
+            dec_err = np.random.random(length) * 2e-6
+
+            return (ra_centers, ra_err, dec_centers, dec_err)
 
 
 class ObjIdGenerator(ColumnGenerator):
@@ -379,6 +388,22 @@ class UniformGenerator(ColumnGenerator):
             columns.append(values)
         return columns
 
+class PoissonGenerator(ColumnGenerator):
+
+    def __init__(self, n_columns=1, mean_val=10, column_seed=7):
+        self.n_columns = n_columns
+        self.mean_value = mean_val
+        self.column_seed = column_seed
+
+    def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
+
+        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
+
+        columns = []
+        for _ in range(self.n_columns):
+            values = np.random.poisson(self.mean_value, length)
+            columns.append(values)
+        return columns
 
 class FilterGenerator(ColumnGenerator):
     """Class to generate random filter columns.
@@ -433,10 +458,10 @@ class ForcedSourceGenerator(ColumnGenerator):
         visit_table = prereq_tables['CcdVisit']
         object_table = prereq_tables['Object']
 
-        objects_inside_box = object_table[(object_table['ra'] >= box.raA) &
-                                          (object_table['ra'] < box.raB) &
-                                          (object_table['decl'] >= box.decA) &
-                                          (object_table['decl'] < box.decB)]
+        objects_inside_box = object_table[(object_table['psRa'] >= box.raA) &
+                                          (object_table['psRa'] < box.raB) &
+                                          (object_table['psDecl'] >= box.decA) &
+                                          (object_table['psDecl'] < box.decB)]
 
         v_radius = self.visit_radius * 1.5  # Go a little bit bigger so nothing is missed.
         min_dec = box.decA - v_radius
@@ -466,9 +491,11 @@ class ForcedSourceGenerator(ColumnGenerator):
         psFlux = (np.repeat(objects_inside_box['gPsFlux'].values, n_matching_visits) +
                   np.random.randn(n_rows_total))
         psFluxSigma = np.zeros(n_rows_total) + 0.1
+        flags = np.random.randint(200, size=n_rows_total)
+
 
         assert len(out_objectIds) == n_rows_total
         assert len(out_ccdVisitIds) == n_rows_total
 
-        return (out_objectIds, out_ccdVisitIds, psFlux, psFluxSigma)
+        return (out_objectIds, out_ccdVisitIds, psFlux, psFluxSigma, flags)
 

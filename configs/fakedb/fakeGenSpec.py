@@ -9,7 +9,7 @@ edge_width = 0.017  # degrees, must be >= overlap
 spec = {
     "Object": {
         "columns": {"objectId": columns.ObjIdGenerator(),
-                    "ra,decl": columns.RaDecGenerator(),
+                    "psRa,psDecl": columns.RaDecGenerator(),
                     "uPsFlux,gPsFlux,rPsFlux,iPsFlux,zPsFlux,yPsFlux": columns.MagnitudeGenerator(n_mags=6)
                     },
         "density": UniformSpatialModel(1000),
@@ -21,7 +21,7 @@ spec = {
     "ForcedSource": {
         "prereq_tables": ["CcdVisit", "Object"],
         "columns": {
-            "objectId,ccdVisitId,psFlux,psFlux_Sigma":
+            "objectId,ccdVisitId,psFlux,psFlux_Sigma,flags":
                 columns.ForcedSourceGenerator(visit_radius=1.4, filters="ugriz"),
         },
     }
