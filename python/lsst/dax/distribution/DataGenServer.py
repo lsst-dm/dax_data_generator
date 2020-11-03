@@ -117,6 +117,9 @@ class DataGenServer:
     def __init__(self, cfg_file_name, chunk_logs_in, log_dir,
                  skip_ingest, skip_schema, keep_csv):
         self._cfgFileName = cfg_file_name
+        # base directory for other configuration files
+        self._base_cfg_dir = os.path.dirname(self._cfgFileName)
+        print("base_cfg_dir=", self._base_cfg_dir)
         # Set of all chunkIds to generate. sphgeom::Chunker is used to limit
         # the list to valid chunks.
         self._skip_ingest = skip_ingest
@@ -142,8 +145,7 @@ class DataGenServer:
             print("cfg", self._cfg)
         # The port number the host will listen to.
         self._port = self._cfg['server']['port']
-        # base directory for other configuration files
-        self._base_cfg_dir = os.path.abspath(self._cfg['fakeDataGenerator']['baseCfgDir'])
+
         # The arguments that will be passed from server to
         # clients to dax_data_generator/bin/datagen.py.
         self._visits = self._cfg['fakeDataGenerator']['visits']

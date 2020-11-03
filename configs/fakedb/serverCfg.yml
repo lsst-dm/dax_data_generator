@@ -7,7 +7,6 @@ fakeDataGenerator:
   visits: 30
   objects: 1000
   seed: 1
-  baseCfgDir: configs/fakedb
   cfgFileName: fakeGenSpec.py
 
 partitioner:
@@ -16,7 +15,7 @@ partitioner:
 ingest:
   # host: localhost
   # host: 192.168.1.143
-  host: lsst-qserv-master01.ncsa.illinois.edu
+  host: #INGEST_HOST#
   port: 25080
   authKey: ''
   dbName: fakedb
