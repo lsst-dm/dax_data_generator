@@ -2,8 +2,10 @@ Kubernetes
 ==========
 Edit `container/kubernetes/dgenserver.yaml`
   Set the `-g` argument to the host running the replicator/ingest server.
+  Set the `-a` argument to the authentication value.
+    Remove the `-a` entirely if there is no authentication value.
 Start the server.  `kubectl apply -f container/kubernetes/dgenserver.yaml`
-Determine its IP address. `kubectl get pods --selector=job-name=dgenserver -o wide`
+Determine the server IP address. `kubectl get pods --selector=job-name=dgenserver -o wide`
 Edit `container/kubernetes/dgenclient.yaml`
   set the `-H`argument to the IP address of dgenserver.
   Also set `parallelism:` to the desirec number of running clients.

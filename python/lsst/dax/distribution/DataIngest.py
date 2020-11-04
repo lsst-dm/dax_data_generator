@@ -92,7 +92,7 @@ class DataIngest():
         elif req_type == "GET":
             response = requests.get(url)
         else:
-            raise ValueError(f"requestToIngest req_type must be one of PUT, POST, or GET. req_type={req_type}")
+            raise ValueError(f"requestToIngest req_type must be one of PUT, POST, or GET. req={req_type}")
         status_code = response.status_code
         success = True
         # 200 means the put request was at least well formed.
@@ -140,7 +140,7 @@ class DataIngest():
             Ingest super transaction id number.
         """
         success, status_code, r_json = self._requestToIngest("POST", 'ingest/trans',
-                                                         {'database':db_name,'auth_key':''})
+                                       {'database': db_name, 'auth_key': self._auth_key})
         if not success:
             print('ERROR when starting transaction ', db_name, "r_json=", r_json)
             return False, -1
@@ -168,7 +168,7 @@ class DataIngest():
             json data from the put operation if status was 200.
         """
         cmd = 'ingest/trans/%d?abort=%d' % (transaction_id,abort)
-        success, status, r_json = self._requestToIngest("PUT", cmd, {'auth_key':self._auth_key})
+        success, status, r_json = self._requestToIngest("PUT", cmd, {'auth_key': self._auth_key})
         if not success:
             print("ERROR ending transaction id=", transaction_id, "abort=", abort, "status=", status,
                   "r_json=", r_json)
@@ -192,7 +192,7 @@ class DataIngest():
             Port number of the ingest worker.
         """
         cmd = 'ingest/chunk'
-        jdata = {"transaction_id":transaction_id,"chunk":chunk_id,"auth_key":self._auth_key}
+        jdata = {"transaction_id": transaction_id,"chunk": chunk_id,"auth_key": self._auth_key}
         success, status_code, r_json = self._requestToIngest("POST", cmd, jdata)
         if not success:
             print("ERROR failed to get chunk target address", jdata, " r_json=", r_json)
@@ -245,7 +245,7 @@ class DataIngest():
         success = False
         cmd = 'ingest/database/' + db_name
         success, status, r_json = self._requestToIngest("PUT", cmd,
-                                                         {'auth_key':self._auth_key})
+                                                        {'auth_key': self._auth_key})
         if not success:
             print("ERROR publishing", db_name, "status=", status, "r_json=", r_json)
         return success, status, r_json

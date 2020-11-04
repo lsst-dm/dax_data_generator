@@ -31,6 +31,7 @@ def usage():
     print('-h, --help  help')
     print('-c, --configfile  Configuration file name. The file must be in \n'
           '                  dax_data_generator/localConfig')
+    print('-a, --authIngest  Authorization value for the ingest system')
     print('-g, --ingestHost  IP address of the ingest host (replicator server)')
     print('-k, --skipIngest  Skip trying to ingest anything')
     print('-s, --skipSchema  Skip sending schema, needed when schema was already sent.')
@@ -57,8 +58,9 @@ def server():
     """
     argumentList = sys.argv[1:]
     print("argumentList=", argumentList)
-    options = "hksc:g:i:o:r:z"
-    long_options = ["help", "skipIngest", "skipSchema", "configfile", "outDir", "inDir", "raw", "keepCsv"]
+    options = "ha:ksc:g:i:o:r:z"
+    long_options = ["help", "authIngest", "skipIngest", "skipSchema", "configfile", "outDir", "inDir", "raw", "keepCsv"]
+    auth_ingest = ""
     skip_ingest = False
     skip_schema = False
     config_file = "serverCfg.yml"
@@ -74,6 +76,8 @@ def server():
             if arg in ("-h", "--help"):
                 usage()
                 return False
+            elif arg in ("-a", "--authIngest"):
+                auth_ingest = val
             elif arg in ("-k", "--skipIngest"):
                 skip_ingest = True
             elif arg in ("-s", "--skipSchema"):
@@ -105,11 +109,13 @@ def server():
 
     print("config_file_path", config_file_path)
     # Replace #INGEST_HOST# with ingest_host in the file
+    # Replace #INGEST_AUTH with auth_ingest in the file
     with open(config_file_path, 'r') as cfg_file:
         cfg_contents_in = cfg_file.read()
-
     with open(config_file_path, 'w') as cfg_file:
-        cfg_file.write(cfg_contents_in.replace('#INGEST_HOST#', ingest_host))
+        cfg_out = cfg_contents_in.replace('#INGEST_HOST#', ingest_host)
+        cfg_out = cfg_out.replace('#INGEST_AUTH#', auth_ingest)
+        cfg_file.write(cfg_out)
 
     # If in_dir is defined (empty string is valid), see if files can be found
     if in_dir is not None:
