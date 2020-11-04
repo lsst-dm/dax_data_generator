@@ -14,5 +14,8 @@ spec:
       - name: datagen
         image: qserv/dax_data_generator:tickets-DM-26846
         imagePullPolicy: Always
-        command: ["/home/qserv/dax_data_generator/scripts/run_datagenclient.sh"]
+        command: ["/home/qserv/dax_data_generator/scripts/run_datagenserver.sh"]
+        args: ["fakedb", "-glocalhost", "-k", "-r0:2000"]
+        ports:
+          - containerPort: 13042
       restartPolicy: Never

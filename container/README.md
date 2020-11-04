@@ -1,3 +1,15 @@
+Kubernetes
+==========
+Start the server first.  `kubectl apply -f container/kubernetes/dgenserver.yaml`
+Determine its IP address. `kubectl get pods --selector=job-name=dgenserver -o wide`
+Edit `container/kubernetes/dgenclient.yaml`
+  set the `-H`argument to the IP address of dgenserver.
+  Also set `parallelism:` to the desirec number of running clients.
+Start client jobs. `kubectl apply -f container/kubernetes/dgenclient.yaml`
+Delete kubernetes when done.
+
+
+
 Building and using the container
 ================================
 
@@ -34,9 +46,9 @@ docker run --network=host --rm -u 1000:1000 qserv/dax_data_generator:master \
   /bin/bash -c "/home/qserv/dax_data_generator/scripts/run_datagenclient.sh"
 ```
 
-To start the client branch tickets-DM-26409
+To start the client branch tickets-DM-XXXXX
 ```
-docker run --network=host --rm -u 1000:1000 qserv/dax_data_generator:tickets-DM-26409 \
+docker run --network=host --rm -u 1000:1000 qserv/dax_data_generator:tickets-DM-XXXXX \
   /bin/bash -c "/home/qserv/dax_data_generator/scripts/run_datagenclient.sh"
 ```
 
@@ -51,38 +63,29 @@ docker run --network=host --rm -u 1000:1000 qserv/dax_data_generator:master \
 
 Server
 ------
-The server is found inside the same container as the client, so building
-the client builds the server.
+The server is found inside the same container as the client.
 
-Basic starting the server
+Basic starting the server to generate the fakedb database ang registering
+it with a the ingest/replicator server on localhost ('-g' is important).
 ```
-docker run --network=host --rm -u 1000:1000 qserv/dax_data_generator:tickets-DM-26409 \
-  /bin/bash -c "/home/qserv/dax_data_generator/scripts/run_datagenserver.sh"
+docker run --network=host --rm -u 1000:1000 qserv/dax_data_generator:master \
+  /bin/bash -c "/home/qserv/dax_data_generator/scripts/run_datagenserver.sh fakedb -glocalhost"
 ```
 
-Starting the server without sending anything to the ingest system. Useful for testing
-data generation configuration files and code.
+Starting the server without sending anything to the ingest system, using the
+image for tickets/DM-XXXXX and limiting output to chunks between 0 and 2000.
+Useful for testing data generation configuration files and code.
 ```
-docker run --network=host --rm -u 1000:1000 qserv/dax_data_generator:tickets-DM-26409 \
-  /bin/bash -c "/home/qserv/dax_data_generator/scripts/run_datagenserver.sh -k"
+docker run --network=host --rm -u 1000:1000 qserv/dax_data_generator:tickets-DM-XXXXX \
+  /bin/bash -c "/home/qserv/dax_data_generator/scripts/run_datagenserver.sh fakedb -k -r0:2000"
 ```
 
 Starting the server without sending table schema information to the ingest system.
 Useful when the schema information has already been sent. Using the fakedb configuration
 file
 ```
-docker run --network=host --rm -u 1000:1000 qserv/dax_data_generator:tickets-DM-26409 \
-  /bin/bash -c "/home/qserv/dax_data_generator/scripts/run_datagenserver.sh -s \
-  -c configs/fakedb/serverCfg.yml"
-```
-
-Configurations can also be added by using an external volume for the configuration
-directories.
-```
-docker run --network=host --rm -u 1000:1000 \
-  -v fakeGenSpec.py:/home/qserv/dax_data_generator/config/fakedb/fakeGenSpec.py:ro \
-  qserv/dax_data_generator:tickets-DM-26409 \
-  /bin/bash -c "/home/qserv/dax_data_generator/scripts/run_datagenserver.sh
+docker run --network=host --rm -u 1000:1000 qserv/dax_data_generator:master \
+  /bin/bash -c "/home/qserv/dax_data_generator/scripts/run_datagenserver.sh fakedb -glocalhost"
 ```
 
 
@@ -100,11 +103,10 @@ better spent eslewhere.
 Configuration files for generating a particular dataset should be added to the git
 repository in their own config subdirectory. 'dax_data_generator/config/fakedb'
 contains all the configuration information for 'fakedb' which is used for basic
-testing. There will be 'dax_data_generator/config/kpm50a' for kpm50 tests.
+testing. There will be 'dax_data_generator/config/kpm50' for kpm50 tests.
+Please note the directory name ('fakedb' here) is passed to the startup script.
 
 It will probably be desirable to hold on to some configurations for regression
 testing.
 
-*TODO*: add wrapper scripts to run other services, tests, etc. inside the container.
-Look inside the above shown sample wrapper script for further details and requirements
-for these scripts.
+
