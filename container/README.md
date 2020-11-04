@@ -1,6 +1,8 @@
 Kubernetes
 ==========
-Start the server first.  `kubectl apply -f container/kubernetes/dgenserver.yaml`
+Edit `container/kubernetes/dgenserver.yaml`
+  Set the `-g` argument to the host running the replicator/ingest server.
+Start the server.  `kubectl apply -f container/kubernetes/dgenserver.yaml`
 Determine its IP address. `kubectl get pods --selector=job-name=dgenserver -o wide`
 Edit `container/kubernetes/dgenclient.yaml`
   set the `-H`argument to the IP address of dgenserver.
