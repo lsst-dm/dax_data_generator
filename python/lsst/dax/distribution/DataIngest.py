@@ -47,7 +47,8 @@ class DataIngest():
         print("base_url=", self._base_url)
 
     def __repr__(self):
-        out = ("host=" + self._host + ":" + str(self._port) + " auth_key:****")
+        #restore&&& out = ("host=" + self._host + ":" + str(self._port) + " auth_key:****")
+        out = ("host=" + self._host + ":" + str(self._port) + "&&& auth_key:" + str(self._auth_key))
         return out
 
     def isIngestAlive(self):
@@ -113,6 +114,7 @@ class DataIngest():
         with open(db_file_path, 'r') as db_f:
             data = db_f.read()
             data_json = json.loads(data)
+        data_json['auth_key'] = self._auth_key
         success, status_code, r_json = self._requestToIngest("POST", 'ingest/database', data_json)
         if not success:
             print('ERROR while sending databaae ', db_file_path, "r_json=", r_json)
@@ -123,6 +125,7 @@ class DataIngest():
         with open(schema_file_path, 'r') as schema_f:
             data = schema_f.read()
             data_json = json.loads(data)
+        data_json['auth_key'] = self._auth_key
         success, status_code, r_json = self._requestToIngest("POST", 'ingest/table', data_json)
         if not success:
             print('ERROR while sending table schema ', schema_file_path, "r_json=", r_json)
