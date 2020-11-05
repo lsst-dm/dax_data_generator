@@ -47,8 +47,7 @@ class DataIngest():
         print("base_url=", self._base_url)
 
     def __repr__(self):
-        #restore&&& out = ("host=" + self._host + ":" + str(self._port) + " auth_key:****")
-        out = ("host=" + self._host + ":" + str(self._port) + "&&& auth_key:" + str(self._auth_key))
+        out = ("host=" + self._host + ":" + str(self._port) + " auth_key:****")
         return out
 
     def isIngestAlive(self):
@@ -228,6 +227,8 @@ class DataIngest():
         """
         cmd = ('qserv-replica-file-ingest FILE ' + host + ' ' + str(port) + ' '
             + str(transaction_id) + ' ' + table + ' P ' + f_path + ' --verbose --columns-separator=TAB')
+        if self._auth_key:
+            cmd += ' --auth-key=' + self._auth_key
         print("cmd=", cmd)
         process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         out_str = str(process.stdout)

@@ -173,6 +173,8 @@ class DataGenServer:
         ingest_host = self._cfg['ingest']['host']
         ingest_port = self._cfg['ingest']['port']
         ingest_auth = self._cfg['ingest']['authKey']
+        if ingest_auth is None:
+            ingest_auth = ''
         self._ingest_dict = {'host': ingest_host, 'port': ingest_port, 'auth': ingest_auth,
                              'db': self._db_name, 'skip': self._skip_ingest, 'keep': self._keep_csv}
         # Read ingest config files.

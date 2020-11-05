@@ -12,7 +12,7 @@ spec:
     spec:
       containers:
       - name: datagen
-        image: qserv/dax_data_generator:tickets-DM-26846
+        image: qserv/dax_data_generator:master
         imagePullPolicy: Always
         command: ["/home/qserv/dax_data_generator/scripts/run_datagenserver.sh"]
         args: ["fakedb", "-glocalhost", "-aCHANGEME", "-k", "-r0:2000"]
