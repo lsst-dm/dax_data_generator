@@ -6,10 +6,7 @@
     "is_director":0,
     "director_key":"objectId",
     "schema":[
-     {"name":"objectId","type":"BIGINT NOT NULL"},
-     {"name":"ccdVisitId","type":"BIGINT NOT NULL"},
-     {"name":"psFlux","type":"DOUBLE"},
-     {"name":"psFlux_Sigma","type":"DOUBLE"},
+     {"name": "PLACEHOLDER"},
      {"name":"chunkId","type":"INT UNSIGNED NOT NULL"},
      {"name":"subChunkId","type":"INT UNSIGNED NOT NULL"}
     ],

@@ -1,0 +1,16 @@
+{"database":"fakedb",
+ "table":"Object",
+ "is_partitioned":1,
+ "chunk_id_key":"chunkId",
+ "sub_chunk_id_key":"subChunkId",
+ "is_director":1,
+ "director_key":"objectId",
+ "latitude_key":"psDecl",
+ "longitude_key":"psRa",
+ "schema":[
+  {"name": "PLACEHOLDER"},
+  {"name":"chunkId","type":"INT UNSIGNED NOT NULL"},
+  {"name":"subChunkId","type":"INT UNSIGNED NOT NULL"}
+ ],
+ "auth_key":""
+}

@@ -10,6 +10,7 @@
      {"name":"ccdVisitId","type":"BIGINT NOT NULL"},
      {"name":"psFlux","type":"DOUBLE"},
      {"name":"psFlux_Sigma","type":"DOUBLE"},
+     {"name":"flags","type":"TINYINT"},
      {"name":"chunkId","type":"INT UNSIGNED NOT NULL"},
      {"name":"subChunkId","type":"INT UNSIGNED NOT NULL"}
     ],

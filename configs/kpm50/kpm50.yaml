@@ -1,0 +1,2323 @@
+---
+name: BaselineSchema
+"@id": "#baselineSchema"
+tables:
+- name: Object
+  "@id": "#Object"
+  description: The Object table contains descriptions of the multi-epoch static astronomical
+    objects, in particular their astrophysical properties as derived from analysis
+    of the Sources that are associated with them. Note that fast moving objects are
+    kept in the MovingObject tables. Note that less-frequently used columns are stored
+    in a separate table called Object_Extra.
+  columns:
+  - name: objectId
+    "@id": "#Object.objectId"
+    datatype: long
+    description: Unique id.
+    mysql:datatype: BIGINT
+    ivoa:ucd: meta.id;src
+  - name: parentObjectId
+    "@id": "#Object.parentObjectId"
+    datatype: long
+    description: Id of the parent object this object has been deblended from, if any.
+    mysql:datatype: BIGINT
+  - name: prv_inputId
+    "@id": "#Object.prv_inputId"
+    datatype: int
+    description: Pointer to prv_InputType. Indicates which input was used to produce
+      a given object.
+    mysql:datatype: INT
+  - name: psRa
+    "@id": "#Object.psRa"
+    datatype: double
+    description: RA-coordinate of the center of the object for the Point Source model
+      at time 'psEpoch'.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.ra
+  - name: psRaErr
+    "@id": "#Object.psRaErr"
+    datatype: float
+    description: Uncertainty of psRa.
+    mysql:datatype: FLOAT
+    fits:tunit: deg
+    ivoa:ucd: stat.error;pos.eq.ra
+  - name: psDecl
+    "@id": "#Object.psDecl"
+    datatype: double
+    description: Decl-coordinate of the center of the object for the Point Source
+      model at time 'psEpoch'.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.dec
+  - name: psDeclErr
+    "@id": "#Object.psDeclErr"
+    datatype: float
+    description: Uncertainty of psDecl.
+    mysql:datatype: FLOAT
+    fits:tunit: deg
+    ivoa:ucd: stat.error;pos.eq.dec
+  - name: psMuRa
+    "@id": "#Object.psMuRa"
+    datatype: float
+    description: Proper motion (ra) for the Point Source model.
+    mysql:datatype: FLOAT
+    fits:tunit: mas/yr
+    ivoa:ucd: pos.pm
+  - name: psMuRaErr
+    "@id": "#Object.psMuRaErr"
+    datatype: float
+    description: Uncertainty of psMuRa.
+    mysql:datatype: FLOAT
+    fits:tunit: mas/yr
+    ivoa:ucd: stat.error;pos.pm
+  - name: psMuDecl
+    "@id": "#Object.psMuDecl"
+    datatype: float
+    description: Proper motion (decl) for the Point Source model.
+    mysql:datatype: FLOAT
+    fits:tunit: mas/yr
+    ivoa:ucd: pos.pm
+  - name: psMuDeclErr
+    "@id": "#Object.psMuDeclErr"
+    datatype: float
+    description: Uncertainty of psMuDecl.
+    mysql:datatype: FLOAT
+    fits:tunit: mas/yr
+    ivoa:ucd: stat.error;pos.pm
+  - name: psParallax
+    "@id": "#Object.psParallax"
+    datatype: float
+    description: Stellar parallax. for the Point Source model.
+    mysql:datatype: FLOAT
+    fits:tunit: mas
+    ivoa:ucd: pos.parallax
+  - name: psParallaxErr
+    "@id": "#Object.psParallaxErr"
+    datatype: float
+    description: Uncertainty of psParallax.
+    mysql:datatype: FLOAT
+    fits:tunit: mas
+    ivoa:ucd: stat.error;pos.parallax
+  - name: uPsFlux
+    "@id": "#Object.uPsFlux"
+    datatype: float
+    description: Calibrated flux for Point Source model for u filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+    ivoa:ucd: phot.count
+  - name: uPsFluxErr
+    "@id": "#Object.uPsFluxErr"
+    datatype: float
+    description: Uncertainty of uPsFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+    ivoa:ucd: stat.error;phot.count
+  - name: gPsFlux
+    "@id": "#Object.gPsFlux"
+    datatype: float
+    description: Calibrated flux for Point Source model for g filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+    ivoa:ucd: phot.count
+  - name: gPsFluxErr
+    "@id": "#Object.gPsFluxErr"
+    datatype: float
+    description: Uncertainty of gPsFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+    ivoa:ucd: stat.error;phot.count
+  - name: rPsFlux
+    "@id": "#Object.rPsFlux"
+    datatype: float
+    description: Calibrated flux for Point Source model for r filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+    ivoa:ucd: phot.count
+  - name: rPsFluxErr
+    "@id": "#Object.rPsFluxErr"
+    datatype: float
+    description: Uncertainty of rPsFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+    ivoa:ucd: stat.error;phot.count
+  - name: iPsFlux
+    "@id": "#Object.iPsFlux"
+    datatype: float
+    description: Calibrated flux for Point Source model for i filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+    ivoa:ucd: phot.count
+  - name: iPsFluxErr
+    "@id": "#Object.iPsFluxErr"
+    datatype: float
+    description: Uncertainty of iPsFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+    ivoa:ucd: stat.error;phot.count
+  - name: zPsFlux
+    "@id": "#Object.zPsFlux"
+    datatype: float
+    description: Calibrated flux for Point Source model for z filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+    ivoa:ucd: phot.count
+  - name: zPsFluxErr
+    "@id": "#Object.zPsFluxErr"
+    datatype: float
+    description: Uncertainty of zPsFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+    ivoa:ucd: stat.error;phot.count
+  - name: yPsFlux
+    "@id": "#Object.yPsFlux"
+    datatype: float
+    description: Calibrated flux for Point Source model for y filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+    ivoa:ucd: phot.count
+  - name: yPsFluxErr
+    "@id": "#Object.yPsFluxErr"
+    datatype: float
+    description: Uncertainty of yPsFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+    ivoa:ucd: stat.error;phot.count
+  - name: psLnL
+    "@id": "#Object.psLnL"
+    datatype: float
+    description: Natural log likelihood of the observed data given the Point Source
+      model.
+    mysql:datatype: FLOAT
+  - name: psChi2
+    "@id": "#Object.psChi2"
+    datatype: float
+    description: Chi^2 static of the model fit.
+    mysql:datatype: FLOAT
+  - name: psN
+    "@id": "#Object.psN"
+    datatype: int
+    description: The number of data points (pixels) used to fit the model.
+    mysql:datatype: INT
+  - name: uBbdRa
+    "@id": "#Object.uBbdRa"
+    datatype: double
+    description: RA-coordinate of the center of the object for the Bulge+Disk model
+      at time radecTai. For u filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.ra
+  - name: uBdRaErr
+    "@id": "#Object.uBdRaErr"
+    datatype: float
+    description: Uncertainty of uBdRa.
+    mysql:datatype: FLOAT
+    fits:tunit: deg
+    ivoa:ucd: stat.error;pos.eq.ra
+  - name: uBdDecl
+    "@id": "#Object.uBdDecl"
+    datatype: double
+    description: Decl-coordinate of the center of the object for the Bulge+Disk model
+      at time radecTai. For u filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.dec
+  - name: uBdDeclErr
+    "@id": "#Object.uBdDeclErr"
+    datatype: float
+    description: Uncertainty of uBdDecl.
+    mysql:datatype: FLOAT
+    fits:tunit: deg
+    ivoa:ucd: stat.error;pos.eq.dec
+  - name: uBdE1
+    "@id": "#Object.uBdE1"
+    datatype: float
+    description: Ellipticity for the Bulge+Disk (e1). For u filter.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: uBdE1Err
+    "@id": "#Object.uBdE1Err"
+    datatype: float
+    description: Uncertainty of uBdE1.
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: uBdE2
+    "@id": "#Object.uBdE2"
+    datatype: float
+    description: Ellipticity for Bulge+Disk model (e2). For u filter.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: uBdE2Err
+    "@id": "#Object.uBdE2Err"
+    datatype: float
+    description: Uncertainty of uBdE2.
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: uBdFluxB
+    "@id": "#Object.uBdFluxB"
+    datatype: float
+    description: Integrated flux of the de Vaucouleurs component for the Bulge+Disk
+      model. For u filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: uBdFluxBErr
+    "@id": "#Object.uBdFluxBErr"
+    datatype: float
+    description: Uncertainty of uBdFluxB.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: uBdFluxD
+    "@id": "#Object.uBdFluxD"
+    datatype: float
+    description: Integrated flux of the exponential component for the Bulge+Disk model.
+      For u filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: uBdFluxDErr
+    "@id": "#Object.uBdFluxDErr"
+    datatype: float
+    description: Uncertainty of uBdFluxD.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: uBdReB
+    "@id": "#Object.uBdReB"
+    datatype: float
+    description: Effective radius of the de Vaucouleurs profile component for the
+      Bulge+Disk model. For u filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: uBdReBErr
+    "@id": "#Object.uBdReBErr"
+    datatype: float
+    description: Uncertainty of uBdReB.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: uBdReD
+    "@id": "#Object.uBdReD"
+    datatype: float
+    description: Effective radius of the exponential profile component for the Bulge+Disk
+      model. For u filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: uBdReDErr
+    "@id": "#Object.uBdReDErr"
+    datatype: float
+    description: Uncertainty of uBdReD.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: uBdLnL
+    "@id": "#Object.uBdLnL"
+    datatype: float
+    description: Natural log likelihood of the observed data given the Bulge+Disk
+      model. For u filter.
+    mysql:datatype: FLOAT
+  - name: uBdChi2
+    "@id": "#Object.uBdChi2"
+    datatype: float
+    description: Chi^2 static of the model fit. For u filter.
+    mysql:datatype: FLOAT
+  - name: uBdN
+    "@id": "#Object.uBdN"
+    datatype: int
+    description: The number of data points (pixels) used to fit the model. For u filter.
+    mysql:datatype: INT
+  - name: gBbdRa
+    "@id": "#Object.gBbdRa"
+    datatype: double
+    description: RA-coordinate of the center of the object for the Bulge+Disk model
+      at time radecTai. For g filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.ra
+  - name: gBdRaErr
+    "@id": "#Object.gBdRaErr"
+    datatype: float
+    description: Uncertainty of gBdRa.
+    mysql:datatype: FLOAT
+    fits:tunit: deg
+    ivoa:ucd: stat.error;pos.eq.ra
+  - name: gBdDecl
+    "@id": "#Object.gBdDecl"
+    datatype: double
+    description: Decl-coordinate of the center of the object for the Bulge+Disk model
+      at time radecTai. For g filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.dec
+  - name: gBdDeclErr
+    "@id": "#Object.gBdDeclErr"
+    datatype: float
+    description: Uncertainty of gBdDecl.
+    mysql:datatype: FLOAT
+    fits:tunit: deg
+    ivoa:ucd: stat.error;pos.eq.dec
+  - name: gBdE1
+    "@id": "#Object.gBdE1"
+    datatype: float
+    description: Ellipticity for the Bulge+Disk (e1). For g filter.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: gBdE1Err
+    "@id": "#Object.gBdE1Err"
+    datatype: float
+    description: Uncertainty of gBdE1.
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: gBdE2
+    "@id": "#Object.gBdE2"
+    datatype: float
+    description: Ellipticity for Bulge+Disk model (e2). For g filter.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: gBdE2Err
+    "@id": "#Object.gBdE2Err"
+    datatype: float
+    description: Uncertainty of gBdE2.
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: gBdFluxB
+    "@id": "#Object.gBdFluxB"
+    datatype: float
+    description: Integrated flux of the de Vaucouleurs component for the Bulge+Disk
+      model. For g filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: gBdFluxBErr
+    "@id": "#Object.gBdFluxBErr"
+    datatype: float
+    description: Uncertainty of gBdFluxB.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: gBdFluxD
+    "@id": "#Object.gBdFluxD"
+    datatype: float
+    description: Integrated flux of the exponential component for the Bulge+Disk model.
+      For g filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: gBdFluxDErr
+    "@id": "#Object.gBdFluxDErr"
+    datatype: float
+    description: Uncertainty of gBdFluxD.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: gBdReB
+    "@id": "#Object.gBdReB"
+    datatype: float
+    description: Effective radius of the de Vaucouleurs profile component for the
+      Bulge+Disk model. For g filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: gBdReBErr
+    "@id": "#Object.gBdReBErr"
+    datatype: float
+    description: Uncertainty of gBdReB.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: gBdReD
+    "@id": "#Object.gBdReD"
+    datatype: float
+    description: Effective radius of the exponential profile component for the Bulge+Disk
+      model. For g filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: gBdReDErr
+    "@id": "#Object.gBdReDErr"
+    datatype: float
+    description: Uncertainty of gBdReD.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: gBdLnL
+    "@id": "#Object.gBdLnL"
+    datatype: float
+    description: Natural log likelihood of the observed data given the Bulge+Disk
+      model. For g filter.
+    mysql:datatype: FLOAT
+  - name: gBdChi2
+    "@id": "#Object.gBdChi2"
+    datatype: float
+    description: Chi^2 static of the model fit. For g filter.
+    mysql:datatype: FLOAT
+  - name: gBdN
+    "@id": "#Object.gBdN"
+    datatype: int
+    description: The number of data points (pixels) used to fit the model. For g filter.
+    mysql:datatype: INT
+  - name: rBbdRa
+    "@id": "#Object.rBbdRa"
+    datatype: double
+    description: RA-coordinate of the center of the object for the Bulge+Disk model
+      at time radecTai. For r filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.ra
+  - name: rBdRaErr
+    "@id": "#Object.rBdRaErr"
+    datatype: float
+    description: Uncertainty of rBdRa.
+    mysql:datatype: FLOAT
+    fits:tunit: deg
+    ivoa:ucd: stat.error;pos.eq.ra
+  - name: rBdDecl
+    "@id": "#Object.rBdDecl"
+    datatype: double
+    description: Decl-coordinate of the center of the object for the Bulge+Disk model
+      at time radecTai. For r filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.dec
+  - name: rBdDeclErr
+    "@id": "#Object.rBdDeclErr"
+    datatype: float
+    description: Uncertainty of rBdDecl.
+    mysql:datatype: FLOAT
+    fits:tunit: deg
+    ivoa:ucd: stat.error;pos.eq.dec
+  - name: rBdE1
+    "@id": "#Object.rBdE1"
+    datatype: float
+    description: Ellipticity for the Bulge+Disk (e1). For r filter.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: rBdE1Err
+    "@id": "#Object.rBdE1Err"
+    datatype: float
+    description: Uncertainty of rBdE1.
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: rBdE2
+    "@id": "#Object.rBdE2"
+    datatype: float
+    description: Ellipticity for Bulge+Disk model (e2). For r filter.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: rBdE2Err
+    "@id": "#Object.rBdE2Err"
+    datatype: float
+    description: Uncertainty of rBdE2.
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: rBdFluxB
+    "@id": "#Object.rBdFluxB"
+    datatype: float
+    description: Integrated flux of the de Vaucouleurs component for the Bulge+Disk
+      model. For r filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: rBdFluxBErr
+    "@id": "#Object.rBdFluxBErr"
+    datatype: float
+    description: Uncertainty of rBdFluxB.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: rBdFluxD
+    "@id": "#Object.rBdFluxD"
+    datatype: float
+    description: Integrated flux of the exponential component for the Bulge+Disk model.
+      For r filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: rBdFluxDErr
+    "@id": "#Object.rBdFluxDErr"
+    datatype: float
+    description: Uncertainty of rBdFluxD.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: rBdReB
+    "@id": "#Object.rBdReB"
+    datatype: float
+    description: Effective radius of the de Vaucouleurs profile component for the
+      Bulge+Disk model. For r filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: rBdReBErr
+    "@id": "#Object.rBdReBErr"
+    datatype: float
+    description: Uncertainty of rBdReB.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: rBdReD
+    "@id": "#Object.rBdReD"
+    datatype: float
+    description: Effective radius of the exponential profile component for the Bulge+Disk
+      model. For r filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: rBdReDErr
+    "@id": "#Object.rBdReDErr"
+    datatype: float
+    description: Uncertainty of rBdReD.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: rBdLnL
+    "@id": "#Object.rBdLnL"
+    datatype: float
+    description: Natural log likelihood of the observed data given the Bulge+Disk
+      model. For r filter.
+    mysql:datatype: FLOAT
+  - name: rBdChi2
+    "@id": "#Object.rBdChi2"
+    datatype: float
+    description: Chi^2 static of the model fit. For r filter.
+    mysql:datatype: FLOAT
+  - name: rBdN
+    "@id": "#Object.rBdN"
+    datatype: int
+    description: The number of data points (pixels) used to fit the model. For r filter.
+    mysql:datatype: INT
+  - name: iBbdRa
+    "@id": "#Object.iBbdRa"
+    datatype: double
+    description: RA-coordinate of the center of the object for the Bulge+Disk model
+      at time radecTai. For i filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.ra
+  - name: iBdRaErr
+    "@id": "#Object.iBdRaErr"
+    datatype: float
+    description: Uncertainty of iBdRa.
+    mysql:datatype: FLOAT
+    fits:tunit: deg
+    ivoa:ucd: stat.error;pos.eq.ra
+  - name: iBdDecl
+    "@id": "#Object.iBdDecl"
+    datatype: double
+    description: Decl-coordinate of the center of the object for the Bulge+Disk model
+      at time radecTai. For i filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.dec
+  - name: iBdDeclErr
+    "@id": "#Object.iBdDeclErr"
+    datatype: float
+    description: Uncertainty of iBdDecl.
+    mysql:datatype: FLOAT
+    fits:tunit: deg
+    ivoa:ucd: stat.error;pos.eq.dec
+  - name: iBdE1
+    "@id": "#Object.iBdE1"
+    datatype: float
+    description: Ellipticity for the Bulge+Disk (e1). For i filter.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: iBdE1Err
+    "@id": "#Object.iBdE1Err"
+    datatype: float
+    description: Uncertainty of iBdE1.
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: iBdE2
+    "@id": "#Object.iBdE2"
+    datatype: float
+    description: Ellipticity for Bulge+Disk model (e2). For i filter.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: iBdE2Err
+    "@id": "#Object.iBdE2Err"
+    datatype: float
+    description: Uncertainty of iBdE2.
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: iBdFluxB
+    "@id": "#Object.iBdFluxB"
+    datatype: float
+    description: Integrated flux of the de Vaucouleurs component for the Bulge+Disk
+      model. For i filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: iBdFluxBErr
+    "@id": "#Object.iBdFluxBErr"
+    datatype: float
+    description: Uncertainty of iBdFluxB.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: iBdFluxD
+    "@id": "#Object.iBdFluxD"
+    datatype: float
+    description: Integrated flux of the exponential component for the Bulge+Disk model.
+      For i filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: iBdFluxDErr
+    "@id": "#Object.iBdFluxDErr"
+    datatype: float
+    description: Uncertainty of iBdFluxD.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: iBdReB
+    "@id": "#Object.iBdReB"
+    datatype: float
+    description: Effective radius of the de Vaucouleurs profile component for the
+      Bulge+Disk model. For i filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: iBdReBErr
+    "@id": "#Object.iBdReBErr"
+    datatype: float
+    description: Uncertainty of iBdReB.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: iBdReD
+    "@id": "#Object.iBdReD"
+    datatype: float
+    description: Effective radius of the exponential profile component for the Bulge+Disk
+      model. For i filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: iBdReDErr
+    "@id": "#Object.iBdReDErr"
+    datatype: float
+    description: Uncertainty of iBdReD.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: iBdLnL
+    "@id": "#Object.iBdLnL"
+    datatype: float
+    description: Natural log likelihood of the observed data given the Bulge+Disk
+      model. For i filter.
+    mysql:datatype: FLOAT
+  - name: iBdChi2
+    "@id": "#Object.iBdChi2"
+    datatype: float
+    description: Chi^2 static of the model fit. For i filter.
+    mysql:datatype: FLOAT
+  - name: iBdN
+    "@id": "#Object.iBdN"
+    datatype: int
+    description: The number of data points (pixels) used to fit the model. For i filter.
+    mysql:datatype: INT
+  - name: zBbdRa
+    "@id": "#Object.zBbdRa"
+    datatype: double
+    description: RA-coordinate of the center of the object for the Bulge+Disk model
+      at time radecTai. For z filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.ra
+  - name: zBdRaErr
+    "@id": "#Object.zBdRaErr"
+    datatype: float
+    description: Uncertainty of zBdRa.
+    mysql:datatype: FLOAT
+    fits:tunit: deg
+    ivoa:ucd: stat.error;pos.eq.ra
+  - name: zBdDecl
+    "@id": "#Object.zBdDecl"
+    datatype: double
+    description: Decl-coordinate of the center of the object for the Bulge+Disk model
+      at time radecTai. For z filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.dec
+  - name: zBdDeclErr
+    "@id": "#Object.zBdDeclErr"
+    datatype: float
+    description: Uncertainty of zBdDecl.
+    mysql:datatype: FLOAT
+    fits:tunit: deg
+    ivoa:ucd: stat.error;pos.eq.dec
+  - name: zBdE1
+    "@id": "#Object.zBdE1"
+    datatype: float
+    description: Ellipticity for the Bulge+Disk (e1). For z filter.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: zBdE1Err
+    "@id": "#Object.zBdE1Err"
+    datatype: float
+    description: Uncertainty of zBdE1.
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: zBdE2
+    "@id": "#Object.zBdE2"
+    datatype: float
+    description: Ellipticity for Bulge+Disk model (e2). For z filter.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: zBdE2Err
+    "@id": "#Object.zBdE2Err"
+    datatype: float
+    description: Uncertainty of zBdE2.
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: zBdFluxB
+    "@id": "#Object.zBdFluxB"
+    datatype: float
+    description: Integrated flux of the de Vaucouleurs component for the Bulge+Disk
+      model. For z filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: zBdFluxBErr
+    "@id": "#Object.zBdFluxBErr"
+    datatype: float
+    description: Uncertainty of zBdFluxB.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: zBdFluxD
+    "@id": "#Object.zBdFluxD"
+    datatype: float
+    description: Integrated flux of the exponential component for the Bulge+Disk model.
+      For z filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: zBdFluxDErr
+    "@id": "#Object.zBdFluxDErr"
+    datatype: float
+    description: Uncertainty of zBdFluxD.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: zBdReB
+    "@id": "#Object.zBdReB"
+    datatype: float
+    description: Effective radius of the de Vaucouleurs profile component for the
+      Bulge+Disk model. For z filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: zBdReBErr
+    "@id": "#Object.zBdReBErr"
+    datatype: float
+    description: Uncertainty of zBdReB.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: zBdReD
+    "@id": "#Object.zBdReD"
+    datatype: float
+    description: Effective radius of the exponential profile component for the Bulge+Disk
+      model. For z filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: zBdReDErr
+    "@id": "#Object.zBdReDErr"
+    datatype: float
+    description: Uncertainty of zBdReD.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: zBdLnL
+    "@id": "#Object.zBdLnL"
+    datatype: float
+    description: Natural log likelihood of the observed data given the Bulge+Disk
+      model. For z filter.
+    mysql:datatype: FLOAT
+  - name: zBdChi2
+    "@id": "#Object.zBdChi2"
+    datatype: float
+    description: Chi^2 static of the model fit. For z filter.
+    mysql:datatype: FLOAT
+  - name: zBdN
+    "@id": "#Object.zBdN"
+    datatype: int
+    description: The number of data points (pixels) used to fit the model. For z filter.
+    mysql:datatype: INT
+  - name: yBbdRa
+    "@id": "#Object.yBbdRa"
+    datatype: double
+    description: RA-coordinate of the center of the object for the Bulge+Disk model
+      at time radecTai. For y filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.ra
+  - name: yBdRaErr
+    "@id": "#Object.yBdRaErr"
+    datatype: float
+    description: Uncertainty of yBdRa.
+    mysql:datatype: FLOAT
+    fits:tunit: deg
+    ivoa:ucd: stat.error;pos.eq.ra
+  - name: yBdDecl
+    "@id": "#Object.yBdDecl"
+    datatype: double
+    description: Decl-coordinate of the center of the object for the Bulge+Disk model
+      at time radecTai. For y filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.dec
+  - name: yBdDeclErr
+    "@id": "#Object.yBdDeclErr"
+    datatype: float
+    description: Uncertainty of yBdDecl.
+    mysql:datatype: FLOAT
+    fits:tunit: deg
+    ivoa:ucd: stat.error;pos.eq.dec
+  - name: yBdE1
+    "@id": "#Object.yBdE1"
+    datatype: float
+    description: Ellipticity for the Bulge+Disk (e1). For y filter.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: yBdE1Err
+    "@id": "#Object.yBdE1Err"
+    datatype: float
+    description: Uncertainty of yBdE1.
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: yBdE2
+    "@id": "#Object.yBdE2"
+    datatype: float
+    description: Ellipticity for Bulge+Disk model (e2). For y filter.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: yBdE2Err
+    "@id": "#Object.yBdE2Err"
+    datatype: float
+    description: Uncertainty of yBdE2.
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: yBdFluxB
+    "@id": "#Object.yBdFluxB"
+    datatype: float
+    description: Integrated flux of the de Vaucouleurs component for the Bulge+Disk
+      model. For y filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: yBdFluxBErr
+    "@id": "#Object.yBdFluxBErr"
+    datatype: float
+    description: Uncertainty of yBdFluxB.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: yBdFluxD
+    "@id": "#Object.yBdFluxD"
+    datatype: float
+    description: Integrated flux of the exponential component for the Bulge+Disk model.
+      For y filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: yBdFluxDErr
+    "@id": "#Object.yBdFluxDErr"
+    datatype: float
+    description: Uncertainty of yBdFluxD.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: yBdReB
+    "@id": "#Object.yBdReB"
+    datatype: float
+    description: Effective radius of the de Vaucouleurs profile component for the
+      Bulge+Disk model. For y filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: yBdReBErr
+    "@id": "#Object.yBdReBErr"
+    datatype: float
+    description: Uncertainty of yBdReB.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: yBdReD
+    "@id": "#Object.yBdReD"
+    datatype: float
+    description: Effective radius of the exponential profile component for the Bulge+Disk
+      model. For y filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: yBdReDErr
+    "@id": "#Object.yBdReDErr"
+    datatype: float
+    description: Uncertainty of yBdReD.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: yBdLnL
+    "@id": "#Object.yBdLnL"
+    datatype: float
+    description: Natural log likelihood of the observed data given the Bulge+Disk
+      model. For y filter.
+    mysql:datatype: FLOAT
+  - name: yBdChi2
+    "@id": "#Object.yBdChi2"
+    datatype: float
+    description: Chi^2 static of the model fit. For y filter.
+    mysql:datatype: FLOAT
+  - name: yBdN
+    "@id": "#Object.yBdN"
+    datatype: int
+    description: The number of data points (pixels) used to fit the model. For y filter.
+    mysql:datatype: INT
+  - name: ugStd
+    "@id": "#Object.ugStd"
+    datatype: float
+    description: Color of the object measured in 'standard seeing'. While the exact
+      algorithm is yet to be determined, this color is guaranteed to be seeing-independent
+      and suitable for photo-Z determinations.
+    mysql:datatype: FLOAT
+    fits:tunit: mag
+  - name: ugStdErr
+    "@id": "#Object.ugStdErr"
+    datatype: float
+    description: Uncertainty of ugStd.
+    mysql:datatype: FLOAT
+    fits:tunit: mag
+  - name: grStd
+    "@id": "#Object.grStd"
+    datatype: float
+    description: Color of the object measured in 'standard seeing'. While the exact
+      algorithm is yet to be determined, this color is guaranteed to be seeing-independent
+      and suitable for photo-Z determinations.
+    mysql:datatype: FLOAT
+    fits:tunit: mag
+  - name: grStdErr
+    "@id": "#Object.grStdErr"
+    datatype: float
+    description: Uncertainty of grStd.
+    mysql:datatype: FLOAT
+    fits:tunit: mag
+  - name: riStd
+    "@id": "#Object.riStd"
+    datatype: float
+    description: Color of the object measured in 'standard seeing'. While the exact
+      algorithm is yet to be determined, this color is is guaranteed to be seeing-independent
+      and suitable for photo-Z determinations.
+    mysql:datatype: FLOAT
+    fits:tunit: mag
+  - name: riStdErr
+    "@id": "#Object.riStdErr"
+    datatype: float
+    description: Uncertainty of riStd.
+    mysql:datatype: FLOAT
+    fits:tunit: mag
+  - name: izStd
+    "@id": "#Object.izStd"
+    datatype: float
+    description: Color of the object measured in 'standard seeing'. While the exact
+      algorithm is yet to be determined, this color is guaranteed to be seeing-independent
+      and suitable for photo-Z determinations.
+    mysql:datatype: FLOAT
+    fits:tunit: mag
+  - name: izStdErr
+    "@id": "#Object.izStdErr"
+    datatype: float
+    description: Uncertainty of izStd.
+    mysql:datatype: FLOAT
+    fits:tunit: mag
+  - name: zyStd
+    "@id": "#Object.zyStd"
+    datatype: float
+    description: Color of the object measured in 'standard seeing'. While the exact
+      algorithm is yet to be determined, this color is guaranteed to be seeing-independent
+      and suitable for photo-Z determinations.
+    mysql:datatype: FLOAT
+    fits:tunit: mag
+  - name: zyStdErr
+    "@id": "#Object.zyStdErr"
+    datatype: float
+    description: Uncertainty of zyStd.
+    mysql:datatype: FLOAT
+    fits:tunit: mag
+  - name: uRa
+    "@id": "#Object.uRa"
+    datatype: double
+    description: RA-coordinate coordinate of the centroid computed for u filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: pos.eq.ra
+  - name: uRaErr
+    "@id": "#Object.uRaErr"
+    datatype: double
+    description: Uncertainty of uRa.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: stat.error;pos.eq.ra
+  - name: uDecl
+    "@id": "#Object.uDecl"
+    datatype: double
+    description: Decl-coordinate coordinate of the centroid computed for u filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: pos.eq.dec
+  - name: uDeclErr
+    "@id": "#Object.uDeclErr"
+    datatype: double
+    description: Uncertainty of uDecl.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: stat.error;pos.eq.dec
+  - name: gRa
+    "@id": "#Object.gRa"
+    datatype: double
+    description: RA--coordinate coordinate of the centroid computed for g filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: pos.eq.ra
+  - name: gRaErr
+    "@id": "#Object.gRaErr"
+    datatype: double
+    description: Uncertainty of gRa.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: stat.error;pos.eq.ra
+  - name: gDecl
+    "@id": "#Object.gDecl"
+    datatype: double
+    description: Decl--coordinate coordinate of the centroid computed for g filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: pos.eq.dec
+  - name: gDeclErr
+    "@id": "#Object.gDeclErr"
+    datatype: double
+    description: Uncertainty of gDecl.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: stat.error;pos.eq.dec
+  - name: rRa
+    "@id": "#Object.rRa"
+    datatype: double
+    description: RA-coordinate coordinate of the centroid computed for r filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: pos.eq.ra
+  - name: rRaErr
+    "@id": "#Object.rRaErr"
+    datatype: double
+    description: Uncertainty of rRa.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: stat.error;pos.eq.ra
+  - name: rDecl
+    "@id": "#Object.rDecl"
+    datatype: double
+    description: Decl-coordinate coordinate of the centroid computed for r filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: pos.eq.dec
+  - name: rDeclErr
+    "@id": "#Object.rDeclErr"
+    datatype: double
+    description: Uncertainty of rDecl.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: stat.error;pos.eq.dec
+  - name: iRa
+    "@id": "#Object.iRa"
+    datatype: double
+    description: RA-coordinate coordinate of the centroid computed for i filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: pos.eq.ra
+  - name: iRaErr
+    "@id": "#Object.iRaErr"
+    datatype: double
+    description: Uncertainty of iRa.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: stat.error;pos.eq.ra
+  - name: iDecl
+    "@id": "#Object.iDecl"
+    datatype: double
+    description: Decl-coordinate coordinate of the centroid computed for i filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: pos.eq.dec
+  - name: iDeclErr
+    "@id": "#Object.iDeclErr"
+    datatype: double
+    description: Uncertainty of iDecl.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: stat.error;pos.eq.dec
+  - name: zRa
+    "@id": "#Object.zRa"
+    datatype: double
+    description: RA-coordinate coordinate of the centroid computed for z filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: pos.eq.ra
+  - name: zRaErr
+    "@id": "#Object.zRaErr"
+    datatype: double
+    description: Uncertainty of zRa.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: stat.error;pos.eq.ra
+  - name: zDecl
+    "@id": "#Object.zDecl"
+    datatype: double
+    description: Decl-coordinate coordinate of the centroid computed for z filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: pos.eq.dec
+  - name: zDeclErr
+    "@id": "#Object.zDeclErr"
+    datatype: double
+    description: Uncertainty of zDecl.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: stat.error;pos.eq.dec
+  - name: yRa
+    "@id": "#Object.yRa"
+    datatype: double
+    description: RA-coordinate coordinate of the centroid computed for y filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: pos.eq.ra
+  - name: yRaErr
+    "@id": "#Object.yRaErr"
+    datatype: double
+    description: Uncertainty of yRa.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: stat.error;pos.eq.ra
+  - name: yDecl
+    "@id": "#Object.yDecl"
+    datatype: double
+    description: Decl-coordinate coordinate of the centroid computed for y filter.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: pos.eq.dec
+  - name: yDeclErr
+    "@id": "#Object.yDeclErr"
+    datatype: double
+    description: Uncertainty of yDecl.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: stat.error;pos.eq.dec
+  - name: uE1
+    "@id": "#Object.uE1"
+    datatype: float
+    description: Adaptive e1 shape measure for u filter. See Bernstein and Jarvis
+      (2002) for detailed discussion of all adaptive-moment related quantities.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: uE1Err
+    "@id": "#Object.uE1Err"
+    datatype: float
+    description: Uncertainty of uE1
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: uE2
+    "@id": "#Object.uE2"
+    datatype: float
+    description: Adaptive e2 shape measure for u filter. See Bernstein and Jarvis
+      (2002) for detailed discussion of all adaptive-moment related quantities.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: uE2Err
+    "@id": "#Object.uE2Err"
+    datatype: float
+    description: Uncertainty of uE2
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: uE1_E2_Cov
+    "@id": "#Object.uE1_E2_Cov"
+    datatype: float
+    description: Covariance of uE1 and uE2.
+    mysql:datatype: FLOAT
+  - name: gE1
+    "@id": "#Object.gE1"
+    datatype: float
+    description: Adaptive e1 shape measure for g filter. See Bernstein and Jarvis
+      (2002) for detailed discussion of all adaptive-moment related quantities.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: gE1Err
+    "@id": "#Object.gE1Err"
+    datatype: float
+    description: Uncertainty of gE1
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: gE2
+    "@id": "#Object.gE2"
+    datatype: float
+    description: Adaptive e2 shape measure for g filter. See Bernstein and Jarvis
+      (2002) for detailed discussion of all adaptive-moment related quantities.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: gE2Err
+    "@id": "#Object.gE2Err"
+    datatype: float
+    description: Uncertainty of gE2
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: gE1_E2_Cov
+    "@id": "#Object.gE1_E2_Cov"
+    datatype: float
+    description: Covariance of gE1 and gE2.
+    mysql:datatype: FLOAT
+  - name: rE1
+    "@id": "#Object.rE1"
+    datatype: float
+    description: Adaptive e1 shape measure for r filter. See Bernstein and Jarvis
+      (2002) for detailed discussion of all adaptive-moment related quantities.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: rE1Err
+    "@id": "#Object.rE1Err"
+    datatype: float
+    description: Uncertainty of rE1
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: rE2
+    "@id": "#Object.rE2"
+    datatype: float
+    description: Adaptive e2 shape measure for r filter. See Bernstein and Jarvis
+      (2002) for detailed discussion of all adaptive-moment related quantities.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: rE2Err
+    "@id": "#Object.rE2Err"
+    datatype: float
+    description: Uncertainty of rE2
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: rE1_E2_Cov
+    "@id": "#Object.rE1_E2_Cov"
+    datatype: float
+    description: Covariance of rE1 and rE2.
+    mysql:datatype: FLOAT
+  - name: iE1
+    "@id": "#Object.iE1"
+    datatype: float
+    description: Adaptive e1 shape measure for i filter. See Bernstein and Jarvis
+      (2002) for detailed discussion of all adaptive-moment related quantities.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: iE1Err
+    "@id": "#Object.iE1Err"
+    datatype: float
+    description: Uncertainty of iE1
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: iE2
+    "@id": "#Object.iE2"
+    datatype: float
+    description: Adaptive e2 shape measure for i filter. See Bernstein and Jarvis
+      (2002) for detailed discussion of all adaptive-moment related quantities.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: iE2Err
+    "@id": "#Object.iE2Err"
+    datatype: float
+    description: Uncertainty of iE2
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: iE1_E2_Cov
+    "@id": "#Object.iE1_E2_Cov"
+    datatype: float
+    description: Covariance of iE1 and iE2.
+    mysql:datatype: FLOAT
+  - name: zE1
+    "@id": "#Object.zE1"
+    datatype: float
+    description: Adaptive e1 shape measure for z filter. See Bernstein and Jarvis
+      (2002) for detailed discussion of all adaptive-moment related quantities.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: zE1Err
+    "@id": "#Object.zE1Err"
+    datatype: float
+    description: Uncertainty of zE1
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: zE2
+    "@id": "#Object.zE2"
+    datatype: float
+    description: Adaptive e2 shape measure for z filter. See Bernstein and Jarvis
+      (2002) for detailed discussion of all adaptive-moment related quantities.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: zE2Err
+    "@id": "#Object.zE2Err"
+    datatype: float
+    description: Uncertainty of zE2
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: zE1_E2_Cov
+    "@id": "#Object.zE1_E2_Cov"
+    datatype: float
+    description: Covariance of zE1 and zE2.
+    mysql:datatype: FLOAT
+  - name: yE1
+    "@id": "#Object.yE1"
+    datatype: float
+    description: Adaptive e1 shape measure for y filter. See Bernstein and Jarvis
+      (2002) for detailed discussion of all adaptive-moment related quantities.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: yE1Err
+    "@id": "#Object.yE1Err"
+    datatype: float
+    description: Uncertainty of yE1
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: yE2
+    "@id": "#Object.yE2"
+    datatype: float
+    description: Adaptive e2 shape measure for y filter. See Bernstein and Jarvis
+      (2002) for detailed discussion of all adaptive-moment related quantities.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: yE2Err
+    "@id": "#Object.yE2Err"
+    datatype: float
+    description: Uncertainty of yE2
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error;phys.size.axisRatio
+  - name: yE1_E2_Cov
+    "@id": "#Object.yE1_E2_Cov"
+    datatype: float
+    description: Covariance of yE1 and yE2.
+    mysql:datatype: FLOAT
+  - name: uMSum
+    "@id": "#Object.uMSum"
+    datatype: float
+    description: Sum of second adaptive moments for u filter.
+    mysql:datatype: FLOAT
+  - name: uMSumErr
+    "@id": "#Object.uMSumErr"
+    datatype: float
+    description: Uncertainty of uMSum
+    mysql:datatype: FLOAT
+  - name: gMSum
+    "@id": "#Object.gMSum"
+    datatype: float
+    description: Sum of second adaptive moments for g filter.
+    mysql:datatype: FLOAT
+  - name: gMSumErr
+    "@id": "#Object.gMSumErr"
+    datatype: float
+    description: Uncertainty of gMSum
+    mysql:datatype: FLOAT
+  - name: rMSum
+    "@id": "#Object.rMSum"
+    datatype: float
+    description: Sum of second adaptive moments for r filter.
+    mysql:datatype: FLOAT
+  - name: rMSumErr
+    "@id": "#Object.rMSumErr"
+    datatype: float
+    description: Uncertainty of rMSum
+    mysql:datatype: FLOAT
+  - name: iMSum
+    "@id": "#Object.iMSum"
+    datatype: float
+    description: Sum of second adaptive moments for i filter.
+    mysql:datatype: FLOAT
+  - name: iMSumErr
+    "@id": "#Object.iMSumErr"
+    datatype: float
+    description: Uncertainty of iMSum
+    mysql:datatype: FLOAT
+  - name: zMSum
+    "@id": "#Object.zMSum"
+    datatype: float
+    description: Sum of second adaptive moments for z filter.
+    mysql:datatype: FLOAT
+  - name: zMSumErr
+    "@id": "#Object.zMSumErr"
+    datatype: float
+    description: Uncertainty of zMSum
+    mysql:datatype: FLOAT
+  - name: yMSum
+    "@id": "#Object.yMSum"
+    datatype: float
+    description: Sum of second adaptive moments for y filter.
+    mysql:datatype: FLOAT
+  - name: yMSumErr
+    "@id": "#Object.yMSumErr"
+    datatype: float
+    description: Uncertainty of yMSum
+    mysql:datatype: FLOAT
+  - name: uM4
+    "@id": "#Object.uM4"
+    datatype: float
+    description: Fourth order adaptive moment for u filter.
+    mysql:datatype: FLOAT
+  - name: gM4
+    "@id": "#Object.gM4"
+    datatype: float
+    description: Fourth order adaptive moment for g filter.
+    mysql:datatype: FLOAT
+  - name: rM4
+    "@id": "#Object.rM4"
+    datatype: float
+    description: Fourth order adaptive moment for r filter.
+    mysql:datatype: FLOAT
+  - name: iM4
+    "@id": "#Object.iM4"
+    datatype: float
+    description: Fourth order adaptive moment for i filter.
+    mysql:datatype: FLOAT
+  - name: zM4
+    "@id": "#Object.zM4"
+    datatype: float
+    description: Fourth order adaptive moment for z filter.
+    mysql:datatype: FLOAT
+  - name: yM4
+    "@id": "#Object.yM4"
+    datatype: float
+    description: Fourth order adaptive moment for y filter.
+    mysql:datatype: FLOAT
+  - name: uPetroRad
+    "@id": "#Object.uPetroRad"
+    datatype: float
+    description: Petrosian radius, computed using elliptical apertures defined by
+      the adaptive moments for u filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: uPetroRadErr
+    "@id": "#Object.uPetroRadErr"
+    datatype: float
+    description: Uncertainty of uPetroRad
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: gPetroRad
+    "@id": "#Object.gPetroRad"
+    datatype: float
+    description: Petrosian radius, computed using elliptical apertures defined by
+      the adaptive moments for g filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: gPetroRadErr
+    "@id": "#Object.gPetroRadErr"
+    datatype: float
+    description: Uncertainty of gPetroRad
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: rPetroRad
+    "@id": "#Object.rPetroRad"
+    datatype: float
+    description: Petrosian radius, computed using elliptical apertures defined by
+      the adaptive moments for r filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: rPetroRadErr
+    "@id": "#Object.rPetroRadErr"
+    datatype: float
+    description: Uncertainty of rPetroRad
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: iPetroRad
+    "@id": "#Object.iPetroRad"
+    datatype: float
+    description: Petrosian radius, computed using elliptical apertures defined by
+      the adaptive moments for i filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: iPetroRadErr
+    "@id": "#Object.iPetroRadErr"
+    datatype: float
+    description: Uncertainty of iPetroRad
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: zPetroRad
+    "@id": "#Object.zPetroRad"
+    datatype: float
+    description: Petrosian radius, computed using elliptical apertures defined by
+      the adaptive moments for z filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: zPetroRadErr
+    "@id": "#Object.zPetroRadErr"
+    datatype: float
+    description: Uncertainty of zPetroRad
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: yPetroRad
+    "@id": "#Object.yPetroRad"
+    datatype: float
+    description: Petrosian radius, computed using elliptical apertures defined by
+      the adaptive moments for y filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: yPetroRadErr
+    "@id": "#Object.yPetroRadErr"
+    datatype: float
+    description: Uncertainty of yPetroRad
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: petroFilter
+    "@id": "#Object.petroFilter"
+    datatype: char
+    description: Name of the filter of the canonical petroRad.
+    length: 1
+    mysql:datatype: CHAR(1)
+  - name: uPetroFlux
+    "@id": "#Object.uPetroFlux"
+    datatype: float
+    description: Petrosian flux within a defined multiple of the canonical petroRad
+      for u filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: uPetroFluxErr
+    "@id": "#Object.uPetroFluxErr"
+    datatype: float
+    description: Uncertainty of uPetroFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: gPetroFlux
+    "@id": "#Object.gPetroFlux"
+    datatype: float
+    description: Petrosian flux within a defined multiple of the canonical petroRad
+      for g filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: gPetroFluxErr
+    "@id": "#Object.gPetroFluxErr"
+    datatype: float
+    description: Uncertainty of gPetroFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: rPetroFlux
+    "@id": "#Object.rPetroFlux"
+    datatype: float
+    description: Petrosian flux within a defined multiple of the canonical petroRad
+      for r filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: rPetroFluxErr
+    "@id": "#Object.rPetroFluxErr"
+    datatype: float
+    description: Uncertainty of rPetroFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: iPetroFlux
+    "@id": "#Object.iPetroFlux"
+    datatype: float
+    description: Petrosian flux within a defined multiple of the canonical petroRad
+      for i filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: iPetroFluxErr
+    "@id": "#Object.iPetroFluxErr"
+    datatype: float
+    description: Uncertainty of iPetroFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: zPetroFlux
+    "@id": "#Object.zPetroFlux"
+    datatype: float
+    description: Petrosian flux within a defined multiple of the canonical petroRad
+      for z filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: zPetroFluxErr
+    "@id": "#Object.zPetroFluxErr"
+    datatype: float
+    description: Uncertainty of zPetroFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: yPetroFlux
+    "@id": "#Object.yPetroFlux"
+    datatype: float
+    description: Petrosian flux within a defined multiple of the canonical petroRad
+      for y filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: yPetroFluxErr
+    "@id": "#Object.yPetroFluxErr"
+    datatype: float
+    description: Uncertainty of yPetroFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: uPetroRad50
+    "@id": "#Object.uPetroRad50"
+    datatype: float
+    description: Radius containing 50% of Petrosian flux for u filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: uPetroRad50Err
+    "@id": "#Object.uPetroRad50Err"
+    datatype: float
+    description: Uncertainty of uPetroRad50.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: gPetroRad50
+    "@id": "#Object.gPetroRad50"
+    datatype: float
+    description: Radius containing 50% of Petrosian flux for g filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: gPetroRad50Err
+    "@id": "#Object.gPetroRad50Err"
+    datatype: float
+    description: Uncertainty of gPetroRad50.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: rPetroRad50
+    "@id": "#Object.rPetroRad50"
+    datatype: float
+    description: Radius containing 50% of Petrosian flux for r filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: rPetroRad50Err
+    "@id": "#Object.rPetroRad50Err"
+    datatype: float
+    description: Uncertainty of rPetroRad50.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: iPetroRad50
+    "@id": "#Object.iPetroRad50"
+    datatype: float
+    description: Radius containing 50% of Petrosian flux for i filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: iPetroRad50Err
+    "@id": "#Object.iPetroRad50Err"
+    datatype: float
+    description: Uncertainty of iPetroRad50.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: zPetroRad50
+    "@id": "#Object.zPetroRad50"
+    datatype: float
+    description: Radius containing 50% of Petrosian flux for z filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: zPetroRad50Err
+    "@id": "#Object.zPetroRad50Err"
+    datatype: float
+    description: Uncertainty of zPetroRad50.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: yPetroRad50
+    "@id": "#Object.yPetroRad50"
+    datatype: float
+    description: Radius containing 50% of Petrosian flux for y filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: yPetroRad50Err
+    "@id": "#Object.yPetroRad50Err"
+    datatype: float
+    description: Uncertainty of yPetroRad50.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: uPetroRad90
+    "@id": "#Object.uPetroRad90"
+    datatype: float
+    description: Radius containing 90% of Petrosian flux for u filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: uPetroRad90Err
+    "@id": "#Object.uPetroRad90Err"
+    datatype: float
+    description: Uncertainty of uPetroRad90.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: gPetroRad90
+    "@id": "#Object.gPetroRad90"
+    datatype: float
+    description: Radius containing 90% of Petrosian flux for g filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: gPetroRad90Err
+    "@id": "#Object.gPetroRad90Err"
+    datatype: float
+    description: Uncertainty of gPetroRad90.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: rPetroRad90
+    "@id": "#Object.rPetroRad90"
+    datatype: float
+    description: Radius containing 90% of Petrosian flux for r filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: rPetroRad90Err
+    "@id": "#Object.rPetroRad90Err"
+    datatype: float
+    description: Uncertainty of rPetroRad90.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: iPetroRad90
+    "@id": "#Object.iPetroRad90"
+    datatype: float
+    description: Radius containing 90% of Petrosian flux for i filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: iPetroRad90Err
+    "@id": "#Object.iPetroRad90Err"
+    datatype: float
+    description: Uncertainty of iPetroRad90.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: zPetroRad90
+    "@id": "#Object.zPetroRad90"
+    datatype: float
+    description: Radius containing 90% of Petrosian flux for z filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: zPetroRad90Err
+    "@id": "#Object.zPetroRad90Err"
+    datatype: float
+    description: Uncertainty of zPetroRad90.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: yPetroRad90
+    "@id": "#Object.yPetroRad90"
+    datatype: float
+    description: Radius containing 90% of Petrosian flux for y filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: yPetroRad90Err
+    "@id": "#Object.yPetroRad90Err"
+    datatype: float
+    description: Uncertainty of yPetroRad90.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: uKronRad
+    "@id": "#Object.uKronRad"
+    datatype: float
+    description: Kron radius (computed using elliptical apertures defined by the adaptive
+      moments) for u filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: uKronRadErr
+    "@id": "#Object.uKronRadErr"
+    datatype: float
+    description: Uncertainty of uKronRad.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: gKronRad
+    "@id": "#Object.gKronRad"
+    datatype: float
+    description: Kron radius (computed using elliptical apertures defined by the adaptive
+      moments) for g filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: gKronRadErr
+    "@id": "#Object.gKronRadErr"
+    datatype: float
+    description: Uncertainty of gKronRad.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: rKronRad
+    "@id": "#Object.rKronRad"
+    datatype: float
+    description: Kron radius (computed using elliptical apertures defined by the adaptive
+      moments) for r filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: rKronRadErr
+    "@id": "#Object.rKronRadErr"
+    datatype: float
+    description: Uncertainty of rKronRad.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: iKronRad
+    "@id": "#Object.iKronRad"
+    datatype: float
+    description: Kron radius (computed using elliptical apertures defined by the adaptive
+      moments) for i filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: iKronRadErr
+    "@id": "#Object.iKronRadErr"
+    datatype: float
+    description: Uncertainty of iKronRad.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: zKronRad
+    "@id": "#Object.zKronRad"
+    datatype: float
+    description: Kron radius (computed using elliptical apertures defined by the adaptive
+      moments) for z filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: zKronRadErr
+    "@id": "#Object.zKronRadErr"
+    datatype: float
+    description: Uncertainty of zKronRad.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: yKronRad
+    "@id": "#Object.yKronRad"
+    datatype: float
+    description: Kron radius (computed using elliptical apertures defined by the adaptive
+      moments) for y filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: yKronRadErr
+    "@id": "#Object.yKronRadErr"
+    datatype: float
+    description: Uncertainty of yKronRad.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: kronFilter
+    "@id": "#Object.kronFilter"
+    datatype: char
+    description: The filter of the canonical kronRad.
+    length: 1
+    mysql:datatype: CHAR(1)
+  - name: uKronFlux
+    "@id": "#Object.uKronFlux"
+    datatype: float
+    description: Kron flux within a defined multiple of the canonical kronRad for
+      u filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: uKronFluxErr
+    "@id": "#Object.uKronFluxErr"
+    datatype: float
+    description: Uncertainty of uKronFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: gKronFlux
+    "@id": "#Object.gKronFlux"
+    datatype: float
+    description: Kron flux within a defined multiple of the canonical kronRad for
+      g filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: gKronFluxErr
+    "@id": "#Object.gKronFluxErr"
+    datatype: float
+    description: Uncertainty of gKronFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: rKronFlux
+    "@id": "#Object.rKronFlux"
+    datatype: float
+    description: Kron flux within a defined multiple of the canonical kronRad for
+      r filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: rKronFluxErr
+    "@id": "#Object.rKronFluxErr"
+    datatype: float
+    description: Uncertainty of rKronFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: iKronFlux
+    "@id": "#Object.iKronFlux"
+    datatype: float
+    description: Kron flux within a defined multiple of the canonical kronRad for
+      i filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: iKronFluxErr
+    "@id": "#Object.iKronFluxErr"
+    datatype: float
+    description: Uncertainty of iKronFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: zKronFlux
+    "@id": "#Object.zKronFlux"
+    datatype: float
+    description: Kron flux within a defined multiple of the canonical kronRad for
+      z filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: zKronFluxErr
+    "@id": "#Object.zKronFluxErr"
+    datatype: float
+    description: Uncertainty of zKronFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: yKronFlux
+    "@id": "#Object.yKronFlux"
+    datatype: float
+    description: Kron flux within a defined multiple of the canonical kronRad for
+      y filter.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: yKronFluxErr
+    "@id": "#Object.yKronFluxErr"
+    datatype: float
+    description: Uncertainty of yKronFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: uKronRad50
+    "@id": "#Object.uKronRad50"
+    datatype: float
+    description: Radius containing 50% of Kron flux for u filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: uKronRad50Err
+    "@id": "#Object.uKronRad50Err"
+    datatype: float
+    description: Uncertainty of uKronRad50.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: gKronRad50
+    "@id": "#Object.gKronRad50"
+    datatype: float
+    description: Radius containing 50% of Kron flux for g filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: gKronRad50Err
+    "@id": "#Object.gKronRad50Err"
+    datatype: float
+    description: Uncertainty of gKronRad50.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: rKronRad50
+    "@id": "#Object.rKronRad50"
+    datatype: float
+    description: Radius containing 50% of Kron flux for r filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: rKronRad50Err
+    "@id": "#Object.rKronRad50Err"
+    datatype: float
+    description: Uncertainty of rKronRad50.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: iKronRad50
+    "@id": "#Object.iKronRad50"
+    datatype: float
+    description: Radius containing 50% of Kron flux for i filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: iKronRad50Err
+    "@id": "#Object.iKronRad50Err"
+    datatype: float
+    description: Uncertainty of iKronRad50.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: zKronRad50
+    "@id": "#Object.zKronRad50"
+    datatype: float
+    description: Radius containing 50% of Kron flux for z filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: zKronRad50Err
+    "@id": "#Object.zKronRad50Err"
+    datatype: float
+    description: Uncertainty of zKronRad50.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: yKronRad50
+    "@id": "#Object.yKronRad50"
+    datatype: float
+    description: Radius containing 50% of Kron flux for y filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: yKronRad50Err
+    "@id": "#Object.yKronRad50Err"
+    datatype: float
+    description: Uncertainty of yKronRad50.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: uKronRad90
+    "@id": "#Object.uKronRad90"
+    datatype: float
+    description: Radius containing 90% of Kron flux for u filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: uKronRad90Err
+    "@id": "#Object.uKronRad90Err"
+    datatype: float
+    description: Uncertainty of uKronRad90.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: gKronRad90
+    "@id": "#Object.gKronRad90"
+    datatype: float
+    description: Radius containing 90% of Kron flux for g filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: gKronRad90Err
+    "@id": "#Object.gKronRad90Err"
+    datatype: float
+    description: Uncertainty of gKronRad90.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: rKronRad90
+    "@id": "#Object.rKronRad90"
+    datatype: float
+    description: Radius containing 90% of Kron flux for r filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: rKronRad90Err
+    "@id": "#Object.rKronRad90Err"
+    datatype: float
+    description: Uncertainty of rKronRad90.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: iKronRad90
+    "@id": "#Object.iKronRad90"
+    datatype: float
+    description: Radius containing 90% of Kron flux for i filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: iKronRad90Err
+    "@id": "#Object.iKronRad90Err"
+    datatype: float
+    description: Uncertainty of iKronRad90.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: zKronRad90
+    "@id": "#Object.zKronRad90"
+    datatype: float
+    description: Radius containing 90% of Kron flux for z filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: zKronRad90Err
+    "@id": "#Object.zKronRad90Err"
+    datatype: float
+    description: Uncertainty of zKronRad90.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: yKronRad90
+    "@id": "#Object.yKronRad90"
+    datatype: float
+    description: Radius containing 90% of Kron flux for y filter.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: yKronRad90Err
+    "@id": "#Object.yKronRad90Err"
+    datatype: float
+    description: Uncertainty of yKronRad90.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: uApN
+    "@id": "#Object.uApN"
+    datatype: byte
+    description: Number of elliptical annuli (see below) for u filter.
+    mysql:datatype: TINYINT
+  - name: gApN
+    "@id": "#Object.gApN"
+    datatype: byte
+    description: Number of elliptical annuli (see below) for g filter.
+    mysql:datatype: TINYINT
+  - name: rApN
+    "@id": "#Object.rApN"
+    datatype: byte
+    description: Number of elliptical annuli (see below) for r filter.
+    mysql:datatype: TINYINT
+  - name: iApN
+    "@id": "#Object.iApN"
+    datatype: byte
+    description: Number of elliptical annuli (see below) for i filter.
+    mysql:datatype: TINYINT
+  - name: zApN
+    "@id": "#Object.zApN"
+    datatype: byte
+    description: Number of elliptical annuli (see below) for z filter.
+    mysql:datatype: TINYINT
+  - name: yApN
+    "@id": "#Object.yApN"
+    datatype: byte
+    description: Number of elliptical annuli (see below) for y filter.
+    mysql:datatype: TINYINT
+  - name: extendedness
+    "@id": "#Object.extendedness"
+    datatype: float
+    description: A measure of extendedness, computed using a combination of available
+      moments and model fluxes or from a likelihood ratio of point/trailed source
+      models (exact algorithm TBD). extendedness = 1 implies a high degree of confidence
+      that the source is extended. extendedness = 0 implies a high degree of confidence
+      that the source is point-like.
+    mysql:datatype: FLOAT
+  - name: FLAGS1
+    "@id": "#Object.FLAGS1"
+    datatype: long
+    description: Flags, tbd.
+    mysql:datatype: BIGINT
+  - name: FLAGS2
+    "@id": "#Object.FLAGS2"
+    datatype: long
+    description: Flags, tbd.
+    mysql:datatype: BIGINT
+  primaryKey: "#Object.objectId"
+  indexes:
+  - name: IDX_Object_decl
+    "@id": "#IDX_Object_decl"
+    columns:
+    - "#Object.psDecl"
+  mysql:engine: MyISAM
+  mysql:charset: latin1
+- name: ForcedSource
+  "@id": "#ForcedSource"
+  description: Forced-photometry source measurement on an individual Exposure based
+    on a Multifit shape model derived from a deep detection.
+  columns:
+  - name: objectId
+    "@id": "#ForcedSource.objectId"
+    datatype: long
+    mysql:datatype: BIGINT
+    ivoa:ucd: meta.id;src
+  - name: ccdVisitId
+    "@id": "#ForcedSource.ccdVisitId"
+    datatype: long
+    description: Id of the ccd visit where this forcedSource was measured. Note that
+      we are allowing a forcedSource to belong to multiple amplifiers, but it may
+      not span multiple ccds.
+    mysql:datatype: BIGINT
+    ivoa:ucd: meta.id;obs.image
+  - name: psFlux
+    "@id": "#ForcedSource.psFlux"
+    datatype: float
+    description: Point Source model flux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+    ivoa:ucd: phot.count
+  - name: psFlux_Err
+    "@id": "#ForcedSource.psFlux_Err"
+    datatype: float
+    description: Uncertainty of psFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+    ivoa:ucd: stat.error;phot.count
+  - name: flags
+    "@id": "#ForcedSource.flags"
+    datatype: byte
+    description: Flags, bitwise OR tbd
+    defaultValue: '0'
+    mysql:datatype: TINYINT
+    ivoa:ucd: meta.code
+  primaryKey:
+  - "#ForcedSource.objectId"
+  - "#ForcedSource.ccdVisitId"
+  mysql:engine: MyISAM
+  mysql:charset: latin1
+- name: Visit
+  "@id": "#Visit"
+  description: Defines a single Visit.
+  columns:
+  - name: visitId
+    "@id": "#Visit.visitId"
+    datatype: int
+    description: Unique identifier.
+    mysql:datatype: INTEGER
+    ivoa:ucd: meta.id;obs.image
+  - name: filterName
+    "@id": "#Visit.filterName"
+    datatype: char
+    description: Filter name.
+    length: 1
+    mysql:datatype: CHAR(1)
+    ivoa:ucd: meta.id;instr.filter
+  - name: nExposures
+    "@id": "#Visit.nExposures"
+    datatype: int
+    description: Number of exposures combined to produce this visit.
+    mysql:datatype: INT
+  - name: ra
+    "@id": "#Visit.ra"
+    datatype: double
+    description: RA of focal plane center.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.ra
+  - name: decl
+    "@id": "#Visit.decl"
+    datatype: double
+    description: Decl of focal plane center.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.dec
+  - name: skyRotation
+    "@id": "#Visit.skyRotation"
+    datatype: double
+    description: Sky rotation angle.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+  - name: altitude
+    "@id": "#Visit.altitude"
+    datatype: double
+    description: Altitude of focal plane center.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+  - name: azimuth
+    "@id": "#Visit.azimuth"
+    datatype: double
+    description: Azimuth of focal plane center.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+  - name: programId
+    "@id": "#Visit.programId"
+    datatype: int
+    description: Observing program id (e.g., universal cadence, or one of the deep
+      drilling programs, etc.).
+    mysql:datatype: INT
+  - name: exposureType
+    "@id": "#Visit.exposureType"
+    datatype: byte
+    description: Type of exposure (science exposure, dark, flat, etc.).
+    mysql:datatype: TINYINT
+  - name: zenithDistance
+    "@id": "#Visit.zenithDistance"
+    datatype: float
+    description: Zenith distance at observation mid-point.
+    mysql:datatype: FLOAT
+    fits:tunit: deg
+    ivoa:ucd: pos.az.zd
+  - name: airmass
+    "@id": "#Visit.airmass"
+    datatype: float
+    description: Airmass of the observed line of sight.
+    mysql:datatype: FLOAT
+  - name: obsStart
+    "@id": "#Visit.obsStart"
+    datatype: timestamp
+    description: Start of the exposure at the fiducial center of the focal plane array,
+      TAI, accurate to 10ms.
+    defaultValue: CURRENT_TIMESTAMP
+    mysql:datatype: TIMESTAMP
+    ivoa:ucd: time.start
+  - name: expMidpt
+    "@id": "#Visit.expMidpt"
+    datatype: double
+    description: Midpoint for exposure at the fiducial center of the focal plane array.
+      TAI, accurate to 10ms.
+    mysql:datatype: DOUBLE
+    ivoa:ucd: time.epoch
+  - name: expTime
+    "@id": "#Visit.expTime"
+    datatype: double
+    description: Average duration of exposure, accurate to 10ms.
+    mysql:datatype: DOUBLE
+    fits:tunit: s
+    ivoa:ucd: time.duration
+  - name: cameraTemp
+    "@id": "#Visit.cameraTemp"
+    datatype: float
+    description: Temperature measured of the camera.
+    mysql:datatype: FLOAT
+    fits:tunit: K
+  - name: mirror1Temp
+    "@id": "#Visit.mirror1Temp"
+    datatype: float
+    description: Primary mirror temperature.
+    mysql:datatype: FLOAT
+    fits:tunit: K
+  - name: mirror2Temp
+    "@id": "#Visit.mirror2Temp"
+    datatype: float
+    description: Secondary mirror temperature.
+    mysql:datatype: FLOAT
+    fits:tunit: K
+  - name: mirror3Temp
+    "@id": "#Visit.mirror3Temp"
+    datatype: float
+    description: Tertiary mirror temperature.
+    mysql:datatype: FLOAT
+    fits:tunit: K
+  - name: domeTemp
+    "@id": "#Visit.domeTemp"
+    datatype: float
+    description: Dome temperature.
+    mysql:datatype: FLOAT
+    fits:tunit: K
+  - name: externalTemp
+    "@id": "#Visit.externalTemp"
+    datatype: float
+    description: Temperature outside the dome.
+    mysql:datatype: FLOAT
+    fits:tunit: K
+  - name: dimmSeeing
+    "@id": "#Visit.dimmSeeing"
+    datatype: float
+    description: Seeing measured by the differential image motion monitor.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+  - name: pwvGPS
+    "@id": "#Visit.pwvGPS"
+    datatype: float
+    description: " GPS-based measurement of precipitable water vapor (PVW)."
+    mysql:datatype: FLOAT
+    fits:tunit: mm
+  - name: pwvMW
+    "@id": "#Visit.pwvMW"
+    datatype: float
+    description: Microwave radiometer measurement of PVW.
+    mysql:datatype: FLOAT
+    fits:tunit: mm
+  - name: flags
+    "@id": "#Visit.flags"
+    datatype: int
+    description: Flags, bitwise OR tbd
+    defaultValue: '0'
+    mysql:datatype: INTEGER
+    ivoa:ucd: meta.code
+  primaryKey: "#Visit.visitId"
+  mysql:engine: MyISAM
+  mysql:charset: latin1
