@@ -55,9 +55,9 @@ spec = {
                 columns.ForcedSourceGenerator(visit_radius=1.7, filters="ugriz"),
         },
     }
+    "CcdVisit": {
+        "from_file": "visit_table_chunk3525.csv",
+        "columns": "ccdVisitId,filterName,ra,decl"
+    }
 }
 
-spec["CcdVisit"] = {
-    "from_file": "visit_table_chunk3525.csv",
-    "columns": "ccdVisitId,filterName,ra,decl"
-}

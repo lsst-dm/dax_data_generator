@@ -6,7 +6,7 @@
     "is_director":0,
     "director_key":"objectId",
     "schema":[
-     {},
+     {"name": "PLACEHOLDER"},
      {"name":"chunkId","type":"INT UNSIGNED NOT NULL"},
      {"name":"subChunkId","type":"INT UNSIGNED NOT NULL"}
     ],

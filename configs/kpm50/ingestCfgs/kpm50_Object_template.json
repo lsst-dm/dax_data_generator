@@ -8,7 +8,7 @@
  "latitude_key":"psDecl",
  "longitude_key":"psRa",
  "schema":[
-  {},
+  {"name": "PLACEHOLDER"},
   {"name":"chunkId","type":"INT UNSIGNED NOT NULL"},
   {"name":"subChunkId","type":"INT UNSIGNED NOT NULL"}
  ],

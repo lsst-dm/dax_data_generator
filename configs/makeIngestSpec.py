@@ -25,12 +25,13 @@ import yaml
 import json
 import os
 
+
 def transform_ingest_json(template_filename, output_filename, schema_columns):
     """
     Reads in a json file from template_filename, and inserts into the schema
-    section a list of the columns provided in schema_columns. This replaces the first
-    zero-length entry in the template file's schema entry, e.g. an empty string, while
-    preserving any additional columns present in the template.
+    section a list of the columns provided in schema_columns. The template file
+    must contain an entry of {"name": "PLACEHOLDER"}, which will be replaced by
+    the contents of schema_columns.
     """
 
     try:
@@ -43,7 +44,7 @@ def transform_ingest_json(template_filename, output_filename, schema_columns):
     output_json = input_json.copy()
 
     for n in range(len(output_json["schema"])):
-        if(len(output_json["schema"][n]) == 0):
+        if(output_json["schema"][n]["name"] == "PLACEHOLDER"):
             output_json["schema"][n:n+1] = schema_columns
         break
 
@@ -51,12 +52,14 @@ def transform_ingest_json(template_filename, output_filename, schema_columns):
     with open(output_filename, "w") as f:
         json.dump(output_json, f, indent=4)
 
+
 def transform_partitioner_json(template_filename, output_filename, schema_columns):
     """
     Reads in a json file from template_filename, and inserts into the schema
-    section a list of the columns provided in schema_columns. This replaces the first
-    zero-length entry in the template file's schema entry, e.g. an empty string, while
-    preserving any additional columns present in the template.
+    section a list of the columns provided in schema_columns. The template file
+    must contain an entry of "PLACEHOLDER", which will be replaced by the
+    contents of schema_columns. Any other columns entries in the template are
+    preserved.
     """
 
     try:
@@ -70,18 +73,17 @@ def transform_partitioner_json(template_filename, output_filename, schema_column
 
     output_field = output_json["out"]["csv"]["field"]
     for n in range(len(output_field)):
-        if(len(output_field[n]) == 0):
+        if(output_field[n] == "PLACEHOLDER"):
             output_field[n:n+1] = schema_columns
 
     input_field = output_json["in"]["csv"]["field"]
     for n in range(len(input_field)):
-        if(len(input_field[n]) == 0):
+        if(input_field[n] == "PLACEHOLDER"):
             input_field[n:n+1] = schema_columns
 
     print("Writing out {:s}".format(output_filename))
     with open(output_filename, "w") as f:
         json.dump(output_json, f, indent=4)
-
 
 
 def convert_database(database_name):
@@ -108,8 +110,8 @@ def convert_database(database_name):
             if("mysql:datatype" in column):
                 type_string = column["mysql:datatype"]
             else:
-                raise RuntimeException("Missing mysql:datatype field for column %s".format(column['name']))
-            if("nullable" in column and (column["nullable"] == False)):
+                raise RuntimeError("Missing mysql:datatype field for column {:s}".format(column['name']))
+            if("nullable" in column and (column["nullable"] is False)):
                 type_string += " NOT NULL"
 
             schema_columns.append({"name": column['name'],
@@ -127,6 +129,7 @@ def convert_database(database_name):
         schema_columns = [column["name"] for column in sdm_tables[table_name]['columns']]
 
         transform_partitioner_json(template_filename, output_filename, schema_columns)
+
 
 if __name__ == '__main__':
 
