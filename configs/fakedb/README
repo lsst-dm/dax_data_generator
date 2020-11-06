@@ -5,10 +5,9 @@ unlikely to fit on most computers.
 
 To build it (requires replicator on localhost):
   cd dax_data_generator
-  bin/run_distribserver.sh -glocalhost -r "0:2000"
+  bin/run_distribserver.sh fakedb -glocalhost -r "0:2000"
 
 To build it, skipping data ingest with the replicator:
   cd dax_data_generator
-  bin/run_distribserver.sh -glocalhost -k -r "0:2000"
-
+  bin/run_distribserver.sh fakedb -glocalhost -k -r "0:2000"
 
