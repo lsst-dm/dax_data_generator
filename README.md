@@ -5,20 +5,27 @@ on building and installing each specific database.
 Distributed data generation - client and server
 ===============================================
 
-For DataGenClient.py to run dax_data_generator/bin/datagen.py, sphgeom needs
-to be setup with EUPS.
+For DataGenClient.py to run dax_data_generator/bin/datagen.py, sphgeom and the
+partitioner need to be setup with EUPS.
+
+In general, bin/datagenserver.py should not be called directly.
+Use 'bin/run_distribserver.sh <dbname> <datagenserver arguments>'. This
+script copies the 'config/<dbname>' directory to 'localConfig' and runs
+'localConfig/prepare.sh'. 'prepare.sh' does things like generate the
+visit_table, which are <dbname> specific and often need to be done
+with the container. This script does delete the prexisting 'localConfig'
+directory if there is one to prevent contamination.
 
 serverCfg.yml contains configuration information for DataGenClient.py. Included
 in this file are command line arguments for datagen.py and the name of the
 configuration file (in this case fakeGenSpec.py) used when the client runs
 datagen.py.
 
-fakePartitionerCfgs is a directory containing configuration files for the
-partitioner. There needs to be a configuration file for each table to be
-partitioned and placed in the database. The name of the configuration
-file needs to be the same as the table name. For example the
-'Object' table would need 'fakePartitionerCfgs/Object.cfg' configuration
-file. These configuration files are also sent to the clients by the server.
+config/<dbname>/partitionerCfgs is a directory containing configuration
+files for the partitioner. There needs to be a configuration file for each table to be partitioned and placed in the database. The name of the
+configuration file needs to be the same as the table name. For example the
+'Object' table would need 'config/<dbname>/partitionerCfgs/Object.cfg'
+configuration file. These configuration files are also sent to the clients by the server.
 
 Table names should not contain the underscore character. This could negatively
 impact regular expressions used to identify files by the clients.
@@ -53,7 +60,7 @@ Starting distribution server:
   setup -k -r . -t qserv-dev
   cd ../dax_data_generator/
   python setup.py develop
-  python bin/datagenserver.py
+  bin/run_distribserver.sh <dbname> <datagenserver.py args>
 
 starting distribution client:
   cd ~/stack/

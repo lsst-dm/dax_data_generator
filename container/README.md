@@ -12,6 +12,21 @@ Edit `container/kubernetes/dgenclient.yaml`
 Start client jobs. `kubectl apply -f container/kubernetes/dgenclient.yaml`
 Delete kubernetes when done.
 
+If you can
+==========
+Life is likely easiest running the clients in kubernets and the server in
+a container with a bash shell. This makes it much easier to access
+the log files, if they are needed for recovery, and generally track
+what is happening. Since the clients get all their information
+from the server, the only thing to configure for them is how to contact
+the server.
+Server:
+  `docker run -it --network=host --rm -u 1000:1000 qserv/dax_data_generator:master /bin/bash`
+  Start the server with
+  `/home/qserv/dax_data_generator/scripts/run_datagenserver.sh fakedb -glocalhost`
+    where `fakedb` is replace by the correct database name and
+          `localhost` is rplaced by the replicator master host.
+Client: see Kuberenetes client above.
 
 
 Building and using the container
