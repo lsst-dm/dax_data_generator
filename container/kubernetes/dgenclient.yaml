@@ -1,0 +1,25 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dgenclient
+  labels:
+    app: datagenclient
+spec:
+  parallelism: 4
+  template:
+    metadata:
+      labels:
+        app: datagenclient
+    spec:
+      hostNetwork: True
+      containers:
+      - name: datagen
+        image: qserv/dax_data_generator:master
+        imagePullPolicy: Always
+        # "-H192.168.1.143" needs to be set to the correct computer
+        command: ["/home/qserv/dax_data_generator/scripts/run_datagenclient.sh"]
+        args: ["-H192.168.1.143", "-r"]
+        resources:
+          requests:
+            cpu: "1"
+      restartPolicy: Never

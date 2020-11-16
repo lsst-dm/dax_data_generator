@@ -177,7 +177,6 @@ class ClientTestThrd(threading.Thread):
             completedChunks = chunkListARecv.copy()
             while len(completedChunks) > 0:
                 completedChunks = client.clientReportChunksComplete(completedChunks)
-
         print("ClientTestThrd.run finished")
         if self.success is None:
             self.success = True

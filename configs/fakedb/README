@@ -1,11 +1,13 @@
 fakedb is used for basic testing of the datageneration system. It's
 relatively small and builds in a few minutes. If you want to build
-more than the first few chunks, remove the -r "0:2000".
+more than the first few chunks, remove the -r "0:2000", but this is
+unlikely to fit on most computers.
 
-To build it:
-  Set the system up according to dax_data_generator/README.md, then:
-    cd dax_data_generator
-    python bin/makevisits.py -o configs/fakedb/pregenerated/visit_table.csv
-    python bin/datagenserver.py -c configs/fakedb/serverCfg.yml -r "0:2000"
+To build it (requires replicator on localhost):
+  cd dax_data_generator
+  bin/run_distribserver.sh fakedb -glocalhost -r "0:2000"
 
+To build it, skipping data ingest with the replicator:
+  cd dax_data_generator
+  bin/run_distribserver.sh fakedb -glocalhost -k -r "0:2000"
 

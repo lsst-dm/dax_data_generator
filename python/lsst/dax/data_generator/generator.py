@@ -261,7 +261,7 @@ class DataGenerator:
 
             block = column_generator(
                 box, row_count, self.seed,
-                chunk_center=box_center,
+                box_center=box_center,
                 unique_box_id=unique_box_id,
                 prereq_tables=prereq_tables,
                 edge_only=edge_only)

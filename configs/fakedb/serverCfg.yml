@@ -7,17 +7,18 @@ fakeDataGenerator:
   visits: 30
   objects: 1000
   seed: 1
-  baseCfgDir: configs/fakedb
   cfgFileName: fakeGenSpec.py
 
 partitioner:
   cfgDir: partitionerCfgs
 
 ingest:
-  host: localhost
+  # host: localhost
+  # host: 192.168.1.143
+  host: #INGEST_HOST#
   port: 25080
-  authKey: ''
-  dbName: kpm50
+  authKey: #INGEST_AUTH#
+  dbName: fakedb
   cfgDir: ingestCfgs
 
 pregenerated:

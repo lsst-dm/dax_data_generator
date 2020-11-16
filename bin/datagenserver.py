@@ -19,6 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from pathlib import Path
 import getopt
 import sys
 
@@ -28,6 +29,10 @@ from lsst.dax.distribution.DataGenServer import DataGenServer
 
 def usage():
     print('-h, --help  help')
+    print('-c, --configfile  Configuration file name. The file must be in \n'
+          '                  dax_data_generator/localConfig')
+    print('-a, --authIngest  Authorization value for the ingest system')
+    print('-g, --ingestHost  IP address of the ingest host (replicator server)')
     print('-k, --skipIngest  Skip trying to ingest anything')
     print('-s, --skipSchema  Skip sending schema, needed when schema was already sent.')
     print('-o, --outDir      Output log directory defaults to current directory')
@@ -53,11 +58,13 @@ def server():
     """
     argumentList = sys.argv[1:]
     print("argumentList=", argumentList)
-    options = "hksc:i:o:r:z"
-    long_options = ["help", "skipIngest", "skipSchema", "configfile", "outDir", "inDir", "raw", "keepCsv"]
+    options = "ha:ksc:g:i:o:r:z"
+    long_options = ["help", "authIngest", "skipIngest", "skipSchema", "configfile", "outDir", "inDir", "raw", "keepCsv"]
+    auth_ingest = ""
     skip_ingest = False
     skip_schema = False
-    config_file = "configs/fakedb/serverCfg.yml"
+    config_file = "serverCfg.yml"
+    ingest_host = "127.0.0.1"
     in_dir = None
     out_dir = ""
     raw = None
@@ -69,12 +76,16 @@ def server():
             if arg in ("-h", "--help"):
                 usage()
                 return False
+            elif arg in ("-a", "--authIngest"):
+                auth_ingest = val
             elif arg in ("-k", "--skipIngest"):
                 skip_ingest = True
             elif arg in ("-s", "--skipSchema"):
                 skip_schema = True
             elif arg in ("-c", "--configfile"):
                 config_file = val
+            elif arg in ("-g", "--ingestHost"):
+                ingest_host = val
             elif arg in ("-o", "--outDir"):
                 out_dir = val
             elif arg in ("-i", "--inDir"):
@@ -88,6 +99,24 @@ def server():
         exit(1)
     print("skip_ingest=", skip_ingest, "skip_schema=", skip_schema, "values=", values)
     print(f"configfile={config_file} in_dir={in_dir} raw={raw}\n")
+
+    # Check that configFile exists and make it the absolute path
+    abs_path_cwd = Path.cwd()
+    config_file_path = abs_path_cwd / "localConfig" / config_file
+    if not config_file_path.is_file():
+        print(f"ERROR: config_file {config_file} -> {config_file_path} is not a file, exiting")
+        exit(1)
+
+    print("config_file_path", config_file_path)
+    # Replace #INGEST_HOST# with ingest_host in the file
+    # Replace #INGEST_AUTH with auth_ingest in the file
+    with open(config_file_path, 'r') as cfg_file:
+        cfg_contents_in = cfg_file.read()
+    with open(config_file_path, 'w') as cfg_file:
+        cfg_out = cfg_contents_in.replace('#INGEST_HOST#', ingest_host)
+        cfg_out = cfg_out.replace('#INGEST_AUTH#', auth_ingest)
+        cfg_file.write(cfg_out)
+
     # If in_dir is defined (empty string is valid), see if files can be found
     if in_dir is not None:
         # Throws if targetf not found
@@ -97,7 +126,7 @@ def server():
     else:
         clfs = chunklogs.ChunkLogs(None, raw=raw)
     # 0-50000 would be all chunks for stripes = 200 substripes = 5
-    dgServ = DataGenServer(config_file, clfs, out_dir, skip_ingest, skip_schema, keep_csv)
+    dgServ = DataGenServer(config_file_path, clfs, out_dir, skip_ingest, skip_schema, keep_csv)
     if dgServ.chunksToSendTotal() == 0:
         print("No chunks to generate, exiting.")
         exit(0)

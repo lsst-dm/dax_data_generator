@@ -26,6 +26,7 @@ import re
 import shutil
 import socket
 import subprocess
+import time
 import traceback
 from pathlib import PurePosixPath
 
@@ -58,10 +59,11 @@ class DataGenClient:
     the server.
     """
 
-    def __init__(self, host, port, target_dir='fakeData', chunks_per_req=5):
+    def __init__(self, host, port, retry=False, target_dir='fakeData', chunks_per_req=5):
         self._host = host
         self._port = port
         self._name = "-1"
+        self._retry = retry  # Retry connection if true
         self._target_dir = os.path.abspath(target_dir)
         self._chunksPerReq = chunks_per_req
         self._gen_arg_str = None  # Arguments from the server for the generator.
@@ -587,9 +589,9 @@ class DataGenClient:
                 print("not a file ", os.path.join(ovlDir, e))
         # for each configuration file in self._partitionerCfgs something like this for Object chunk 0
         # sph-partition -c (cfgdir)/Object.cfg --mr.num-workers 1 --out.dir outdirObject
-        # --in chunk0_CT_Object.csv --in chunk402_CT_Object.csv
-        # --in chunk401_CT_Object.csv --in chunk400_CT_Object.csv
-        # --in chunk404_EO_Object.csv --in chunk403_CT_Object.csv
+        # --in.path chunk0_CT_Object.csv --in.path chunk402_CT_Object.csv
+        # --in.path chunk401_CT_Object.csv --in.path chunk400_CT_Object.csv
+        # --in.path chunk404_EO_Object.csv --in.path chunk403_CT_Object.csv
         # Determine which tables need to be created first.
         info_list = []
         for director, children in self._directors.items():
@@ -601,7 +603,9 @@ class DataGenClient:
             for child in children:
                 cfg = self._pt_cfg_dict[child]
                 cfg_path = cfg[0]
-                self._callPartitioner(chunkId, child, cfg_path, ovlDir, files, info_list, index_path)
+                if not self._callPartitioner(chunkId, child, cfg_path, ovlDir, files, info_list, index_path):
+                    print("Error calling partitioner")
+                    return False
 
         # Add the tables to the ingest transaction
         for info in info_list:
@@ -640,7 +644,7 @@ class DataGenClient:
             determine to which chunk child table rows belong.
         """
         st_time = self._timing_dict.start()
-        # The list of --in files needs to be generated. It
+        # The list of --in.path files needs to be generated. It
         # needs to have all the .csv files for tblName.
         inCsvFiles = []
         reg = re.compile(r"chunk\w*_" + tbl_name + r"\.csv")
@@ -650,7 +654,7 @@ class DataGenClient:
                 inCsvFiles.append(f)
         inStr = ""
         for csv in inCsvFiles:
-            inStr += " --in " + csv
+            inStr += " --in.path " + csv
         cfgFPath = os.path.join(self._pt_cfg_dir, cfg_fname)
         outDir = os.path.join(ovl_dir, "outdir" + tbl_name)
         # If index_path empty or undefined, this must be a director table.
@@ -805,7 +809,17 @@ class DataGenClient:
         runs out of chunks for this client to generate and ingest.
         """
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect((self._host, self._port))
+            print(f"host={self._host} port={self._port}")
+            connected = False
+            while not connected:
+                try:
+                    s.connect((self._host, self._port))
+                    connected = True
+                except socket.error:
+                    print(f"socket failed to connect {self._host}:{self._port}")
+                    if not self._retry:
+                        exit(1)
+                    time.sleep(5)
             self._cl_conn = DataGenConnection(s)
             self._cl_conn.clientReqInit()
             cri = self._cl_conn.clientRespInit()

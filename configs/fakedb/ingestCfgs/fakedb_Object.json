@@ -9,7 +9,7 @@
  "longitude_key":"psRa",
  "schema":[
   {"name":"objectId","type":"BIGINT NOT NULL"},
-  {"name":"psR","type":"DOUBLE NOT NULL"},
+  {"name":"psRa","type":"DOUBLE NOT NULL"},
   {"name":"psDecl","type":"DOUBLE NOT NULL"},
   {"name":"uPsFlux","type":"DOUBLE"},
   {"name":"gPsFlux","type":"DOUBLE"},
