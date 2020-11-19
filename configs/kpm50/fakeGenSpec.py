@@ -1,8 +1,8 @@
 import lsst.dax.data_generator.columns as columns
 from lsst.dax.data_generator import Chunker, UniformSpatialModel
 
-num_stripes = 200
-num_substripes = 5
+num_stripes = 340
+num_substripes = 3
 chunker = Chunker(0, num_stripes, num_substripes)
 edge_width = 0.017  # degrees, must be >= overlap
 
@@ -13,16 +13,26 @@ spec = {
             "parentObjectId,prv_inputId": columns.PoissonGenerator(mean_val=10, n_columns=2, column_seed=1),
             "psRa,psRaErr,psDecl,psDeclErr": columns.RaDecGenerator(include_err=True),
             "psMuRa,psMuRaErr,psMuDecl,psMuDeclErr,psParallax,psParallaxErr": columns.UniformGenerator(n_columns=6, min_val=-5, max_val=5, column_seed=2),
-            "uPsFlux,gPsFlux,rPsFlux,iPsFlux,zPsFlux,yPsFlux": columns.MagnitudeGenerator(n_mags=6),
-            "uPsFluxErr,gPsFluxErr,rPsFluxErr,iPsFluxErr,zPsFluxErr,yPsFluxErr": columns.UniformGenerator(min_val=0.05, max_val=0.5, n_columns=6, column_seed=6),
-            "psLnL,psChi2": columns.UniformGenerator(n_columns=2, column_seed=7),
+            "uPsFlux": columns.MagnitudeGenerator(n_mags=1, column_seed=102),
+            "uPsFluxErr": columns.UniformGenerator(min_val=0.05, max_val=0.5, n_columns=6, column_seed=103),
+            "gPsFlux": columns.MagnitudeGenerator(n_mags=1, column_seed=104),
+            "gPsFluxErr": columns.UniformGenerator(min_val=0.05, max_val=0.5, n_columns=6, column_seed=105),
+            "rPsFlux": columns.MagnitudeGenerator(n_mags=1, column_seed=106),
+            "rPsFluxErr": columns.UniformGenerator(min_val=0.05, max_val=0.5, n_columns=6, column_seed=107),
+            "iPsFlux": columns.MagnitudeGenerator(n_mags=1, column_seed=107),
+            "iPsFluxErr": columns.UniformGenerator(min_val=0.05, max_val=0.5, n_columns=6, column_seed=109),
+            "zPsFlux": columns.MagnitudeGenerator(n_mags=1, column_seed=108),
+            "zPsFluxErr": columns.UniformGenerator(min_val=0.05, max_val=0.5, n_columns=6, column_seed=111),
+            "yPsFlux": columns.MagnitudeGenerator(n_mags=1, column_seed=109),
+            "yPsFluxErr": columns.UniformGenerator(min_val=0.05, max_val=0.5, n_columns=6, column_seed=113),
+            "psLnL,psChi2": columns.UniformGenerator(n_columns=2, column_seed=114),
             "psN": columns.PoissonGenerator(mean_val=30, column_seed=8),
             "uBbdRa,uBdRaErr,uBdDecl,uBdDeclErr,uBdE1,uBdE1Err,uBdE2,uBdE2Err,uBdFluxB,uBdFluxBErr,uBdFluxD,uBdFluxDErr,uBdReB,uBdReBErr,uBdReD,uBdReDErr,uBdLnL,uBdChi2": columns.UniformGenerator(n_columns=18, column_seed=9),
             "uBdN": columns.PoissonGenerator(mean_val=10, column_seed=10),
             "gBbdRa,gBdRaErr,gBdDecl,gBdDeclErr,gBdE1,gBdE1Err,gBdE2,gBdE2Err,gBdFluxB,gBdFluxBErr,gBdFluxD,gBdFluxDErr,gBdReB,gBdReBErr,gBdReD,gBdReDErr,gBdLnL,gBdChi2":columns.UniformGenerator(n_columns=18, column_seed=11),
             "gBdN": columns.PoissonGenerator(mean_val=10, column_seed=12),
             "rBbdRa,rBdRaErr,rBdDecl,rBdDeclErr,rBdE1,rBdE1Err,rBdE2,rBdE2Err,rBdFluxB,rBdFluxBErr,rBdFluxD,rBdFluxDErr,rBdReB,rBdReBErr,rBdReD,rBdReDErr,rBdLnL,rBdChi2":columns.UniformGenerator(n_columns=18, column_seed=13),
-            "gBdN": columns.PoissonGenerator(mean_val=10, column_seed=14),
+            "rBdN": columns.PoissonGenerator(mean_val=10, column_seed=14),
             "iBbdRa,iBdRaErr,iBdDecl,iBdDeclErr,iBdE1,iBdE1Err,iBdE2,iBdE2Err,iBdFluxB,iBdFluxBErr,iBdFluxD,iBdFluxDErr,iBdReB,iBdReBErr,iBdReD,iBdReDErr,iBdLnL,iBdChi2":columns.UniformGenerator(n_columns=18, column_seed=15),
             "iBdN": columns.PoissonGenerator(mean_val=10, column_seed=16),
             "zBbdRa,zBdRaErr,zBdDecl,zBdDeclErr,zBdE1,zBdE1Err,zBdE2,zBdE2Err,zBdFluxB,zBdFluxBErr,zBdFluxD,zBdFluxDErr,zBdReB,zBdReBErr,zBdReD,zBdReDErr,zBdLnL,zBdChi2":columns.UniformGenerator(n_columns=18, column_seed=17),
@@ -54,10 +64,16 @@ spec = {
             "objectId,ccdVisitId,psFlux,psFlux_Err,flags":
                 columns.ForcedSourceGenerator(visit_radius=1.7, filters="ugriz"),
         },
-    }
+    },
     "CcdVisit": {
-        "from_file": "visit_table_chunk3525.csv",
+        "from_file": "visit_table.csv",
         "columns": "ccdVisitId,filterName,ra,decl"
+    }
+}
+
+directors = {
+    "Object": {
+        "ForcedSource": "objectId"
     }
 }
 

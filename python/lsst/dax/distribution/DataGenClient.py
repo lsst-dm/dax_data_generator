@@ -596,6 +596,7 @@ class DataGenClient:
         info_list = []
         for director, children in self._directors.items():
             # Make the director table and index
+            print("&&& self._pt_cfg_dict", self._pt_cfg_dict)
             cfg = self._pt_cfg_dict[director]
             cfg_path = cfg[0]
             index_path = self._callPartitioner(chunkId, director, cfg_path, ovlDir, files, info_list)

@@ -8,6 +8,9 @@ set -e
 #
 # ex: bin/run_distribserver.sh  fakedb -glocalhost -k -r "0:2000"
 
+# Run the script without running the server (server stops after help message)
+# ex: bin/run_distribserver.sh  fakedb -h
+
 # Copy the configuration directory for the specified database to localConfig
 # after deleteing localConfig.
 rm -rf localConfig

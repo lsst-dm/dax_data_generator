@@ -3,7 +3,4 @@ kpm50 is used for kpm50 tests.
 To build it:
   Set the system up according to dax_data_generator/README.md, then:
     cd dax_data_generator
-    python bin/makevisits.py -o configs/kpm50/pregenerated/visit_table.csv
-    python bin/datagenserver.py -c configs/kpm50/serverCfg.yml
-
-
+    bin/run_distribserver.sh kpm50 -glocalhost -k -r "0:2000"

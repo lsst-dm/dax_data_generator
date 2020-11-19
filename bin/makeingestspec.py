@@ -21,9 +21,11 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-import yaml
+import getopt
 import json
 import os
+import sys
+import yaml
 
 
 def transform_ingest_json(template_filename, output_filename, schema_columns):
@@ -86,15 +88,69 @@ def transform_partitioner_json(template_filename, output_filename, schema_column
         json.dump(output_json, f, indent=4)
 
 
-def convert_database(database_name):
+def check_spec(table, schema_columns, gen_config):
+    """Check that the column names in 'spec' match those in the schema.
+
+    Parameters
+    ----------
+    table : string
+        The table whose columns are being compared
+    schema : dictionary
+        Column information taken the schema.
+    gen_config : string
+        Name of the configuration file used by the data generator.
+
+    Returns
+    -------
+    success : bool
+        True if no errors were found.
+
+    Note
+    ----
+        The configuration file for the data generator is created by
+    hand at this point while the schema file comes from an autorative
+    source. The data generator configuration file should be fixed to
+    match the schema.
+    """
+    spec_globals = {}
+    with open(gen_config, 'r') as file:
+        gen_config_contents = file.read()
+    exec(gen_config_contents, spec_globals)
+    assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
+    spec = spec_globals['spec']
+    if not table in spec:
+        print(f"table {table} not found in spec")
+        return True
+    spec_cols = spec[table]['columns']
+    gen_cols = []
+    for key in spec_cols:
+        cols = key.split(",")
+        gen_cols.extend(cols)
+    success = True
+    count = 0
+    for gen, schema in zip(gen_cols, schema_columns):
+        if gen != schema['name']:
+            print(f"Error column name mismatch table={table} generator={gen} schema={schema} count={count}")
+            success = False
+            break
+        count += 1
+    if len(gen_cols) != len(schema_columns):
+        print(f"Error length mismatch generator config={len(gen_cols)} schema={len(schema_columns)}")
+        success = False
+    return success
+
+
+def convert_database(database_name, base_path, gen_config):
     """
     Loads a Felis-formated schema file for the specified database, and
     adds column information from that schema to the ingest and partitioner
     configuration files.
     """
 
-    base_path = database_name
-    sdm_filename = os.path.join(database_name, f"{database_name}.yaml")
+    #&&& base_path = database_name
+    #&&& sdm_filename = os.path.join(database_name, f"{database_name}.yaml")
+    sdm_filename = os.path.join(base_path, f"{database_name}.yaml")
+    gen_config = os.path.join(base_path, gen_config)
 
     with open(sdm_filename) as f:
         sdm_schema = yaml.load(f.read(), Loader=yaml.FullLoader)
@@ -116,6 +172,10 @@ def convert_database(database_name):
 
             schema_columns.append({"name": column['name'],
                                    "type": type_string})
+        #&&& Check spec colums against schema_columns
+        if not check_spec(table_name, schema_columns, gen_config):
+            print("Error, fix data generator configuration", gen_config)
+            exit(1)
 
         template_filename = os.path.join(base_path, f"ingestCfgs/{database_name}_{table_name}_template.json")
         output_filename = os.path.join(base_path, f"ingestCfgs/{database_name}_{table_name}.json")
@@ -131,9 +191,43 @@ def convert_database(database_name):
         transform_partitioner_json(template_filename, output_filename, schema_columns)
 
 
+
+def usage():
+    print('-h, --help  help')
+    print('-c, --config   data generator configuration file name. default="fakeGenSpec.py')
+    print('-d, --database  Name of the database.')
+    print('-p, --path path of the working directory. defaul="localConfig"')
+
+
 if __name__ == '__main__':
 
-    for database in ['kpm50']:
-        convert_database(database)
+    argumentList = sys.argv[1:]
+    print("argumentList=", argumentList)
+    options = "hd:p:"
+    long_options = ["help", "config", "database", "path"]
+    database_name = None
+    gen_config= "fakeGenSpec.py"
+    path = "localConfig"
+    try:
+        arguments, values = getopt.getopt(argumentList, options, long_options)
+        print("arguments=", arguments)
+        for arg, val in arguments:
+            if arg in ("-h", "--help"):
+                usage()
+                exit(0)
+            elif arg in ("-c", "--config"):
+                gen_config = val
+            elif arg in ("-d", "--database"):
+                database_name = val
+            elif arg in ("-p", "--path"):
+                path = val
+    except getopt.error as err:
+        print(str(err))
+        exit(1)
+    if database_name is None:
+        print("Error. No database name provided, exiting.")
+        exit(1)
 
+    print('converting files for database=', database_name, "in", path)
+    convert_database(database_name, path, gen_config)
 
