@@ -21,6 +21,7 @@
 
 import itertools
 import os
+import re
 import socket
 import threading
 import yaml
@@ -301,9 +302,9 @@ class DataGenServer:
                 contents = file.read()
                 file_dict[index] = (f, contents)
                 index += 1
-        print("pregenerated:")
-        for key, val in file_dict.items():
-            print(f" {key} name={val[0]} len={len(val[1])}")
+        print("pregenerated rows=", len(file_dict))
+        #&&&for key, val in file_dict.items():
+        #&&&    print(f" {key} name={val[0]} len={len(val[1])}")
         return file_dict
 
     def _servAccept(self):
@@ -496,10 +497,16 @@ class DataGenServer:
         if not self._ingest.registerDatabase(db_jpath):
             raise RuntimeError("Failed to send database to ingest.", db_jpath, self._ingest)
         # Find all of the schema files in self._ingest_cfg_dir while
-        # ignoring the database config file.
+        # ignoring the database config file and file names ending in '_template'.
         entries = os.listdir(self._ingest_cfg_dir)
         files = []
         for e in entries:
+            #&&& Skip '_template.json' files
+            reg = re.compile(r".*_template\.json$")
+            m = reg.match(e)
+            print(f"&&& e={e} m={m}")
+            if m:
+                continue
             full_path = os.path.join(self._ingest_cfg_dir, e)
             if os.path.isfile(full_path):
                 ext = os.path.splitext(e)[1]
