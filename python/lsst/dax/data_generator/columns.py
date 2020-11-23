@@ -492,7 +492,7 @@ class ForcedSourceGenerator(ColumnGenerator):
                   np.random.randn(n_rows_total))
         psFluxSigma = np.zeros(n_rows_total) + 0.1
         #&&&flags = np.random.randint(200, size=n_rows_total)
-        flags = np.random.randint(0, high=255, size=n_rows_total)
+        flags = np.random.randint(-128, high=127, size=n_rows_total)
 
 
         assert len(out_objectIds) == n_rows_total
