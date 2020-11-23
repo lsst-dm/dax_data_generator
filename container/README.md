@@ -25,7 +25,7 @@ Server:
   Start the server with
   `/home/qserv/dax_data_generator/scripts/run_datagenserver.sh fakedb -glocalhost`
     where `fakedb` is replace by the correct database name and
-          `localhost` is rplaced by the replicator master host.
+          `localhost` is replaced by the replicator master host.
 Client: see Kuberenetes client above.
 
 

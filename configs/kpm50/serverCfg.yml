@@ -16,7 +16,7 @@ partitioner:
 ingest:
   host: localhost
   port: 25080
-  authKey: ''
+  authKey: #INGEST_AUTH#
   dbName: kpm50
   cfgDir: ingestCfgs
 
