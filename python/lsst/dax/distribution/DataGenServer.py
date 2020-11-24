@@ -501,7 +501,7 @@ class DataGenServer:
         entries = os.listdir(self._ingest_cfg_dir)
         files = []
         for e in entries:
-            #&&& Skip '_template.json' files
+            # Skip '_template.json' files
             reg = re.compile(r".*_template\.json$")
             m = reg.match(e)
             print(f"&&& e={e} m={m}")

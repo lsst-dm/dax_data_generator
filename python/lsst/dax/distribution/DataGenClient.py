@@ -569,6 +569,11 @@ class DataGenClient:
         chunk_id : int
             Chunk id number for which overlap and ingest files are created.
 
+        Returns
+        -------
+        chunks_added : bool
+            True if chunks were added to the transaction for ingest.
+
         Note
         ----
         This needs to be done for each table in the chunk which has a
@@ -583,10 +588,18 @@ class DataGenClient:
         entries = os.listdir(ovlDir)
         files = []
         for e in entries:
-            if os.path.isfile(os.path.join(ovlDir, e)):
-                files.append(os.path.basename(e))
+            e_path = os.path.join(ovlDir, e)
+            if os.path.isfile(e_path):
+                fstats = os.stat(e_path)
+                if fstats.st_size > 0:
+                    files.append(os.path.basename(e))
+                else:
+                    print(f"file {e_path} has size zero {fstats.st_size}")
             else:
                 print("not a file ", os.path.join(ovlDir, e))
+        if not files:
+            print("No files with data were found, nothing to partition")
+            return False
         # for each configuration file in self._partitionerCfgs something like this for Object chunk 0
         # sph-partition -c (cfgdir)/Object.cfg --mr.num-workers 1 --out.dir outdirObject
         # --in.path chunk0_CT_Object.csv --in.path chunk402_CT_Object.csv
@@ -595,25 +608,28 @@ class DataGenClient:
         # Determine which tables need to be created first.
         info_list = []
         for director, children in self._directors.items():
+            print(f"&&& ba {director}  {children}")
             # Make the director table and index
-            print("&&& self._pt_cfg_dict", self._pt_cfg_dict)
             cfg = self._pt_cfg_dict[director]
             cfg_path = cfg[0]
+            print(f"&&& ab calling partitioner for {director}")
             index_path = self._callPartitioner(chunkId, director, cfg_path, ovlDir, files, info_list)
+            print(f"&&& bb info_list={info_list} index_path={index_path}")
             # create child tables using index_path
             for child in children:
                 cfg = self._pt_cfg_dict[child]
                 cfg_path = cfg[0]
                 if not self._callPartitioner(chunkId, child, cfg_path, ovlDir, files, info_list, index_path):
-                    print("Error calling partitioner")
-                    return False
+                    raise RuntimeError("Error calling partitioner")
 
+        print(f"&&& da info_list {info_list}")
         # Add the tables to the ingest transaction
         for info in info_list:
             print("info=", info, "0=", info[0], "1=", info[1])
             st_time = self._timing_dict.start()
             self._addChunkToTransaction(chunkId, table=info[0], f_path=info[1])
             self._timing_dict.end("ingest", st_time)
+        return True
 
     def _callPartitioner(self, chunk_id, tbl_name, cfg_fname, ovl_dir, files, info_list, index_path=None):
         """ Call sph-partition to create '.txt' files for ingest.
@@ -654,10 +670,16 @@ class DataGenClient:
             if m:
                 inCsvFiles.append(f)
         inStr = ""
-        for csv in inCsvFiles:
-            inStr += " --in.path " + csv
         cfgFPath = os.path.join(self._pt_cfg_dir, cfg_fname)
         outDir = os.path.join(ovl_dir, "outdir" + tbl_name)
+
+        if not inCsvFiles:
+            print(f"No files with data for table {tbl_name} were found")
+            self._timing_dict.end("overlap", st_time)
+            return index_path
+
+        for csv in inCsvFiles:
+            inStr += " --in.path " + csv
         # If index_path empty or undefined, this must be a director table.
         index_name = f"chunk_{tbl_name.lower()}_index.txt"
         if not index_path:
@@ -672,7 +694,7 @@ class DataGenClient:
         genResult, genOut = self.runProcess(cmd, cwd=ovl_dir)
         if genResult != 0:
             # Raise exception and leave data for diagnostics.
-            raise RuntimeError("ERROR failed to create chunk and overlap " + genOut + " cmd=" + cmd)
+                raise RuntimeError("ERROR failed to create chunk and overlap " + genOut + " cmd=" + cmd)
         # Delete the .txt files for files other than chunk_id
         # and chunk_index.txt in outDir.
         entries = os.listdir(outDir)

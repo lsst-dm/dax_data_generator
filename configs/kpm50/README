@@ -4,3 +4,7 @@ To build it:
   Set the system up according to dax_data_generator/README.md, then:
     cd dax_data_generator
     bin/run_distribserver.sh kpm50 -glocalhost -k -r "0:2000"
+
+Make sure stripes and substripes are consistent:
+grep -R stripe
+grep -R overlap
