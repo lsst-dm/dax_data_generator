@@ -6,4 +6,6 @@ setup -k -r . -t qserv-dev
 cd /home/qserv/partition
 setup -k -r . -t qserv-dev
 cd /home/qserv/dax_data_generator/
-python bin/datagenclient.py "$@"
+echo starting
+python bin/datagenclient.py "$@" > /home/qserv/logfile
+echo finished

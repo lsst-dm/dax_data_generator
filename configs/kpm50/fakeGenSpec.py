@@ -48,15 +48,11 @@ spec = {
             columns.UniformGenerator(min_val=-1, max_val=1, n_columns=30, column_seed=23),
             "uMSum,uMSumErr,gMSum,gMSumErr,rMSum,rMSumErr,iMSum,iMSumErr,zMSum,zMSumErr,yMSum,yMSumErr,uM4,gM4,rM4,iM4,zM4,yM4":
             columns.UniformGenerator(min_val=-1, max_val=1, n_columns=18, column_seed=24),
-            #&&& "uPetroRad,uPetroRadErr,gPetroRad,gPetroRadErr,rPetroRad,rPetroRadErr,iPetroRad,iPetroRadErr,zPetroRad,zPetroRadErr,yPetroRad,yPetroRadErr,petroFilter,uPetroFlux,uPetroFluxErr,gPetroFlux,gPetroFluxErr,rPetroFlux,rPetroFluxErr,iPetroFlux,iPetroFluxErr,zPetroFlux,zPetroFluxErr,yPetroFlux,yPetroFluxErr,uPetroRad50,uPetroRad50Err,gPetroRad50,gPetroRad50Err,rPetroRad50,rPetroRad50Err,iPetroRad50,iPetroRad50Err,zPetroRad50,zPetroRad50Err,yPetroRad50,yPetroRad50Err,uPetroRad90,uPetroRad90Err,gPetroRad90,gPetroRad90Err,rPetroRad90,rPetroRad90Err,iPetroRad90,iPetroRad90Err,zPetroRad90,zPetroRad90Err,yPetroRad90,yPetroRad90Err":
-            #&&& columns.UniformGenerator(max_val=10, n_columns=49, column_seed=25),
             "uPetroRad,uPetroRadErr,gPetroRad,gPetroRadErr,rPetroRad,rPetroRadErr,iPetroRad,iPetroRadErr,zPetroRad,zPetroRadErr,yPetroRad,yPetroRadErr":
             columns.UniformGenerator(max_val=10, n_columns=12, column_seed=25),
             "petroFilter": columns.FilterGenerator(column_seed=251),
             "uPetroFlux,uPetroFluxErr,gPetroFlux,gPetroFluxErr,rPetroFlux,rPetroFluxErr,iPetroFlux,iPetroFluxErr,zPetroFlux,zPetroFluxErr,yPetroFlux,yPetroFluxErr,uPetroRad50,uPetroRad50Err,gPetroRad50,gPetroRad50Err,rPetroRad50,rPetroRad50Err,iPetroRad50,iPetroRad50Err,zPetroRad50,zPetroRad50Err,yPetroRad50,yPetroRad50Err,uPetroRad90,uPetroRad90Err,gPetroRad90,gPetroRad90Err,rPetroRad90,rPetroRad90Err,iPetroRad90,iPetroRad90Err,zPetroRad90,zPetroRad90Err,yPetroRad90,yPetroRad90Err":
             columns.UniformGenerator(max_val=10, n_columns=36, column_seed=252),
-            #&&&"uKronRad,uKronRadErr,gKronRad,gKronRadErr,rKronRad,rKronRadErr,iKronRad,iKronRadErr,zKronRad,zKronRadErr,yKronRad,yKronRadErr,kronFilter,uKronFlux,uKronFluxErr,gKronFlux,gKronFluxErr,rKronFlux,rKronFluxErr,iKronFlux,iKronFluxErr,zKronFlux,zKronFluxErr,yKronFlux,yKronFluxErr,uKronRad50,uKronRad50Err,gKronRad50,gKronRad50Err,rKronRad50,rKronRad50Err,iKronRad50,iKronRad50Err,zKronRad50,zKronRad50Err,yKronRad50,yKronRad50Err,uKronRad90,uKronRad90Err,gKronRad90,gKronRad90Err,rKronRad90,rKronRad90Err,iKronRad90,iKronRad90Err,zKronRad90,zKronRad90Err,yKronRad90,yKronRad90Err":
-            #&&&columns.UniformGenerator(max_val=10, n_columns=49, column_seed=26),
             "uKronRad,uKronRadErr,gKronRad,gKronRadErr,rKronRad,rKronRadErr,iKronRad,iKronRadErr,zKronRad,zKronRadErr,yKronRad,yKronRadErr":
             columns.UniformGenerator(max_val=10, n_columns=12, column_seed=26),
             "kronFilter": columns.FilterGenerator(column_seed=261),
