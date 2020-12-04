@@ -108,6 +108,7 @@ class ChunkListFile:
         if not self._fname:
             print("ChunkFileList cannot be written since it doesn't have a name.")
             return
+        print(f"&&& self._fname {self._fname}")
         with open(self._fname, 'w') as list_file:
             list_file.write(self.toStr())
         self.file_wopen = True
@@ -167,6 +168,10 @@ class ChunkLogs:
         chunk are placed here. These need to be checked by hand before
         trying to generate them. Once checked, they also need to be
         removed from the assigned file.
+    raw : str
+        Arguments to generate target chunks from a string such as
+        '0:1000,4321,6832` which would be all valid chunks from
+        0 to 1000 (inclusive), 4321, and 6832.
     """
 
     def __init__(self, target, completed=None, assigned=None, limbo=None, raw=None):

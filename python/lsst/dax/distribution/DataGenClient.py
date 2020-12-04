@@ -714,7 +714,7 @@ class DataGenClient:
         self._timing_dict.end("overlap", st_time)
         return index_path
 
-    def _startTransaction(self):
+    def _startTransaction(self):  #R&&& remove this function
         """ Start a transaction or raise a RuntimeException
         """
         if self._skip_ingest:
@@ -762,7 +762,7 @@ class DataGenClient:
         print("Added to Transaction ", host, ":", port, "info", out_str)
         return out_str
 
-    def _endTransaction(self, abort):
+    def _endTransaction(self, abort): # &&& remove
         """End the transaction, aborting if indicated.
 
         Parameters
@@ -897,7 +897,9 @@ class DataGenClient:
             loop = True
             while loop:
                 self._cl_conn.clientReqChunks(self._chunksPerReq)
-                chunkListRecv, problem = self._cl_conn.clientRecvChunks()
+                transaction_id, chunkListRecv, problem = self._cl_conn.clientRecvChunks()
+                self._transaction_id = transaction_id
+                print("transaction_id = ", self._transaction_id)
                 if problem:
                     print("WARN there was a problem with", chunkListRecv)
                 chunkRecvSet = set(chunkListRecv)
@@ -921,8 +923,8 @@ class DataGenClient:
                 # the transaction).
                 # Start the transaction
                 abort = False
-                if len(haveAllCsvChunks):
-                    self._startTransaction()
+                #R&&& if len(haveAllCsvChunks):
+                #R&&&     self._startTransaction()
                 try:
                     for chunk in haveAllCsvChunks:
                         self._createOverlapTables(chunk)

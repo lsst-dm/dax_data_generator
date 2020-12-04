@@ -466,7 +466,7 @@ class DataGenConnection():
             raise DataGenError('ERROR servRecvReqChunks' + str(msg_id) + ' ' + str(msg_len) + ' ' + msg)
         return int(msg)
 
-    def servSendChunks(self, chunk_list):
+    def servSendChunks(self, chunk_list, transaction_id):
         """Send a list of chunks to the client so they can be generated.
 
         Parameters
@@ -479,8 +479,11 @@ class DataGenConnection():
         sent_chunks : list of int
             List of chunk ids that were actually sent to the client.
         """
-        print("servSendChunks S_CNKLST", chunk_list)
-        chunk_msg, sent_chunks = self._buildChunksMsg(chunk_list)
+        msg_list = []
+        msg_list.append(transaction_id)
+        msg_list.extend(chunk_list)
+        print("servSendChunks S_CNKLST", msg_list)
+        chunk_msg, sent_chunks = self._buildChunksMsg(msg_list)
         self._send_msg(self._S_CNKLST, chunk_msg)
         return sent_chunks
 
@@ -500,10 +503,12 @@ class DataGenConnection():
             self.warnings += 1
             raise DataGenError('ERROR clientRecvChunks' + str(msg_id) + ' ' + str(msg_len) + ' ' + msg)
         msg_chunks, problem = self._extractChunksFromMsg(msg)
+        transaction_id = msg_chunks[0]
+        chunk_list = msg_chunks[1:]
         if problem:
             self.warnings += 1
             print("WARN clientRecvChunks problem with", msg, msg_chunks)
-        return msg_chunks, problem
+        return transaction_id, chunk_list, problem
 
     def clientReportTiming(self, timing_dict):
         """Send a small dictionary of string keys and float time values.
