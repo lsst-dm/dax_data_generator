@@ -491,7 +491,6 @@ class ForcedSourceGenerator(ColumnGenerator):
         psFlux = (np.repeat(objects_inside_box['gPsFlux'].values, n_matching_visits) +
                   np.random.randn(n_rows_total))
         psFluxSigma = np.zeros(n_rows_total) + 0.1
-        #&&&flags = np.random.randint(200, size=n_rows_total)
         flags = np.random.randint(-128, high=127, size=n_rows_total)
 
 

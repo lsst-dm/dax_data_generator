@@ -74,8 +74,8 @@ class ChunkTrackingTests(unittest.TestCase):
             self.assertSetEqual(c_t._chunks_to_send_set, valid_chunks)
 
             client_chunks, transaction_id = c_t.get_chunks_for_client(7, "some.pc.edu", 5)
-            print(f"&&& t_id={transaction_id} client_chunks={client_chunks}")
-            print(f"&&& {c_t._transaction}")
+            print(f"t_id={transaction_id} client_chunks={client_chunks}")
+            print(f" {c_t._transaction}")
 
             self.assertTrue(c_t._transaction.id == transaction_id)
             self.assertTrue(c_t._transaction == c_t._transaction_dict[transaction_id])
@@ -90,7 +90,6 @@ class ChunkTrackingTests(unittest.TestCase):
             self.assertFalse(c_t._transaction.abort)
 
             # loop through until nothing left to send
-            #&&&while len(c_t._chunks_to_send_set) > 0:
             first = True
             cl_chunks = set()
             while cl_chunks or first:
@@ -113,35 +112,10 @@ class ChunkTrackingTests(unittest.TestCase):
                 completed_chunks = cl_chunks.copy()
                 c_t.client_results(t_id, cl_chunks, completed_chunks)
 
-            print(f"&&& c_t._transaction={c_t._transaction}")
+            print(f"c_t._transaction={c_t._transaction}")
 
             self.assertTrue(c_t._transaction.closed)
             self.assertFalse(c_t._transaction.abort)
             self.assertTrue(len(c_t._chunks_to_send_set) == 0)
             self.assertSetEqual(c_t._chunks_entire_set, c_t._chunk_logs._completed.chunk_set)
         return
-
-
-
-
-
-
-
-
-#&&& with tempfile.TemporaryDirectory() as log_dir:
-#&&&     clfs = chunklogs.ChunkLogs(None, raw='0:1000')
-#&&&     db_name = 'junk'
-#&&&     # ingest will not be contacted in unit tests
-#&&&     skip_ingest = True
-#&&&     skip_schema = True
-#&&&     keep_csv = True
-#&&&     ingest_dict = {'host': '127.0.0.1', 'port': 25080, 'auth': '','db': db_name, 'skip': skip_ingest, 'keep': keep_csv}
-#&&&     c_t = chunktracking.ChunkTracking(local_chunker, clfs, 100, skip_ingest, skip_schema, log_dir, ingest_dict)
-#&&&     client_chunks, transaction_id = c_t.get_chunks_for_client(7, "some.pc.edu", 5)
-#&&&     print(f"&&& t_id={transaction_id} client_chunks={client_chunks}")
-#&&&     print(f"&&& c_t._transaction\n{c_t._transaction}")
-#&&&     completed_chunks = client_chunks.copy()
-#&&&     c_t.client_results(transaction_id, client_chunks, completed_chunks)
-
-
-

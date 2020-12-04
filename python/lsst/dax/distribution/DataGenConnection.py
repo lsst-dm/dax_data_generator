@@ -193,8 +193,12 @@ class DataGenConnection():
             return [], problem
         print("extract msg", msg, "msg_split", msg_split)
         # convert entire list back to int
-        msg_ints = [i for i in msg_split if len(i) > 0 and i.isnumeric()]
-        if not len(msg_ints) == len(msg_split):
+        msg_ints = []
+        try:
+            msg_ints = [i for i in msg_split if len(i) > 0]
+        except ValueError as e:
+            print(f"WARN ValueError in chunk msg {e}")
+        if len(msg_ints) != len(msg_split):
             self.warnings += 1
             problem = True
             print("WARN there were non integer elements in chunk msg ", msg_split, "~~~", msg_ints)

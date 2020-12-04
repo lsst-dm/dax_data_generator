@@ -61,11 +61,6 @@ INSERT INTO `config` VALUES ('worker','http_loader_port','25004');
 INSERT INTO `config` VALUES ('worker','http_loader_tmp_dir','/home/jgates/qserv-run/var/lib/ingest');
 INSERT INTO `config` VALUES ('worker','num_http_loader_processing_threads','2');
 
---&&& ALTER TABLE `config_worker` ADD COLUMN `http_loader_host` VARCHAR(255) NOT NULL;
---&&& ALTER TABLE `config_worker` ADD COLUMN `http_loader_port` SMALLINT UNSIGNED DEFAULT NULL;
---&&& ALTER TABLE `config_worker` ADD COLUMN `http_loader_tmp_dir` VARCHAR(255) DEFAULT NULL;
--- &&&ALTER TABLE `config_worker` ADD UNIQUE  KEY (`http_loader_host`, `http_loader_port`);
-
 -- Preload parameters for runnig all services on the same host
 
 INSERT INTO `config_worker` VALUES ('worker', 1, 0, 'localhost', NULL, 'localhost', NULL, NULL, 'localhost', NULL, NULL, '192.168.1.143', NULL, NULL, '192.168.1.143', NULL, NULL,'192.168.1.143', NULL, NULL);

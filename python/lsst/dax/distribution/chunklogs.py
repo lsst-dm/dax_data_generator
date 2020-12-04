@@ -108,7 +108,7 @@ class ChunkListFile:
         if not self._fname:
             print("ChunkFileList cannot be written since it doesn't have a name.")
             return
-        print(f"&&& self._fname {self._fname}")
+        print(f"self._fname {self._fname}")
         with open(self._fname, 'w') as list_file:
             list_file.write(self.toStr())
         self.file_wopen = True

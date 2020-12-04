@@ -608,13 +608,10 @@ class DataGenClient:
         # Determine which tables need to be created first.
         info_list = []
         for director, children in self._directors.items():
-            print(f"&&& ba {director}  {children}")
             # Make the director table and index
             cfg = self._pt_cfg_dict[director]
             cfg_path = cfg[0]
-            print(f"&&& ab calling partitioner for {director}")
             index_path = self._callPartitioner(chunkId, director, cfg_path, ovlDir, files, info_list)
-            print(f"&&& bb info_list={info_list} index_path={index_path}")
             # create child tables using index_path
             for child in children:
                 cfg = self._pt_cfg_dict[child]
@@ -622,7 +619,6 @@ class DataGenClient:
                 if not self._callPartitioner(chunkId, child, cfg_path, ovlDir, files, info_list, index_path):
                     raise RuntimeError("Error calling partitioner")
 
-        print(f"&&& da info_list {info_list}")
         # Add the tables to the ingest transaction
         for info in info_list:
             print("info=", info, "0=", info[0], "1=", info[1])
@@ -714,23 +710,6 @@ class DataGenClient:
         self._timing_dict.end("overlap", st_time)
         return index_path
 
-    def _startTransaction(self):  #R&&& remove this function
-        """ Start a transaction or raise a RuntimeException
-        """
-        if self._skip_ingest:
-            # Return an invalid id
-            print("skipping ingest")
-            self._transaction_id = -1
-            return
-        success, id = self._ingest.startTransaction(self._db_name)
-        if not success:
-            print("ERROR Failed to start transaction ", self._db_name)
-            raise RuntimeError("ERROR failed to start transaction ", self._db_name)
-        self._transaction_id = id
-        print("-----------------------------------------------")
-        print("Transaction started ", self._db_name, "id=", id)
-        return
-
     def _addChunkToTransaction(self, chunk_id, table, f_path):
         """ Add chunk-table file to the transaction or raise a RuntimeError.
 
@@ -761,32 +740,6 @@ class DataGenClient:
         out_str = self._ingest.sendChunkToTarget(host, port, t_id, table, f_path)
         print("Added to Transaction ", host, ":", port, "info", out_str)
         return out_str
-
-    def _endTransaction(self, abort): # &&& remove
-        """End the transaction, aborting if indicated.
-
-        Parameters
-        ----------
-        abort : bool
-            True if the transaction should be aborted.
-
-        Return
-        ------
-        success : bool
-            True if successful
-        status : int
-            Status value of the put action.
-        content : json or None
-            Information about the success or failure of the operation.
-        """
-        print("Transaction end abort=", abort)
-        t_id = self._transaction_id
-        self._transaction_id = -1
-        if t_id == -1:
-            print("No active transaction to end")
-            return True, -1, None
-        success, status, content = self._ingest.endTransaction(t_id, abort)
-        return success, status, content
 
     def _sendIngestedChunksToServer(self, chunks_to_send):
         """Send chunk ids back to the server until the list is empty.
@@ -923,8 +876,6 @@ class DataGenClient:
                 # the transaction).
                 # Start the transaction
                 abort = False
-                #R&&& if len(haveAllCsvChunks):
-                #R&&&     self._startTransaction()
                 try:
                     for chunk in haveAllCsvChunks:
                         self._createOverlapTables(chunk)
@@ -935,11 +886,7 @@ class DataGenClient:
                     print("ERROR transaction failed ", exc)
                     traceback.print_exc()
                     abort = True
-                # TODO: It may be better to have the server end the transaction as
-                #       it could give a better record of which chunks got ingested.
-                # If no transaction was started, _endTransaction does nothing.
-                success, status, content = self._endTransaction(abort)
-                if success and not abort:
+                if not abort:
                     for chunk in withOverlapChunks:
                         ingestedChunks.append(chunk)
                 else:

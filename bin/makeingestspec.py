@@ -147,8 +147,6 @@ def convert_database(database_name, base_path, gen_config):
     configuration files.
     """
 
-    #&&& base_path = database_name
-    #&&& sdm_filename = os.path.join(database_name, f"{database_name}.yaml")
     sdm_filename = os.path.join(base_path, f"{database_name}.yaml")
     gen_config = os.path.join(base_path, gen_config)
 
@@ -172,7 +170,7 @@ def convert_database(database_name, base_path, gen_config):
 
             schema_columns.append({"name": column['name'],
                                    "type": type_string})
-        #&&& Check spec colums against schema_columns
+        # Check spec colums against schema_columns
         if not check_spec(table_name, schema_columns, gen_config):
             print("Error, fix data generator configuration", gen_config)
             exit(1)

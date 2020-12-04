@@ -81,11 +81,8 @@ class Transaction:
     """
 
     def __init__(self, chunks):
-        print(f"&&& chunks={chunks}")
         self.chunks = chunks  # destroyed as chunks moved to transactions.
-        print(f"&&&a self.chunks={self.chunks}")
         self.total_chunks = chunks.copy()
-        print(f"&&&a self.chunks={self.chunks}")
         self.completed_chunks = set()
         self.id = None  # id number given to the transaction
         self.abort = False
@@ -100,10 +97,9 @@ class Transaction:
         s += f"closed {self.closed}\n"
         return s
 
-
     def is_finished(self):
-        print(f"&&& is_finished {self}")
-        print(f"&&& is_finished {self.total_chunks == self.completed_chunks or self.abort}")
+        """ Return True if done sending chunks (This does NOT indicate success)
+        """
         return self.total_chunks == self.completed_chunks or self.abort
 
 
@@ -120,7 +116,7 @@ class ChunkTracking:
         self._skip_schema = skip_schema
         # lock to protect internal lists
         self._list_lock = threading.Lock()
-        # All the chunks generated so far
+        # All the chunks generated and ingested so far
         self._total_generated_chunks = set()
 
         # Unique Transaction ids come from the ingest system.
@@ -132,9 +128,7 @@ class ChunkTracking:
         # Use provided information to build the set of chunks to generate.
         chunk_logs_in.build(all_chunks)
         # Use the input information/files to create the output logs.
-        print(f"&&&a log_dir {log_dir}")
         self._chunk_logs = chunk_logs_in.createOutput(log_dir)
-        print(f"&&&a log_dir {log_dir}")
         if log_dir is not None:
             # Start logging
             self._chunk_logs.write()
@@ -142,15 +136,16 @@ class ChunkTracking:
         self._chunks_entire_set = self._chunk_logs.result_set.copy()
         # Set of chunks to send - this is destroyed as chunks are assigned.
         self._chunks_to_send_set = self._chunk_logs.result_set.copy()
+        # Total number of chunks to send, constant.
         self._chunks_to_send_total = len(self._chunks_to_send_set)
         self._limbo_count = 0  # number of chunks that had problems being created.
         # Dictionary of information about chunks being sent.
-        # self._chunks_to_send only includes information about this run.
+        # self._chunks_data only includes information about this run.
         # self._chunk_logs may include information from previous runs.
-        self._chunks_to_send = {}
+        self._chunks_data = {}
         for chunk in self._chunks_to_send_set:
             chunk_info = ChunkInfo(chunk)
-            self._chunks_to_send[chunk] = chunk_info
+            self._chunks_data[chunk] = chunk_info
         print("_chunks_to_send_total=", self._chunks_to_send_total)
 
         # Ingest values
@@ -163,17 +158,68 @@ class ChunkTracking:
         self._transaction_dict = {}  # dictionary of transactions by transaction id.
         self.INVALID_ID = -sys.maxsize - 1
 
+    def is_successful_ingest(self):
+        """ Return True if everything that was supposed to be ingested was ingested.
+        """
+        with self._list_lock:
+            return self._chunks_entire_set == self._total_generated_chunks
+
     def remaining_chunk_count(self):
         with self._list_lock:
             return self._remaining_chunk_count()
 
     def _remaining_chunk_count(self):
-        """Note: self._list_lock must be held when calling this function.
+        """ Return the number of chunks left to be generated.
+        Note: self._list_lock must be held when calling this function.
         """
         count = len(self._chunks_to_send_set)
         if self._transaction:
             count += len(self._transaction.chunks)
         return count
+
+    def get_chunks_to_send_total(self):
+        """ Return the total number of chunks to send.
+
+        Note: This value is unchanged after being set.
+        """
+        return self._chunks_to_send_total
+
+    def get_total_chunks_generated(self):
+        """Returns a copy of the set _total_generated_chunks
+        """
+        with self._list_lock:
+            return self._total_generated_chunks.copy()
+
+    def get_chunk_info_report(self):
+        """ Return a string describing the status of all chunks.
+        """
+        with self._list_lock:
+            counts = {GenerationStage.UNASSIGNED: 0,
+                      GenerationStage.TRANSACTION: 0,
+                      GenerationStage.ASSIGNED: 0,
+                      GenerationStage.FINISHED: 0,
+                      GenerationStage.LIMBO: 0}
+            for chk in self._chunks_data:
+                chk_info = self._chunks_data[chk]
+                counts[chk_info.gen_stage] += 1
+        s = f"Chunks generated={counts[GenerationStage.FINISHED]}\n"
+        s += f"Chunks transaction={counts[GenerationStage.TRANSACTION]}\n"
+        s += f"Chunks assigned={counts[GenerationStage.ASSIGNED]}\n"
+        s += f"Chunks unassigned={counts[GenerationStage.UNASSIGNED]}\n"
+        s += f"Chunks limbo={counts[GenerationStage.LIMBO]}\n"
+        return s
+
+    def chunksInState(self, genState):
+        """Return a list of ChunkInfo where the gen_stage matches one in
+        the provided genState list
+        """
+        with self._list_lock:
+            chunks_in_state = []
+            for chk in self._chunks_data:
+                chk_info = self._chunks_data[chk]
+                if chk_info.gen_stage in genState:
+                    chunks_in_state.append(chk_info)
+        return chunks_in_state
 
     def _build_next_transaction(self):
         """Take chunks from _chunks_to_send_set and put them in a new
@@ -182,11 +228,9 @@ class ChunkTracking:
         Note: self._list_lock must be held when calling this function.
         """
         transaction_chunks = set()
-
-        print(f"&&& self._transaction_size {self._transaction_size}")
         for chunk in itertools.islice(self._chunks_to_send_set, self._transaction_size):
             transaction_chunks.add(chunk)
-            cInfo = self._chunks_to_send[chunk]
+            cInfo = self._chunks_data[chunk]
             cInfo.gen_stage = GenerationStage.TRANSACTION
         for chunk in transaction_chunks:
             self._chunks_to_send_set.discard(chunk)
@@ -223,7 +267,12 @@ class ChunkTracking:
         return
 
     def abort_and_close(self, transaction_id):
-        """&&&
+        """ Abort transaction_id and close it.
+
+        Parameters
+        ----------
+        transaction_id : int
+            The id of the transaction to abort and close.
         """
         print("Aborting transaction ", transaction_id)
         with self._list_lock:
@@ -250,8 +299,6 @@ class ChunkTracking:
 
         Note: self._list_lock must be held when calling this function
         """
-        print(f"&&& _transaction_dict {self._transaction_dict}")
-        print(f"&&& transaction_id={transaction_id}")
         transaction = self._transaction_dict[transaction_id]
         if not transaction:
             print(f"No Transaction for {transaction_id}")
@@ -264,11 +311,28 @@ class ChunkTracking:
         if transaction_id < 0:
             print("No real transaction to end, closing", transaction_id)
             transaction.closed = True
+            self._mark_chunks_completed(transaction.completed_chunks)
             return True, -1, None
         print("_close_transaction id={transaction_id} abort={abort}")
         success, status, content = self._ingest.endTransaction(transaction_id, abort)
         transaction.closed = True
+        self._mark_chunks_completed(transaction.completed_chunks)
         return success, status, content
+
+    def _mark_chunks_completed(self, completed_chunks):
+        """Mark chunks as being completed.
+
+        Params
+        ------
+        completed_chunks : iterable ints
+            An iterable container containing chunk id numbers.
+
+        Note: self._list_lock must be held when calling this function
+        """
+        for completed in completed_chunks:
+            self._total_generated_chunks.add(completed)
+            cInfo = self._chunks_data[completed]
+            cInfo.gen_stage = GenerationStage.FINISHED
 
     def get_chunks_for_client(self, client_name, client_addr, req_chunk_count):
         """Get a list of chunks for a client to generate.
@@ -298,7 +362,7 @@ class ChunkTracking:
             # from self._transaction.chunks
             for chunk in itertools.islice(self._transaction.chunks, req_chunk_count):
                 ret_set.add(chunk)
-                cInfo = self._chunks_to_send[chunk]
+                cInfo = self._chunks_data[chunk]
                 cInfo.gen_stage = GenerationStage.ASSIGNED
                 cInfo.client_id = client_name
                 cInfo.client_addr = client_addr
@@ -329,15 +393,9 @@ class ChunkTracking:
                 print(f"  completed_chunks={completed_chunks}")
                 print(f"  expected_chunks={expected_chunks}")
                 return
-        for completed in completed_chunks:
-            self._total_generated_chunks.add(completed)
-            cInfo = self._chunks_to_send[completed]
-            cInfo.gen_stage = GenerationStage.FINISHED
         completed_set = set(completed_chunks)
         diff = expected_chunks ^ completed_set
-        print(f"&&& expected={expected_chunks}")
-        print(f"&&& complete={completed_set}")
-        print(f"&&& diff={diff}")
+        print(f"t_id={transaction_id} diff={diff}")
         with self._list_lock:
             # get the correct transaction
             transaction = self._transaction_dict[transaction_id]
@@ -346,20 +404,17 @@ class ChunkTracking:
                 # Mark missing chunks as being in limbo.
                 self._chunk_logs.addLimbo(diff)
                 for missing in diff:
-                    cInfo = self._chunks_to_send[missing]
+                    cInfo = self._chunks_data[missing]
                     cInfo.gen_stage = GenerationStage.LIMBO
                     self._limbo_count += 1
                 # Abort the transaction
                 transaction.abort = True
                 self._close_transaction(transaction_id)
-                # &&& TODO: maybe something useful to do here
                 return
 
             # Check if the transaction is completed and
             # close it if it is.
-            print(f"&&& t_comp={transaction.completed_chunks}  c_c={completed_chunks}")
             transaction.completed_chunks = transaction.completed_chunks.union(completed_chunks)
-            print(f"&&& t_comp={transaction.completed_chunks}")
             if transaction.is_finished():
                 print(f"Transaction {transaction_id} finished #chunks={len(transaction.completed_chunks)}")
                 self._close_transaction(transaction_id)
