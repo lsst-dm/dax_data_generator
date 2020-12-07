@@ -63,7 +63,7 @@ spec = {
             "FLAGS1,FLAGS2": columns.PoissonGenerator(mean_val=1000, n_columns=2, column_seed=29),
         },
 
-        "density": UniformSpatialModel(50000),
+        "density": UniformSpatialModel(5000),
     },
     "ForcedSource": {
         "prereq_tables": ["CcdVisit", "Object"],

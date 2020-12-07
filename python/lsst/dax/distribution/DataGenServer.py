@@ -121,6 +121,7 @@ class DataGenServer:
         self._partioner_cfg_dict = self._readPartionerCfgDir(partioner_cfg_dir)
 
         # Get ingest sytem information
+        transaction_size = self._cfg['fakeDataGenerator']['transaction_size']
         self._db_name = self._cfg['ingest']['dbName']
         ingest_host = self._cfg['ingest']['host']
         ingest_port = self._cfg['ingest']['port']
@@ -151,7 +152,6 @@ class DataGenServer:
         self._pregen_file_dict = self._readPreGeneratedFiles(pregenerated_dir, spec_globals['spec'])
         # Read in chunker info
         chunker = spec_globals['chunker']
-        transaction_size = 50 # &&& TODO: set in config
         self._chunk_tracking = ChunkTracking(chunker, chunk_logs_in, transaction_size, skip_ingest,
                                              skip_schema, log_dir, self._ingest_dict)
 

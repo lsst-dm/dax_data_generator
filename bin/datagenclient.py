@@ -34,6 +34,7 @@ def usage():
     print("-H, --host  server host IP adress.")
     print("-P, --port  server port number")
     print("-r, --retry retry connecting to server")
+    print("-C, --chunks number or chunks per request to server (5)")
 
 
 if __name__ == "__main__":
@@ -42,11 +43,12 @@ if __name__ == "__main__":
 
     argument_list = sys.argv[1:]
     print("argumentList=", argument_list)
-    options = "hH:P:r"
+    options = "hH:C:P:r"
     long_options = ["help", "host", "port", "retry"]
     skip_ingest = False
     skip_schema = False
     retry = False
+    chunks_per_req = 5
     try:
         arguments, values = getopt.getopt(argument_list, options, long_options)
         print("arguments=", arguments)
@@ -60,10 +62,12 @@ if __name__ == "__main__":
                 port = int(val)
             elif arg in ("-r", "--retry"):
                 retry = True
+            elif arg in ("-C", "--chunks"):
+                chunks_per_req = val
     except getopt.error as err:
         print(str(err))
         exit(1)
     print(f'server {host}:{port}')
-    dg_client = DataGenClient(host, port, retry=retry)
+    dg_client = DataGenClient(host, port, retry=retry, chunks_per_req=chunks_per_req)
     dg_client.run()
 
