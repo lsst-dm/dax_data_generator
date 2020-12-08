@@ -100,7 +100,13 @@ class Transaction:
     def is_finished(self):
         """ Return True if done sending chunks (This does NOT indicate success)
         """
-        return self.total_chunks == self.completed_chunks or self.abort
+        ret = self.total_chunks == self.completed_chunks or self.abort
+        diff = self.total_chunks ^ self.completed_chunks
+        print(f"&&& is_finished total    ={self.total_chunks}")
+        print(f"&&& is_finished completed={self.completed_chunks}")
+        print(f"&&& is_finished diff={diff}")
+        print(f"&&& is_finished abort={self.abort} ret={ret} len(diff)={len(diff)}")
+        return ret
 
 
 class ChunkTracking:

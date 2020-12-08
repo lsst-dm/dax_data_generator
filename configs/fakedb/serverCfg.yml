@@ -7,7 +7,7 @@ fakeDataGenerator:
   visits: 30
   objects: 1000
   seed: 1
-  transaction_size: 50
+  transaction_size: 7
   cfgFileName: fakeGenSpec.py
 
 partitioner:

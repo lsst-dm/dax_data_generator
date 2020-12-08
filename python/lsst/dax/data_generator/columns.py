@@ -47,12 +47,14 @@ def calcSeedFrom(chunk_id, seed, column_seed=0):
 
     Note
     ----
+    Return value must be between 0 and 2**32 - 1 (4,294,967,295)
     This is an attempt to avoid having chunks and columns having seeds
     near each other so that changing the seed value by 1 will not look
     like everyting was just shifted over by 1 chunk/column.
     Each ColumnGenerator should have a unique arbitrary column_seed.
     """
-    return (chunk_id*10000 + seed + column_seed*100)
+    print(f"&&& seedr={chunk_id*500 + seed + column_seed*50} cid={chunk_id} seed={seed} col={column_seed}")
+    return (chunk_id*500 + seed + column_seed*50)
 
 
 def mergeBlocks(block_a, block_b):
