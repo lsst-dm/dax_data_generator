@@ -118,7 +118,7 @@ def check_spec(table, schema_columns, gen_config):
     exec(gen_config_contents, spec_globals)
     assert 'spec' in spec_globals, "Specification file must define a variable 'spec'."
     spec = spec_globals['spec']
-    if not table in spec:
+    if table not in spec:
         print(f"table {table} not found in spec")
         return True
     spec_cols = spec[table]['columns']
@@ -189,7 +189,6 @@ def convert_database(database_name, base_path, gen_config):
         transform_partitioner_json(template_filename, output_filename, schema_columns)
 
 
-
 def usage():
     print('-h, --help  help')
     print('-c, --config   data generator configuration file name. default="fakeGenSpec.py')
@@ -204,7 +203,7 @@ if __name__ == '__main__':
     options = "hd:p:"
     long_options = ["help", "config", "database", "path"]
     database_name = None
-    gen_config= "fakeGenSpec.py"
+    gen_config = "fakeGenSpec.py"
     path = "localConfig"
     try:
         arguments, values = getopt.getopt(argumentList, options, long_options)

@@ -7,5 +7,5 @@ cd /home/qserv/partition
 setup -k -r . -t qserv-dev
 cd /home/qserv/dax_data_generator/
 echo starting
-python bin/datagenclient.py "$@" > /home/qserv/logfile
+python bin/datagenclient.py "$@"
 echo finished

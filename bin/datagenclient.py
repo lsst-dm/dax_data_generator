@@ -19,13 +19,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import argparse
+
 import getopt
 import sys
 
-from lsst.dax.data_generator import columns
-from lsst.dax.data_generator import DataGenerator
-from lsst.dax.distribution.DataGenConnection import DataGenConnection
+
 from lsst.dax.distribution.DataGenClient import DataGenClient
 
 
@@ -34,7 +32,7 @@ def usage():
     print("-H, --host  server host IP adress.")
     print("-P, --port  server port number")
     print("-r, --retry retry connecting to server")
-    print("-C, --chunks number or chunks per request to server (5)")
+    print("-C, --chunks chunks per request to server (default 5)")
 
 
 if __name__ == "__main__":

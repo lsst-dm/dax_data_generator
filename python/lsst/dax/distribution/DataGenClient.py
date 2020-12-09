@@ -690,7 +690,7 @@ class DataGenClient:
         genResult, genOut = self.runProcess(cmd, cwd=ovl_dir)
         if genResult != 0:
             # Raise exception and leave data for diagnostics.
-                raise RuntimeError("ERROR failed to create chunk and overlap " + genOut + " cmd=" + cmd)
+            raise RuntimeError("ERROR failed to create chunk and overlap " + genOut + " cmd=" + cmd)
         # Delete the .txt files for files other than chunk_id
         # and chunk_index.txt in outDir.
         entries = os.listdir(outDir)
@@ -890,7 +890,7 @@ class DataGenClient:
                     for chunk in withOverlapChunks:
                         ingestedChunks.append(chunk)
                 else:
-                    print("Failed ingest, transaction failed or aborted ", status, content)
+                    print("Failed ingest, transaction failed or aborted ")
                 # If no chunks were created, likely fatal error. Asking for more
                 # chunks to create would just cause more problems.
                 if len(ingestedChunks) == 0:

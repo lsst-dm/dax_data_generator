@@ -316,7 +316,7 @@ class DataGenServer:
             while self._loop and not out_of_chunks:
                 clientReqChunkCount = sv_conn.servRecvReqChunks()
                 chunksForClient, transaction_id = self._chunk_tracking.get_chunks_for_client(
-                                                                       name, addr, clientReqChunkCount)
+                                                  name, addr, clientReqChunkCount)
                 sv_conn.servSendChunks(chunksForClient, transaction_id)
                 if len(chunksForClient) == 0:
                     print("out of chunks to send, nothing more to send")
