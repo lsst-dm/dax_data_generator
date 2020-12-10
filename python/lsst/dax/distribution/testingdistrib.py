@@ -33,7 +33,8 @@ class ServerTestThrd(threading.Thread):
     """
 
     def __init__(self, host, port, name, objects, visits, seed, cfg_file_contents,
-                 maxCount, chunkListA, pCfgFiles, ingest_dict, timing_dict, pregen_dict):
+                 maxCount, chunkListA, pCfgFiles, ingest_dict, timing_dict, pregen_dict,
+                 transaction_id):
         super().__init__()
         self.success = None
         self.warnings = 0
@@ -50,6 +51,7 @@ class ServerTestThrd(threading.Thread):
         self.ingest_dict = ingest_dict
         self.timing_dict = timing_dict
         self.pregen_dict = pregen_dict
+        self.transaction_id = transaction_id
 
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -75,7 +77,7 @@ class ServerTestThrd(threading.Thread):
             if not maxCount == self.maxCount:
                 self.success = False
                 raise RuntimeError("serv test failed", self.name, maxCount)
-            serv.servSendChunks(self.chunkListA)
+            serv.servSendChunks(self.chunkListA, self.transaction_id)
             # Receive timing information from client
             timing_dict = serv.servRecvTiming()
             print("timing_dict", timing_dict)
@@ -107,7 +109,8 @@ class ClientTestThrd(threading.Thread):
     """
 
     def __init__(self, host, port, name, objects, visits, seed, cfg_file_contents,
-                 maxCount, chunkListA, pCfgFiles, ingest_dict, timing_dict, pregen_dict):
+                 maxCount, chunkListA, pCfgFiles, ingest_dict, timing_dict, pregen_dict,
+                 transaction_id):
         super().__init__()
         self.success = None
         self.warnings = 0
@@ -124,6 +127,7 @@ class ClientTestThrd(threading.Thread):
         self.ingest_dict = ingest_dict
         self.timing_dict = timing_dict
         self.pregen_dict = pregen_dict
+        self.transaction_id = transaction_id
 
     def run(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -160,14 +164,19 @@ class ClientTestThrd(threading.Thread):
 
             # Request chunks to generate
             client.clientReqChunks(self.maxCount)
-            chunkListARecv, problem = client.clientRecvChunks()
+            transaction_id, chunkListARecv, problem = client.clientRecvChunks()
+            print(f"transaction_id={transaction_id}")
+            if transaction_id != self.transaction_id:
+                print("error, wrong transaction id", transaction_id)
+                self.success = False
+                raise RuntimeError(f"Client got wrong transaction_id {transqaction_id}")
             chunkARecvSet = set(chunkListARecv)
             chunkASet = set(self.chunkListA)
             chunkADiff = chunkASet.difference(chunkARecvSet)
             if chunkADiff:
                 print("errors in chunk lists diff~", chunkADiff, problem)
                 self.success = False
-                raise RuntimeError("Client test chunks failed diff~", chunkADiff, problem)
+                raise RuntimeError(f"Client test chunks failed diff~ {chunkADiff}, {problem}")
             else:
                 print("chunks read success")
             self.warnings += client.warnings
@@ -183,7 +192,8 @@ class ClientTestThrd(threading.Thread):
 
 
 def testDataGenConnection(port, name, objects, visits, seed, cfg_file_contents, maxCount,
-                          chunkListA, pCfgFiles, ingest_dict, timing_dict, pregen_dict):
+                          chunkListA, pCfgFiles, ingest_dict, timing_dict, pregen_dict,
+                          transaction_id):
     """Short test to check that inputs to one side match outputs on the other.
     Both the client thread and server thread are given the same information.
     If transmitted information doesn't match what is expected, there is a
@@ -191,9 +201,11 @@ def testDataGenConnection(port, name, objects, visits, seed, cfg_file_contents, 
     """
     host = "127.0.0.1"
     servThrd = ServerTestThrd(host, port, name, objects, visits, seed, cfg_file_contents,
-                              maxCount, chunkListA, pCfgFiles, ingest_dict, timing_dict, pregen_dict)
+                              maxCount, chunkListA, pCfgFiles, ingest_dict, timing_dict, pregen_dict,
+                              transaction_id)
     clientThrd = ClientTestThrd(host, port, name, objects, visits, seed, cfg_file_contents,
-                                maxCount, chunkListA, pCfgFiles, ingest_dict, timing_dict, pregen_dict)
+                                maxCount, chunkListA, pCfgFiles, ingest_dict, timing_dict, pregen_dict,
+                                transaction_id)
     servThrd.start()
     time.sleep(1)
     clientThrd.start()
@@ -233,7 +245,7 @@ def connectionTest():
     timing_dict.increment()
     success, s_warn1, c_warn1 = testDataGenConnection(14242, 'qt', 10000, 30, 178,
                           'bunch of json file entries', 28, cListA,
-                          pCfgFiles, ingest_dict, timing_dict, pregen_dict)
+                          pCfgFiles, ingest_dict, timing_dict, pregen_dict, 4367)
     if not success:
         print("First test failed")
         exit(1)
@@ -244,7 +256,7 @@ def connectionTest():
     timing_dict = TimingDict()
     success, s_warn2, c_warn2 = testDataGenConnection(14242, 'qt', 10000, 30, 1,
                           'bunch of json file entries', 28, cListA,
-                          pCfgFiles, ingest_dict, timing_dict, pregen_dict)
+                          pCfgFiles, ingest_dict, timing_dict, pregen_dict, 92)
 
     print("success=", success, "serv_warn=", s_warn1, s_warn2, "client_warn=", c_warn1, c_warn2)
 

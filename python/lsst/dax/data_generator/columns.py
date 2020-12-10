@@ -47,12 +47,19 @@ def calcSeedFrom(chunk_id, seed, column_seed=0):
 
     Note
     ----
+    Return value must be between 0 and 2**32 - 1 (4,294,967,295)
     This is an attempt to avoid having chunks and columns having seeds
     near each other so that changing the seed value by 1 will not look
     like everyting was just shifted over by 1 chunk/column.
     Each ColumnGenerator should have a unique arbitrary column_seed.
     """
-    return (chunk_id*10000 + seed + column_seed*100)
+    sd = chunk_id*500 + seed + column_seed*50
+    max = pow(2, 32) - 1
+    while sd > max:
+        sd -= max
+    while sd < 0:
+        sd += max
+    return sd
 
 
 def mergeBlocks(block_a, block_b):
@@ -388,6 +395,7 @@ class UniformGenerator(ColumnGenerator):
             columns.append(values)
         return columns
 
+
 class PoissonGenerator(ColumnGenerator):
 
     def __init__(self, n_columns=1, mean_val=10, column_seed=7):
@@ -404,6 +412,7 @@ class PoissonGenerator(ColumnGenerator):
             values = np.random.poisson(self.mean_value, length)
             columns.append(values)
         return columns
+
 
 class FilterGenerator(ColumnGenerator):
     """Class to generate random filter columns.
@@ -491,8 +500,7 @@ class ForcedSourceGenerator(ColumnGenerator):
         psFlux = (np.repeat(objects_inside_box['gPsFlux'].values, n_matching_visits) +
                   np.random.randn(n_rows_total))
         psFluxSigma = np.zeros(n_rows_total) + 0.1
-        flags = np.random.randint(200, size=n_rows_total)
-
+        flags = np.random.randint(0, high=127, size=n_rows_total)
 
         assert len(out_objectIds) == n_rows_total
         assert len(out_ccdVisitIds) == n_rows_total

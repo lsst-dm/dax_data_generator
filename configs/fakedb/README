@@ -11,3 +11,7 @@ To build it, skipping data ingest with the replicator:
   cd dax_data_generator
   bin/run_distribserver.sh fakedb -glocalhost -k -r "0:2000"
 
+
+Make sure stripes and substripes are consistent:
+grep -R stripe
+grep -R overlap

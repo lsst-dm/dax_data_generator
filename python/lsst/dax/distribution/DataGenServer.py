@@ -19,62 +19,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import itertools
 import os
+import re
 import socket
 import threading
 import yaml
 
-from enum import Enum
-
+from .chunktracking import ChunkTracking
+from .chunktracking import GenerationStage
 from .DataGenConnection import DataGenConnection
 from .DataGenConnection import DataGenError
 from .DataIngest import DataIngest
 from lsst.dax.data_generator import TimingDict
-
-
-class GenerationStage(Enum):
-    """This class is used to indicate where a chunk is in the process
-    of having synthetic data genrated.
-
-    UNASSIGNED : The chunk has not been assigned to a worker to be generated.
-    ASSIGNED : The chunk has been assigend to a worker.
-    FINISHED : The assigned worker has finished generating the chunk.
-    LIMBO : The chunk was assigned but never finished.
-    """
-    UNASSIGNED = 1
-    ASSIGNED = 2
-    FINISHED = 3
-    LIMBO = 4
-
-
-class ChunkInfo:
-    """Information about a chunk including its status
-
-    Parameters
-    ----------
-    chunk_id : int
-        The chunk id number
-
-    Members
-    -------
-    gen_stage : enum class
-        This indactes how far along the chunk is in the generation process.
-    client_id : int
-        The id of the client program generating the chunk.
-    client_addr : string
-        The IP address of the client generating the chunk.
-    """
-
-    def __init__(self, chunk_id):
-        self.chunk_id = chunk_id
-        self.gen_stage = GenerationStage(GenerationStage.UNASSIGNED)
-        self.client_id = '-1'
-        self.client_addr = None  # str
-
-    def __repr__(self):
-        return ("ChunkInfo " + str(self.chunk_id) + ' ' + self.client_id +
-                ' ' + str(self.client_addr) + ' ' + str(self.gen_stage))
 
 
 class DataGenServer:
@@ -131,13 +87,9 @@ class DataGenServer:
         self._sequence = 1
         # lock to protect _sequence, _clients
         self._client_lock = threading.Lock()
-        # lock to protect _total_generated_chunks, _chunksToSend,
-        # _chunksToSendSet, _timing_dict
-        self._list_lock = threading.Lock()
-        # All the chunks generated so far
-        self._total_generated_chunks = set()
         # Store timing data from clients
         self._timing_dict = TimingDict()
+        self._times_lock = threading.Lock()
 
         # Read configuration to set other values.
         with open(self._cfgFileName, 'r') as cfgFile:
@@ -169,6 +121,7 @@ class DataGenServer:
         self._partioner_cfg_dict = self._readPartionerCfgDir(partioner_cfg_dir)
 
         # Get ingest sytem information
+        transaction_size = self._cfg['fakeDataGenerator']['transaction_size']
         self._db_name = self._cfg['ingest']['dbName']
         ingest_host = self._cfg['ingest']['host']
         ingest_port = self._cfg['ingest']['port']
@@ -199,27 +152,8 @@ class DataGenServer:
         self._pregen_file_dict = self._readPreGeneratedFiles(pregenerated_dir, spec_globals['spec'])
         # Read in chunker info
         chunker = spec_globals['chunker']
-        all_chunks = chunker.getAllChunks()
-        print("Finding valid chunk numbers...")
-        # Use provided information to build the set of chunks to generate.
-        chunk_logs_in.build(all_chunks)
-        # Use the input information/files to create the output logs.
-        self._chunk_logs = chunk_logs_in.createOutput(log_dir)
-        if log_dir is not None:
-            # Start logging
-            self._chunk_logs.write()
-        # Set of chunks to send
-        self._chunks_to_send_set = self._chunk_logs.result_set.copy()
-        self._chunks_to_send_total = len(self._chunks_to_send_set)
-        self._limbo_count = 0  # number of chunks that had problems being created.
-        # Dictionary of information about chunks being sent.
-        # self._chunks_to_send only includes information about this run.
-        # self._chunk_logs may include information from previous runs.
-        self._chunks_to_send = {}
-        for chunk in self._chunks_to_send_set:
-            chunk_info = ChunkInfo(chunk)
-            self._chunks_to_send[chunk] = chunk_info
-        print("_chunks_to_send_total=", self._chunks_to_send_total)
+        self._chunk_tracking = ChunkTracking(chunker, chunk_logs_in, transaction_size, skip_ingest,
+                                             skip_schema, log_dir, self._ingest_dict)
 
         # Track all client connections so it is possible to
         # determine when the server's job is finished.
@@ -229,7 +163,7 @@ class DataGenServer:
     def chunksToSendTotal(self):
         """Return the total number of chunks to send.
         """
-        return self._chunks_to_send_total
+        return self._chunk_tracking.get_chunks_to_send_total()
 
     def _readPartionerCfgDir(self, partioner_cfg_dir):
         """Read in all the files ending with cfg in partioner_cfg_dir.
@@ -301,9 +235,7 @@ class DataGenServer:
                 contents = file.read()
                 file_dict[index] = (f, contents)
                 index += 1
-        print("pregenerated:")
-        for key, val in file_dict.items():
-            print(f" {key} name={val[0]} len={len(val[1])}")
+        print("pregenerated rows=", len(file_dict))
         return file_dict
 
     def _servAccept(self):
@@ -383,20 +315,9 @@ class DataGenServer:
             client_times = None
             while self._loop and not out_of_chunks:
                 clientReqChunkCount = sv_conn.servRecvReqChunks()
-                chunksForClient = []
-                # get the first clientReqChunkCount elements of self._chunksToSendSet
-                with self._list_lock:
-                    print("Chunks left=", len(self._chunks_to_send_set))
-                    for chunk in itertools.islice(self._chunks_to_send_set, clientReqChunkCount):
-                        chunksForClient.append(chunk)
-                        cInfo = self._chunks_to_send[chunk]
-                        cInfo.gen_stage = GenerationStage.ASSIGNED
-                        cInfo.client_id = name
-                        cInfo.client_addr = addr
-                    self._chunk_logs.addAssigned(chunksForClient)
-                    for chunk in chunksForClient:
-                        self._chunks_to_send_set.discard(chunk)
-                sv_conn.servSendChunks(chunksForClient)
+                chunksForClient, transaction_id = self._chunk_tracking.get_chunks_for_client(
+                                                  name, addr, clientReqChunkCount)
+                sv_conn.servSendChunks(chunksForClient, transaction_id)
                 if len(chunksForClient) == 0:
                     print("out of chunks to send, nothing more to send")
                     out_of_chunks = True
@@ -405,6 +326,9 @@ class DataGenServer:
                     # receive timing information from client
                     client_times = sv_conn.servRecvTiming()
                     print("client times ", client_times.report())
+                    if client_times:
+                        with self._times_lock:
+                            self._timing_dict.combine(client_times)
                     # receive completed chunks from client
                     completed_chunks = []
                     finished = False
@@ -412,41 +336,17 @@ class DataGenServer:
                         completedC, finished, problem = sv_conn.servRecvChunksComplete()
                         print("serv got", completedC, finished, problem)
                         completed_chunks.extend(completedC)
-                    # Mark completed chunks as finished
-                    with self._list_lock:
-                        self._chunk_logs.addCompleted(completed_chunks)
-                        for completed in completed_chunks:
-                            self._total_generated_chunks.add(completed)
-                            cInfo = self._chunks_to_send[completed]
-                            cInfo.gen_stage = GenerationStage.FINISHED
-                    diff = sv_conn.compareChunkLists(completed_chunks, chunksForClient)
-                    if len(diff) > 0:
-                        # Mark missing chunks as being in limbo.
-                        with self._list_lock:
-                            self._chunk_logs.addLimbo(diff)
-                            for missing in diff:
-                                cInfo = self._chunks_to_send[missing]
-                                cInfo.gen_stage = GenerationStage.LIMBO
-                                self._limbo_count += 1
-                with self._list_lock:
-                    total_to_send = self._chunks_to_send_total
-                    to_send_count = len(self._chunks_to_send_set)
-                    completed_count = len(self._total_generated_chunks)
-                    limbo_count = self._limbo_count
-                    if client_times:
-                        self._timing_dict.combine(client_times)
-                print('Chunks total        =', total_to_send)
-                print('Chunks left to send =', to_send_count)
-                print('Chunks finished     =', completed_count)
-                print('Chunks in limbo     =', limbo_count)
-                print('Chunks processing   =', (total_to_send -
-                                               (to_send_count + completed_count + limbo_count)))
+                    # Pass the client results to chunk tracking
+                    self._chunk_tracking.client_results(transaction_id, chunksForClient, completed_chunks)
         except socket.gaierror as e:
             print("breaking connection", addr, name, "socket.gaierror:", e)
+            self._chunk_tracking.abort_and_close(transaction_id)
         except socket.error as e:
             print("breaking connection", addr, name, "socket.error:", e)
+            self._chunk_tracking.abort_and_close(transaction_id)
         except DataGenError as e:
             print("breaking connection", addr, name, "DataGenError:", e.msg)
+            self._chunk_tracking.abort_and_close(transaction_id)
 
         print("_servToClient loop is done", addr, name)
         # Decrement the number of running client connections and
@@ -459,17 +359,6 @@ class DataGenServer:
                 self._loop = False
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as termSock:
                     termSock.connect(('127.0.0.1', self._port))
-
-    def chunksInState(self, genState):
-        """Return a list of ChunkInfo where the gen_stage matches one in
-        the provided genState list
-        """
-        chunks_in_state = []
-        for chk in self._chunks_to_send:
-            chk_info = self._chunks_to_send[chk]
-            if chk_info.gen_stage in genState:
-                chunks_in_state.append(chk_info)
-        return chunks_in_state
 
     def connectToIngest(self):
         """Test if ingest is available and send database info if it is.
@@ -496,10 +385,15 @@ class DataGenServer:
         if not self._ingest.registerDatabase(db_jpath):
             raise RuntimeError("Failed to send database to ingest.", db_jpath, self._ingest)
         # Find all of the schema files in self._ingest_cfg_dir while
-        # ignoring the database config file.
+        # ignoring the database config file and file names ending in '_template'.
         entries = os.listdir(self._ingest_cfg_dir)
         files = []
         for e in entries:
+            # Skip '_template.json' files
+            reg = re.compile(r".*_template\.json$")
+            m = reg.match(e)
+            if m:
+                continue
             full_path = os.path.join(self._ingest_cfg_dir, e)
             if os.path.isfile(full_path):
                 ext = os.path.splitext(e)[1]
@@ -521,31 +415,20 @@ class DataGenServer:
         self.connectToIngest()
         print("starting")
         self._servAccept()
-        print("Done, generated ", self._total_generated_chunks)
+        print("Done, generated ", self._chunk_tracking.get_total_chunks_generated())
 
-        print("chunks failed chunks:", self.chunksInState([GenerationStage.LIMBO, GenerationStage.ASSIGNED]))
-        counts = {GenerationStage.UNASSIGNED: 0,
-                  GenerationStage.ASSIGNED: 0,
-                  GenerationStage.FINISHED: 0,
-                  GenerationStage.LIMBO: 0}
-        for chk in self._chunks_to_send:
-            chk_info = self._chunks_to_send[chk]
-            counts[chk_info.gen_stage] += 1
+        print("chunks failed chunks:",
+            self._chunk_tracking.chunksInState([GenerationStage.LIMBO, GenerationStage.ASSIGNED]))
+        print(self._chunk_tracking._chunk_logs.report())
 
-        print(self._chunk_logs.report())
-
-        print("Chunks generated=", counts[GenerationStage.FINISHED])
-        print("Chunks assigned=", counts[GenerationStage.ASSIGNED])
-        print("Chunks unassigned=", counts[GenerationStage.UNASSIGNED])
-        print("Chunks limbo=", counts[GenerationStage.LIMBO])
+        info_r = self._chunk_tracking.get_chunk_info_report()
+        print(info_r)
         print("\n", self._timing_dict.report())
         # Publish database if all chunks were generated.
         if self._skip_ingest:
             print("skipping publishing")
             return
-        incompleteCount = (counts[GenerationStage.ASSIGNED]
-            + counts[GenerationStage.UNASSIGNED] + counts[GenerationStage.LIMBO])
-        if counts[GenerationStage.FINISHED] > 0 and incompleteCount == 0:
+        if self._chunk_tracking.is_successful_ingest():
             print("All chunks generated and ingested, publishing", self._db_name)
             success, status, r_json = self._ingest.publishDatabase(self._db_name)
             if success:

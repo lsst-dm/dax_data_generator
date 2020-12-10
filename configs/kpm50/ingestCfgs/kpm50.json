@@ -1,6 +1,6 @@
-{"database":"fakedb",
- "num_stripes":200,
- "num_sub_stripes":5,
+{"database":"kpm50",
+ "num_stripes":340,
+ "num_sub_stripes":3,
  "overlap":0.01667,
  "auto_build_secondary_index":1,
  "auth_key":""

@@ -20,7 +20,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
-from lsst.dax.data_generator import columns
 from lsst.dax.data_generator import DataGenerator
 from lsst.dax.data_generator import testing
 

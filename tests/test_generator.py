@@ -1,6 +1,5 @@
 
 import os
-import numpy as np
 import unittest
 import tempfile
 from lsst.dax.data_generator import DataGenerator
@@ -27,6 +26,7 @@ chunk3525_visits = """
 12820400007,i,186.68065257828533,-82.11268712631474
 """
 
+
 class TestDataGenerator(unittest.TestCase):
 
     def testObjectTable(self):
@@ -34,7 +34,8 @@ class TestDataGenerator(unittest.TestCase):
             "Object": {
                 "columns": {"objectId": columns.ObjIdGenerator(),
                             "ra,decl": columns.RaDecGenerator(),
-                            "uPsFlux,gPsFlux,rPsFlux,iPsFlux,zPsFlux,yPsFlux": columns.MagnitudeGenerator(n_mags=6)
+                            "uPsFlux,gPsFlux,rPsFlux,iPsFlux,zPsFlux,yPsFlux": columns.MagnitudeGenerator(
+                                n_mags=6)
                             },
                 "density": UniformSpatialModel(500),
             }
@@ -44,7 +45,7 @@ class TestDataGenerator(unittest.TestCase):
 
         generator = DataGenerator(generator_spec, chunker, seed=seed)
 
-        edge_width = 0.017 # degrees
+        edge_width = 0.017  # degrees
         data = generator.make_chunk(chunk_id, edge_width=edge_width, edge_only=False)
         chunk_area = chunker.getChunkBounds(chunk_id).getArea() / RAD_PER_DEG**2
         self.assertIn('Object', data.keys())
@@ -74,8 +75,9 @@ class TestDataGenerator(unittest.TestCase):
             generator_spec = {
                 "Object": {
                     "columns": {"objectId": columns.ObjIdGenerator(),
-                                "ra,decl": columns.RaDecGenerator(),
-                                "uPsFlux,gPsFlux,rPsFlux,iPsFlux,zPsFlux,yPsFlux": columns.MagnitudeGenerator(n_mags=6)
+                                "psRa,psDecl": columns.RaDecGenerator(),
+                                "uPsFlux,gPsFlux,rPsFlux,iPsFlux,zPsFlux,yPsFlux": columns.MagnitudeGenerator(
+                                    n_mags=6)
                                 },
                     "density": UniformSpatialModel(100),
                 },
@@ -95,7 +97,7 @@ class TestDataGenerator(unittest.TestCase):
             chunk_id = 3525
             seed = 1
             generator = DataGenerator(generator_spec, chunker, seed=seed)
-            edge_width = 0.017 # degrees
+            edge_width = 0.017  # degrees
             chunk_tables = generator.make_chunk(chunk_id, edge_width=edge_width, edge_only=False,
                                                 return_pregenerated=True)
         self.assertIn("ForcedSource", chunk_tables.keys())

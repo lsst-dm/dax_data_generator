@@ -23,9 +23,10 @@ the server.
 Server:
   `docker run -it --network=host --rm -u 1000:1000 qserv/dax_data_generator:master /bin/bash`
   Start the server with
-  `/home/qserv/dax_data_generator/scripts/run_datagenserver.sh fakedb -glocalhost`
+  `/home/qserv/dax_data_generator/scripts/run_datagenserver.sh fakedb -glocalhost -aCHANGEME`
     where `fakedb` is replace by the correct database name and
-          `localhost` is rplaced by the replicator master host.
+          `localhost` is replaced by the replicator master host.
+          `CHANGEME` is replaced by the authorization key
 Client: see Kuberenetes client above.
 
 
