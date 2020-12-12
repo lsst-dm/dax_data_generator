@@ -138,11 +138,18 @@ class DataGenerator:
             pandas.DataFrame.
 
         """
+        logALot = False   #&&&
+        if chunk_id == 1622 or chunk_id == 1623: #&&&
+            logALot = True
+        if logALot:
+            print(f"&&& chunk_id={chunk_id} edge_width={edge_width}, edge_only={edge_only}, return_pregenerated={return_pregenerated}")
 
         output_tables = {}
 
         resolved_order = self._resolve_table_order(self.spec)
         tables_loaded_from_file = []
+        if logALot:
+            print(f"&&& chunk_id={chunk_id}  resolved_order={resolved_order}")
 
         for table in resolved_order:
             st_time = self.timingdict.start()
@@ -166,14 +173,20 @@ class DataGenerator:
                 ra_center = chunk_latlon.getLon().asDegrees()
                 dec_center = chunk_latlon.getLat().asDegrees()
                 chunk_density = density_model.get_density_at_point(ra_center, dec_center)
+            if logALot:
+                print(f"&&& chunk_id={chunk_id} ra_center={ra_center} dec_center={dec_center} chunk_density={chunk_density}")
 
             generated_data_per_box = []
             boxes = self._make_boxes(chunk_id, edge_width=edge_width,
                                      edge_only=edge_only)
+            if logALot:
+                print(f"&&& chunk_id={chunk_id} boxes={boxes}")
 
             for box_n, box in enumerate(boxes):
                 assert(box.area() > 0)
                 box_rowcount = int(chunk_density * box.area())
+                if logALot:
+                    print(f"&&& chunk_id={chunk_id} box_rowcount={box_rowcount} box_n={box_n} box={box}")
                 if(box_rowcount == 0):
                     continue
                 unique_box_id = chunk_id*8 + box_n
@@ -221,8 +234,8 @@ class DataGenerator:
 
         # Correct the edge_width for declination so there is at least
         # edge_width at both the top and bottom of the east and west blocks.
-        edge_raA = edge_width / math.cos(decA + edge_width)
-        edge_raB = edge_width / math.cos(decB - edge_width)
+        edge_raA = edge_width / abs(math.cos(math.radians(decA + edge_width)))
+        edge_raB = edge_width / abs(math.cos(math.radians(decB - edge_width)))
         edge_widthRA = max(edge_raA, edge_raB)
 
         box_north = SimpleBox(raA, raB, decB - edge_width, decB)
@@ -232,7 +245,21 @@ class DataGenerator:
         box_middle = SimpleBox(box_east.raB, box_west.raA, box_south.decB, box_north.decA)
         entire_box = SimpleBox(raA, raB, decA, decB)
 
+        print(f"&&&chunk={chunk_id}")
+        print(f"&&& edge_widthRA={edge_widthRA} edge_raA={edge_raA} edge_raB={edge_raB}")
+        print(f"&&&  north={box_north}")
+        print(f"&&&  south={box_south}")
+        print(f"&&&  east ={box_east}")
+        print(f"&&&  west ={box_west}")
+        print(f"&&&  mid  = {box_middle}")
+        print(f"&&&  entire={entire_box}")
+
         edge_boxes = [box_north, box_east, box_west, box_south]
+        for bx in edge_boxes:
+            if not entire_box.contains(bx):
+                raise RuntimeError(f"box={bx} is not contained by entire_box={entire_box}")
+        if not entire_box.contains(box_middle):
+            raise RuntimeError(f"box_mid={box_middle} is not contained by entire_box={entire_box}")
         edge_area = sum(x.area() for x in edge_boxes)
         entire_area = entire_box.area()
 

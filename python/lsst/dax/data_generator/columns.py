@@ -179,6 +179,16 @@ class SimpleBox:
     def __str__(self):
         return self.__repr__()
 
+    def contains(self, box):
+        """ Return true if all of SimpleBox 'box' is inside the bounds
+        of this box, inclusive.
+        """
+        if box.raA < self.raA or box.decA < self.decA:
+            return False
+        if box.raB > self.raB or box.decB > self.decB:
+            return False
+        return True
+
     def area(self):
         """
         Return
