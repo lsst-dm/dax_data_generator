@@ -1,0 +1,28 @@
+# serverCfg.yml
+server:
+  port: 13042
+
+fakeDataGenerator:
+  arguments: ''
+  visits: 30
+  objects: 1000
+  seed: 1
+  transaction_size: 10
+  cfgFileName: fakeGenSpec.py
+
+partitioner:
+  cfgDir: partitionerCfgs
+
+ingest:
+  # host: localhost
+  # host: 192.168.1.143
+  host: #INGEST_HOST#
+  port: 25080
+  authKey: #INGEST_AUTH#
+  dbName: synthdb
+  cfgDir: ingestCfgs
+
+pregenerated:
+  cfgDir: pregenerated
+
+

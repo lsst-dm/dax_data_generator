@@ -138,7 +138,7 @@ class DataGenerator:
             pandas.DataFrame.
 
         """
-
+        print(f"chunk_id={chunk_id} edge_width={edge_width}, edge_only={edge_only}")
         output_tables = {}
 
         resolved_order = self._resolve_table_order(self.spec)
@@ -166,7 +166,6 @@ class DataGenerator:
                 ra_center = chunk_latlon.getLon().asDegrees()
                 dec_center = chunk_latlon.getLat().asDegrees()
                 chunk_density = density_model.get_density_at_point(ra_center, dec_center)
-
             generated_data_per_box = []
             boxes = self._make_boxes(chunk_id, edge_width=edge_width,
                                      edge_only=edge_only)
@@ -174,8 +173,9 @@ class DataGenerator:
             for box_n, box in enumerate(boxes):
                 assert(box.area() > 0)
                 box_rowcount = int(chunk_density * box.area())
-                if(box_rowcount == 0):
-                    continue
+                # For testing, it helps if every box has at least one object.
+                if box_rowcount < 1:
+                    box_rowcount = 1
                 unique_box_id = chunk_id*8 + box_n
                 box_center_ra = (box.raA + box.raB)/2.0
                 box_center_dec = (box.decA + box.decB)/2.0
@@ -221,8 +221,8 @@ class DataGenerator:
 
         # Correct the edge_width for declination so there is at least
         # edge_width at both the top and bottom of the east and west blocks.
-        edge_raA = edge_width / math.cos(decA + edge_width)
-        edge_raB = edge_width / math.cos(decB - edge_width)
+        edge_raA = edge_width / abs(math.cos(math.radians(decA + edge_width)))
+        edge_raB = edge_width / abs(math.cos(math.radians(decB - edge_width)))
         edge_widthRA = max(edge_raA, edge_raB)
 
         box_north = SimpleBox(raA, raB, decB - edge_width, decB)
@@ -233,6 +233,11 @@ class DataGenerator:
         entire_box = SimpleBox(raA, raB, decA, decB)
 
         edge_boxes = [box_north, box_east, box_west, box_south]
+        for bx in edge_boxes:
+            if not entire_box.contains(bx):
+                raise RuntimeError(f"box={bx} is not contained by entire_box={entire_box}")
+        if not entire_box.contains(box_middle):
+            raise RuntimeError(f"box_mid={box_middle} is not contained by entire_box={entire_box}")
         edge_area = sum(x.area() for x in edge_boxes)
         entire_area = entire_box.area()
 

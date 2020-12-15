@@ -1,0 +1,17 @@
+synthdb should be exactly the same as fakedb but with a different
+'transaction_size' in serverCfg.yml than fakedb. When built
+and installed both synthdb and fakedb must have the same number
+of Objects and other database elements.
+
+To build it (requires replicator on localhost):
+  cd dax_data_generator
+  bin/run_distribserver.sh synthdb -glocalhost -r "0:2000"
+
+To build it, skipping data ingest with the replicator:
+  cd dax_data_generator
+  bin/run_distribserver.sh synthdb -glocalhost -k -r "0:2000"
+
+
+Make sure stripes and substripes are consistent:
+grep -R stripe
+grep -R overlap
