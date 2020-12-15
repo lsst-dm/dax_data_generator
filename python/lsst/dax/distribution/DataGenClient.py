@@ -347,7 +347,7 @@ class DataGenClient:
                              edge_only=False, use_targ_path=True))
             for fn in fList:
                 if os.path.exists(fn):
-                    print("removing file", fn)
+                    print(f"chunk_id={chunk_id} removing fn={fn}")
                     if not self.removeFile(fn):
                         print("ERROR remove failed", fn)
                         return False
@@ -450,6 +450,7 @@ class DataGenClient:
             'existed' if a valid complete version of the chunk already existed
                       and edgeOnly=True
         """
+        print(f"generateChunk chunk_id={chunk_id} edge_only={edge_only}")
         if edge_only:
             # Check for existing csv files. If a full set of complete files are found or
             # a full set of edge only files are found, return 'existed'
@@ -464,10 +465,14 @@ class DataGenClient:
                 fn = self.createFileName(chunk_id, tblName, 'csv', edge_only=False, use_targ_path=True)
                 if os.path.exists(fn):
                     completeCount += 1
-            print("edgeOnlyCount=", edgeOnlyCount, "completeCount=", completeCount)
-            if completeCount == len(spec) or edgeOnlyCount == len(spec):
+            spec_count = 0
+            for sp in spec:
+                if "from_file" not in spec[sp]:
+                    spec_count += 1
+            print(f"spec_count={spec_count} edgeOnlyCount={edgeOnlyCount} completeCount={completeCount}")
+            if completeCount == spec_count or edgeOnlyCount == spec_count:
                 print("All expected tables already exist, will not generate. chunkid=", chunk_id)
-                if completeCount == len(spec):
+                if completeCount == spec_count:
                     print("Removing extraneous edgeOnly files")
                     if not self.removeFilesForChunk(chunk_id, edge_only=True, complete=False):
                         print("WARN failed to remove extraneous csv for", chunk_id)

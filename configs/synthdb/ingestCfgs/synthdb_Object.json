@@ -1,0 +1,24 @@
+{"database":"synthdb",
+ "table":"Object",
+ "is_partitioned":1,
+ "chunk_id_key":"chunkId",
+ "sub_chunk_id_key":"subChunkId",
+ "is_director":1,
+ "director_key":"objectId",
+ "latitude_key":"psDecl",
+ "longitude_key":"psRa",
+ "schema":[
+  {"name":"objectId","type":"BIGINT NOT NULL"},
+  {"name":"psRa","type":"DOUBLE NOT NULL"},
+  {"name":"psDecl","type":"DOUBLE NOT NULL"},
+  {"name":"uPsFlux","type":"DOUBLE"},
+  {"name":"gPsFlux","type":"DOUBLE"},
+  {"name":"rPsFlux","type":"DOUBLE"},
+  {"name":"iPsFlux","type":"DOUBLE"},
+  {"name":"zPsFlux","type":"DOUBLE"},
+  {"name":"yPsFlux","type":"DOUBLE"},
+  {"name":"chunkId","type":"INT UNSIGNED NOT NULL"},
+  {"name":"subChunkId","type":"INT UNSIGNED NOT NULL"}
+ ],
+ "auth_key":""
+}
