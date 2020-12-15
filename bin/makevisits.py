@@ -32,8 +32,9 @@ import sys
 def usage():
     print('-h, --help  help')
     print('-o, --outFile     Output file name')
-    print('-p, --plot        plot declinations')
+    print('-p, --plot        Plot declinations')
     print('-n, --numOfVisits Number of visits')
+    print('-s, --seed        Random number seed')
 
 
 def create_visits():
@@ -41,11 +42,12 @@ def create_visits():
     """
     argumentList = sys.argv[1:]
     print("argumentList=", argumentList)
-    options = "ho:pn:"
-    long_options = ["help", "outFile", "plot", "numOfVisits"]
+    options = "ho:pn:s:"
+    long_options = ["help", "outFile", "plot", "numOfVisits", "seed"]
     out_file = "visit_table.csv"
     plot = False
     n_visits = 1000*150  # 1000 visits/night for 0.5 years
+    rand_seed = 1
     try:
         arguments, values = getopt.getopt(argumentList, options, long_options)
         print("arguments=", arguments)
@@ -59,6 +61,8 @@ def create_visits():
                 plot = True
             elif arg in ("-n", "--numOfVisits"):
                 n_visits = val
+            elif arg in ("-s", "--seed"):
+                rand_seed = val
     except getopt.error as err:
         print(str(err))
         exit(1)
@@ -66,6 +70,8 @@ def create_visits():
 
     # area = 20000
     north_only = False
+
+    np.random.seed(rand_seed)
 
     visit_id = np.arange(n_visits)
     filter_name = np.random.choice(["u", "g", "r", "i", "z", "y"], n_visits)
