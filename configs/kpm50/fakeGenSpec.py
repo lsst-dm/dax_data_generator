@@ -72,6 +72,13 @@ spec = {
                 columns.ForcedSourceGenerator(visit_radius=1.7, filters="ugriz"),
         },
     },
+    "Source": {
+        "prereq_tables": ["CcdVisit", "Object"],
+        "columns": {
+            "objectId,ccdVisitId,psFlux,psFlux_Err,flags":
+                columns.SourceGenerator(visit_radius=1.7, filters="ugriz"),
+        },
+    },
     "CcdVisit": {
         "from_file": "visit_table.csv",
         "columns": "ccdVisitId,filterName,ra,decl"
