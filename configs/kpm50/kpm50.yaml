@@ -1,4 +1,4 @@
----
+---  #origin https://github.com/lsst/sdm_schemas/blob/master/yml/baselineSchema.yaml#L4238
 name: BaselineSchema
 "@id": "#baselineSchema"
 tables:
@@ -2319,5 +2319,322 @@ tables:
     mysql:datatype: INTEGER
     ivoa:ucd: meta.code
   primaryKey: "#Visit.visitId"
+  mysql:engine: MyISAM
+  mysql:charset: latin1
+- name: Source
+  "@id": "#Source"
+  description: Table to store high signal-to-noise &quot;sources&quot;. A source is
+    a measurement of Object's properties from a single image that contains its footprint
+    on the sky.
+  columns:
+  - name: sourceId
+    "@id": "#Source.sourceId"
+    datatype: long
+    description: Unique id.
+    mysql:datatype: BIGINT
+    ivoa:ucd: meta.id;src
+  - name: ccdVisitId
+    "@id": "#Source.ccdVisitId"
+    datatype: long
+    description: Id of the ccdVisit where this source was measured. Note that we are
+      allowing a source to belong to multiple amplifiers, but it may not span multiple
+      ccds.
+    mysql:datatype: BIGINT
+    ivoa:ucd: meta.id;obs.image
+  - name: filterName
+    "@id": "#Source.filterName"
+    datatype: char
+    description: Name of the filter used to take the two exposures where this source
+      was measured.
+    length: 1
+    mysql:datatype: CHAR(1)
+    ivoa:ucd: meta.id;instr.filter
+  - name: objectId
+    "@id": "#Source.objectId"
+    datatype: long
+    description: Id of the corresponding object. Note that this might be NULL (each
+      source will point to either object or ssObject).
+    mysql:datatype: BIGINT
+    ivoa:ucd: meta.id;src
+  - name: ssObjectId
+    "@id": "#Source.ssObjectId"
+    datatype: long
+    description: Id of the corresponding ssObject. Note that this might be NULL (each
+      source will point to either object or ssObject).
+    mysql:datatype: BIGINT
+    ivoa:ucd: meta.id;src
+  - name: parentSourceId
+    "@id": "#Source.parentSourceId"
+    datatype: long
+    description: Id of the parent source this source has been deblended from, if any.
+    mysql:datatype: BIGINT
+  - name: htmId20
+    "@id": "#Source.htmId20"
+    datatype: long
+    description: HTM index.
+    mysql:datatype: BIGINT
+  - name: sky
+    "@id": "#Source.sky"
+    datatype: float
+    description: Estimated sky background at the position (centroid) of the source.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy/asec^2
+  - name: skyErr
+    "@id": "#Source.skyErr"
+    datatype: float
+    description: Uncertainty of sky.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy/asec^2
+  - name: psFlux
+    "@id": "#Source.psFlux"
+    datatype: float
+    description: Calibrated flux for Point Source model.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+    ivoa:ucd: phot.count
+  - name: psFluxErr
+    "@id": "#Source.psFluxErr"
+    datatype: float
+    description: Uncertainty of psFlux.
+    mysql:datatype: FLOAT
+    fits:tunit: nmgy
+  - name: psX
+    "@id": "#Source.psX"
+    datatype: float
+    description: Point source model (x) position of the object on the CCD.
+    mysql:datatype: FLOAT
+    fits:tunit: pixels
+  - name: psXErr
+    "@id": "#Source.psXErr"
+    datatype: float
+    description: Uncertainty of psX.
+    mysql:datatype: FLOAT
+    fits:tunit: pixels
+  - name: psY
+    "@id": "#Source.psY"
+    datatype: float
+    description: Point source model (y) position of the object on the CCD.
+    mysql:datatype: FLOAT
+  - name: psYErr
+    "@id": "#Source.psYErr"
+    datatype: float
+    description: Uncertainty of psY.
+    mysql:datatype: FLOAT
+    fits:tunit: pixels
+  - name: psFlux_psX_Cov
+    "@id": "#Source.psFlux_psX_Cov"
+    datatype: float
+    description: Covariance of psFlux and psX.
+    mysql:datatype: FLOAT
+  - name: psFlux_psY_Cov
+    "@id": "#Source.psFlux_psY_Cov"
+    datatype: float
+    description: Covariance of psFlux and psY.
+    mysql:datatype: FLOAT
+  - name: psX_Y_Cov
+    "@id": "#Source.psX_Y_Cov"
+    datatype: float
+    description: Covariance of psX and psY.
+    mysql:datatype: FLOAT
+  - name: psLnL
+    "@id": "#Source.psLnL"
+    datatype: float
+    description: Natural log likelihood of the observed data given the Point Source
+      model.
+    mysql:datatype: FLOAT
+  - name: psChi2
+    "@id": "#Source.psChi2"
+    datatype: float
+    description: Chi^2 static of the model fit.
+    mysql:datatype: FLOAT
+  - name: psN
+    "@id": "#Source.psN"
+    datatype: int
+    description: The number of data points (pixels) used to fit the model.
+    mysql:datatype: INT
+  - name: psRa
+    "@id": "#Source.psRa"
+    datatype: double
+    description: RA-coordinate of the center of the object for the Point Source model
+      at time radecTai.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.ra
+  - name: psRaErr
+    "@id": "#Source.psRaErr"
+    datatype: float
+    description: Uncertainty of psRa.
+    mysql:datatype: FLOAT
+    fits:tunit: deg
+    ivoa:ucd: stat.error;pos.eq.ra
+  - name: psDecl
+    "@id": "#Source.psDecl"
+    datatype: double
+    description: Decl-coordinate of the center of the object for the Point Source
+      model at time radecTai.
+    mysql:datatype: DOUBLE
+    fits:tunit: deg
+    ivoa:ucd: pos.eq.dec
+  - name: psDeclErr
+    "@id": "#Source.psDeclErr"
+    datatype: float
+    description: Uncertainty of psDecl.
+    mysql:datatype: FLOAT
+    fits:tunit: deg
+    ivoa:ucd: stat.error;pos.eq.dec
+  - name: psFlux_psRa_Cov
+    "@id": "#Source.psFlux_psRa_Cov"
+    datatype: float
+    description: Covariance of psFlux and psRa.
+    mysql:datatype: FLOAT
+  - name: psFlux_psDecl_Cov
+    "@id": "#Source.psFlux_psDecl_Cov"
+    datatype: float
+    description: Covariance of psFlux and psRa.
+    mysql:datatype: FLOAT
+  - name: x
+    "@id": "#Source.x"
+    datatype: float
+    description: x position computed using an algorithm similar to that used by SDSS.
+    mysql:datatype: FLOAT
+    fits:tunit: pixel
+    ivoa:ucd: pos.cartesian.x
+  - name: xErr
+    "@id": "#Source.xErr"
+    datatype: float
+    description: Uncertainty of x.
+    mysql:datatype: FLOAT
+    fits:tunit: pixel
+    ivoa:ucd: stat.error:pos.cartesian.x
+  - name: y
+    "@id": "#Source.y"
+    datatype: float
+    description: y position computed using an algorithm similar to that used by SDSS.
+    mysql:datatype: FLOAT
+    fits:tunit: pixel
+    ivoa:ucd: pos.cartesian.y
+  - name: yErr
+    "@id": "#Source.yErr"
+    datatype: float
+    description: Uncertainty of y.
+    mysql:datatype: FLOAT
+    fits:tunit: pixel
+    ivoa:ucd: stat.error:pos.cartesian.y
+  - name: x_y_Cov
+    "@id": "#Source.x_y_Cov"
+    datatype: float
+    description: Covariance between x and y.
+    mysql:datatype: FLOAT
+    fits:tunit: pixel^2
+  - name: ra
+    "@id": "#Source.ra"
+    datatype: double
+    description: Calibrated RA-coordinate of the center of the source transformed
+      from xy.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: pos.eq.ra
+  - name: raErr
+    "@id": "#Source.raErr"
+    datatype: float
+    description: Uncertainty of ra.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+    ivoa:ucd: stat.error;pos.eq.ra
+  - name: decl
+    "@id": "#Source.decl"
+    datatype: double
+    description: Calibated Decl-coordinate of the center of the source transformed
+      from xy.
+    mysql:datatype: DOUBLE
+    fits:tunit: arcsec
+    ivoa:ucd: pos.eq.dec
+  - name: declErr
+    "@id": "#Source.declErr"
+    datatype: float
+    description: Uncertainty of decl.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec
+    ivoa:ucd: stat.error;pos.eq.dec
+  - name: ra_decl_Cov
+    "@id": "#Source.ra_decl_Cov"
+    datatype: float
+    description: Covariance of ra and decl.
+    mysql:datatype: FLOAT
+    fits:tunit: arcsec^2
+  - name: E1
+    "@id": "#Source.E1"
+    datatype: float
+    description: Adaptive e1 shape measure of the source as measured on the difference
+      image.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: E1Err
+    "@id": "#Source.E1Err"
+    datatype: float
+    description: Uncertainty of E1.
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error:phys.size.axisRatio
+  - name: E2
+    "@id": "#Source.E2"
+    datatype: float
+    description: Adaptive e2 shape measure of the source as measured on the difference
+      image.
+    mysql:datatype: FLOAT
+    ivoa:ucd: phys.size.axisRatio
+  - name: E2Err
+    "@id": "#Source.E2Err"
+    datatype: float
+    description: Uncertainty of E2.
+    mysql:datatype: FLOAT
+    ivoa:ucd: stat.error:phys.size.axisRatio
+  - name: E1_E2_Cov
+    "@id": "#Source.E1_E2_Cov"
+    datatype: float
+    description: Covariance of E1 and E2
+    mysql:datatype: FLOAT
+  - name: mSum
+    "@id": "#Source.mSum"
+    datatype: float
+    description: Sum of second adaptive moments.
+    mysql:datatype: FLOAT
+  - name: mSumErr
+    "@id": "#Source.mSumErr"
+    datatype: float
+    description: Uncertainty of mSum.
+    mysql:datatype: FLOAT
+  - name: m4
+    "@id": "#Source.m4"
+    datatype: float
+    description: Fourth order adaptive moment.
+    mysql:datatype: FLOAT
+  - name: apN
+    "@id": "#Source.apN"
+    datatype: byte
+    description: Number of elliptical annuli.
+    mysql:datatype: TINYINT
+  - name: flags
+    "@id": "#Source.flags"
+    datatype: long
+    description: Flags. Tbd.
+    mysql:datatype: BIGINT
+  primaryKey: "#Source.sourceId"
+  indexes:
+  - name: IDX_Source_ccdVisitId
+    "@id": "#IDX_Source_ccdVisitId"
+    columns:
+    - "#Source.ccdVisitId"
+  - name: IDX_Source_objectId
+    "@id": "#IDX_Source_objectId"
+    columns:
+    - "#Source.objectId"
+  - name: IDX_Source_ssObjectId
+    "@id": "#IDX_Source_ssObjectId"
+    columns:
+    - "#Source.ssObjectId"
+  - name: IDX_Source_htmId20
+    "@id": "#IDX_Source_htmId20"
+    columns:
+    - "#Source.htmId20"
   mysql:engine: MyISAM
   mysql:charset: latin1

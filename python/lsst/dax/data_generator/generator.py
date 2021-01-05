@@ -264,12 +264,17 @@ class DataGenerator:
 
         for column_name, column_generator in column_generators.items():
             print(f"Working on column_name={column_name}")
-            split_column_names = column_name.split(",")
+            #&&&split_column_names = column_name.split(",")
+            split_column_in = column_name.split(",")
+            print(f"&&& split_column_in={split_column_in}")
+            split_column_names = []
+            for n in split_column_in:
+                split_column_names.append(n.split(":")[0])
             for name in split_column_names:
                 output_columns[name] = []
 
             block = column_generator(
-                box, row_count, self.seed,
+                box, row_count, self.seed, column_name,
                 box_center=box_center,
                 unique_box_id=unique_box_id,
                 prereq_tables=prereq_tables,

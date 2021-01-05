@@ -129,13 +129,14 @@ def check_spec(table, schema_columns, gen_config):
     success = True
     count = 0
     for gen, schema in zip(gen_cols, schema_columns):
-        if gen != schema['name']:
+        print(f"&&& gen={gen} split={gen.split(':')[0]}, schema-name={schema['name']}")
+        if gen.split(':')[0] != schema['name']:
             print(f"Error column name mismatch table={table} generator={gen} schema={schema} count={count}")
             success = False
             break
         count += 1
     if len(gen_cols) != len(schema_columns):
-        print(f"Error length mismatch generator config={len(gen_cols)} schema={len(schema_columns)}")
+        print(f"Error length mismatch generator table={table} config={len(gen_cols)} schema={len(schema_columns)}")
         success = False
     return success
 
@@ -155,6 +156,8 @@ def convert_database(database_name, base_path, gen_config):
 
     sdm_tables = {schema['name']: schema for schema in sdm_schema['tables']}
 
+    print(f"&&& sdm_tables={sdm_tables.keys()}")
+
     # Ingest configuration
     for table_name in sdm_tables.keys():
 
@@ -170,6 +173,13 @@ def convert_database(database_name, base_path, gen_config):
 
             schema_columns.append({"name": column['name'],
                                    "type": type_string})
+        # Create files useful for building fakeGenSpec.py
+        with open(f"tmp_cols_{table_name}", "w") as ft:  #&&&
+            for column in sdm_tables[table_name]['columns']:  #&&&
+                if table_name == 'Source':
+                    ft.write(f"{column['name']}:{column['mysql:datatype']},")  #&&&
+                else:
+                    ft.write(f"{column['name']},")
         # Check spec colums against schema_columns
         if not check_spec(table_name, schema_columns, gen_config):
             print("Error, fix data generator configuration", gen_config)
