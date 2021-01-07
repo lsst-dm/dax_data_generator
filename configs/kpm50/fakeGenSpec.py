@@ -75,7 +75,7 @@ spec = {
     "Source": {
         "prereq_tables": ["CcdVisit", "Object"],
         "columns": {
-            "sourceId:SID,ccdVisitId:VID,filterName:CHAR(1),objectId:OID,ssObjectId:BIGINT,parentSourceId:BIGINT,htmId20:BIGINT,sky:FLOAT,skyErr:FLOAT,psFlux:FLOAT,psFluxErr:FLOAT,psX:FLOAT,psXErr:FLOAT,psY:FLOAT,psYErr:FLOAT,psFlux_psX_Cov:FLOAT,psFlux_psY_Cov:FLOAT,psX_Y_Cov:FLOAT,psLnL:FLOAT,psChi2:FLOAT,psN:INT,psRa:DOUBLE,psRaErr:FLOAT,psDecl:DOUBLE,psDeclErr:FLOAT,psFlux_psRa_Cov:FLOAT,psFlux_psDecl_Cov:FLOAT,x:FLOAT,xErr:FLOAT,y:FLOAT,yErr:FLOAT,x_y_Cov:FLOAT,ra:RA,raErr:FLOAT,decl:DEC,declErr:FLOAT,ra_decl_Cov:FLOAT,E1:FLOAT,E1Err:FLOAT,E2:FLOAT,E2Err:FLOAT,E1_E2_Cov:FLOAT,mSum:FLOAT,mSumErr:FLOAT,m4:FLOAT,apN:TINYINT,flags:BIGINT":
+            "sourceId:SID,ccdVisitId:VID,filterName:CHAR(1),objectId:OID,ssObjectId:BIGINT,parentSourceId:BIGINT,htmId20:BIGINT,sky:FLOAT,skyErr:FLOATE,psFlux:FLOAT,psFluxErr:FLOATE,psX:FLOAT,psXErr:FLOATE,psY:FLOAT,psYErr:FLOATE,psFlux_psX_Cov:FLOAT,psFlux_psY_Cov:FLOAT,psX_Y_Cov:FLOAT,psLnL:FLOAT,psChi2:FLOAT,psN:INT,psRa:RA,psRaErr:FLOATE,psDecl:DEC,psDeclErr:FLOATE,psFlux_psRa_Cov:FLOAT,psFlux_psDecl_Cov:FLOAT,x:FLOAT,xErr:FLOATE,y:FLOAT,yErr:FLOATE,x_y_Cov:FLOAT,ra:RA,raErr:FLOATE,decl:DEC,declErr:FLOATE,ra_decl_Cov:FLOAT,E1:FLOAT,E1Err:FLOATE,E2:FLOAT,E2Err:FLOATE,E1_E2_Cov:FLOAT,mSum:FLOAT,mSumErr:FLOATE,m4:FLOAT,apN:TINYINT,flags:BIGINT":
                 columns.SourceGenerator(visit_radius=1.7, filters="ugriz"),
         },
     },
@@ -87,7 +87,8 @@ spec = {
 
 directors = {
     "Object": {
-        "ForcedSource": "objectId"
+        "ForcedSource": "objectId",
+        "Source": "objectId"
     }
 }
 

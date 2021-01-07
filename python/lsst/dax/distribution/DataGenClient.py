@@ -661,6 +661,7 @@ class DataGenClient:
             The Full path to the index file created for this chunk or used to
             determine to which chunk child table rows belong.
         """
+        print(f"callPartitioner {chunk_id}, {tbl_name}, {cfg_fname}")
         st_time = self._timing_dict.start()
         # The list of --in.path files needs to be generated. It
         # needs to have all the .csv files for tblName.

@@ -29,7 +29,7 @@ from astropy.coordinates import SkyCoord
 __all__ = ["ColumnGenerator", "ObjIdGenerator", "FilterGenerator",
            "RaDecGenerator", "MagnitudeGenerator",
            "UniformGenerator", "PoissonGenerator",
-           "ForcedSourceGenerator",
+           "ForcedSourceGenerator", "SourceGenerator",
            "VisitIdGenerator", "mergeBlocks"]
 
 BASE_ID_NUM = 100000  # TODO: more than 100k objects in a chunk will cause issues
@@ -395,8 +395,6 @@ class UniformGenerator(ColumnGenerator):
 
         np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
 
-        # This needs to be made row by row not column by column, as
-        # row by row results in repeatable values when doing edges first.
         columns = []
         delta_value = self.max_val - self.min_val
         for _ in range(self.n_columns):
@@ -539,6 +537,20 @@ class SourceGenerator(ColumnGenerator):
         self.visit_radius = visit_radius
         self.column_seed = column_seed
 
+    def random_col(self, min_val, max_val, length, integer=False):
+        if (min_val > max_val):
+            tmp = min_val
+            min_val = max_val
+            max_val = min_val
+        delta_value = max_val - min_val
+        col = delta_value * np.random.rand(length) + min_val
+        if integer:
+            i_col = []
+            for f in col:
+                i_col.append(int(f))
+            col = np.array(i_col)
+        return col
+
     def __call__(self, box, length, seed, spec_cols, prereq_row=None, prereq_tables=None, unique_box_id=0,
                  box_center=None, edge_only=False):
         assert prereq_tables is not None, "SourceGenerator requires the Visit table."
@@ -553,65 +565,25 @@ class SourceGenerator(ColumnGenerator):
                                           (object_table['psRa'] < box.raB) &
                                           (object_table['psDecl'] >= box.decA) &
                                           (object_table['psDecl'] < box.decB)]
-
-        print(f"&&& objects_inside_box type={type(objects_inside_box)} ={objects_inside_box}")
-
         v_radius = self.visit_radius * 1.5  # Go a little bit bigger so nothing is missed.
         min_dec = box.decA - v_radius
         max_dec = box.decB + v_radius
-        # &&& Does Source need to be in overlap tables? It looks like it s a director.
-        # &&& If doing and edge_only chunk, there's no reason to fill the ForcedSource table
-        # &&& as it wont be used by the partitioner to make overlap tables. Only director
-        # &&& tables get overlap tables. Making an empty trimmed_visit table causes
-        # &&& an empty ForcedSource table, which is easier to deal with than a missing
-        # &&& ForcedSource table.
-        #&&& if (edge_only):
-        #&&&     trimmed_visit = pd.DataFrame(data=None, columns=visit_table.columns)
-        #&&& else:
-        #&&&     trimmed_visit = visit_table.loc[(visit_table['decl'] >= min_dec) &
-        #&&&                                     (visit_table['decl'] <= max_dec)]
         trimmed_visit = visit_table.loc[(visit_table['decl'] >= min_dec) & (visit_table['decl'] <= max_dec)]
         print(f"edge_only={edge_only} len trimmed={len(trimmed_visit)}  base={len(visit_table)}")
 
         # Unlike the ForcedSource table, only some of the objects should have visits, not
         # all of them. It would be nice to have the brightest objects get visits, but that
-        # isn't that important right now. Just trim objects from  objects_inside_box until
-        # the right ratio is reached
+        # isn't that important right now. Just trim objects from objects_inside_box until
+        # the right ratio is reached for now.
         target_percentage = 0.3  # supplied by Colin
-        obj_count = 0.0
-        loop_count = 0.1  # avoid divide by zero
-        #&&&tmp_objects = pd.DataFrame(data=None, columns=objects_inside_box.columns, index=objects_inside_box.index)
-        #&&& tmp_objects = pd.DataFrame(data=None, columns=objects_inside_box.columns)
-        #&&& for obj in objects_inside_box:
-        #&&&     percent = obj_count/loop_count
-        #&&&     if percent < target_percentage:
-        #&&&         tmp_objects.append(obj)
-        #&&&         obj_count += 1.0
-        #&&&     loop_count += 1.0
-
-        tmp_objects = objects_inside_box.copy()
-        rows_to_drop = []
-        for j in range(len(objects_inside_box)):
-            percent = obj_count/loop_count
-            print(f"&&& j={j} percent={percent} = obj={obj_count} / loop={loop_count}")
-            if percent < target_percentage:
-                obj_count += 1.0
-            else:
-                rows_to_drop.append(j)
-            loop_count += 1.0
-        # Need to start with large index values when dropping so the index doesn't shift.
-        rows_to_drop.reverse()
-        print(f"&&& rows_to_drop={rows_to_drop}")
-        print(f"&&& tmp_objects={tmp_objects}")
-        for row in rows_to_drop:
-            tmp_objects.drop(tmp_objects.index[row])
-        print(f"len(tmp)={len(tmp_objects)}  len(origin)={len(objects_inside_box)}")
-        objects_inside_box = tmp_objects
+        df = objects_inside_box.copy()
+        sel, = np.where(np.random.random(len(objects_inside_box)) > 1.0 - target_percentage)
+        df = objects_inside_box.iloc[sel]
+        objects_inside_box = df
 
         visit_skycoords = SkyCoord(ra=trimmed_visit['ra'], dec=trimmed_visit['decl'], unit="deg")
         visit_deltas = box_center.separation(visit_skycoords).degree
         sel_matching_visits, = np.where(visit_deltas < self.visit_radius)
-        print(f"&&& sel_matching_visits={sel_matching_visits}")
         n_matching_visits = len(sel_matching_visits)
         print(f"Found {n_matching_visits} matching visits")
 
@@ -622,20 +594,13 @@ class SourceGenerator(ColumnGenerator):
         out_obj_ras = np.repeat(objects_inside_box['psRa'].values, n_matching_visits)
         out_obj_decs = np.repeat(objects_inside_box['psDecl'].values, n_matching_visits)
 
-        # &&& the following for ForcedSource is no good as Source has way too many columns for this
-        #&&& n_rows_total = n_matching_visits * len(objects_inside_box)
-        #&&& psFlux = (np.repeat(objects_inside_box['gPsFlux'].values, n_matching_visits) +
-        #&&&           np.random.randn(n_rows_total))
-        #&&& psFluxSigma = np.zeros(n_rows_total) + 0.1
-        #&&& flags = np.random.randint(0, high=127, size=n_rows_total)
         # Use the string of Source columns to generate the needed columns.
-        print(f'&&& spec_cols={spec_cols}')
+        # TODO: maybe allow values in parenthesis to indicate max, min, etc
         spec_c = spec_cols.split(",")
         col_dict = {}
         indx = 0
         for cn in spec_c:
             col_info = {}
-            print(f"&&& cn={cn}")
             cname, ctype = cn.split(":")
             col_info['cname'] = cname
             col_info['ctype'] = ctype
@@ -663,7 +628,7 @@ class SourceGenerator(ColumnGenerator):
                 # Use the visit id for the visit
                 data = out_ccdVisitIds
             elif ctype == 'RA':
-                # Use the list object RAs
+                # Use the list of object RAs
                 # TODO: add a small random component.
                 data = out_obj_ras
             elif ctype == 'DEC':
@@ -672,18 +637,27 @@ class SourceGenerator(ColumnGenerator):
                 data = out_obj_decs
             elif ctype == 'CHAR(1)':
                 # Random filter
-                data = '&&&'
+                filters="ugrizy"
+                data = np.random.choice(list(filters), length)
+            elif ctype == 'INT':
+                data = self.random_col(0, 2147483647, length, integer=True)
+            elif ctype == 'TINYINT':
+                data = self.random_col(0, 127, length, integer=True)
+            elif ctype == 'BIGINT':
+                data = self.random_col(0, 2147483647*2, length, integer=True)
+            elif ctype == 'FLOAT':
+                data = self.random_col(0.0, 27.5, length)
+            elif ctype == 'FLOATE':
+                data = self.random_col(0.05, 0.5, length)
             else:
                 # Error, unknown type
                 print(f"Error, unknown type j={j} cname={cname} ctype={ctype}")
                 raise ValueError(f"unknown type j={j} cname={cname} ctype={ctype}")
             col_info['data'] = data
-            print(f"&&& {j} col_info={col_info}")
-        print(f"&&& col_dict={col_dict}")
-        exit(1)  #&&&&
 
-
-
-        return (out_objectIds, out_ccdVisitIds, psFlux, psFluxSigma, flags)
+        clist = []
+        for j in range(len(col_dict)):
+            clist.append(col_dict[j]['data'])
+        return tuple(clist)
 
 

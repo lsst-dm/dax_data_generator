@@ -199,10 +199,9 @@ class DataGenerator:
 
         # Unless the user asks for it, we don't want to write out tables that
         # were pre-generated and loaded from a file.
-        print(f"&&& tables_loaded_from_file={tables_loaded_from_file}")
         if not return_pregenerated:
             for table in tables_loaded_from_file:
-                print(f"&&& del table={table}  output_tables={output_tables}")
+                print(f"del table={table}")
                 del output_tables[table]
 
         return output_tables
@@ -264,9 +263,7 @@ class DataGenerator:
 
         for column_name, column_generator in column_generators.items():
             print(f"Working on column_name={column_name}")
-            #&&&split_column_names = column_name.split(",")
             split_column_in = column_name.split(",")
-            print(f"&&& split_column_in={split_column_in}")
             split_column_names = []
             for n in split_column_in:
                 split_column_names.append(n.split(":")[0])
