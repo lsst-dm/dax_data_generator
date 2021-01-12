@@ -1,0 +1,14 @@
+{"database":"kpm50",
+    "table":"Source",
+    "is_partitioned":1,
+    "chunk_id_key":"chunkId",
+    "sub_chunk_id_key":"subChunkId",
+    "is_director":0,
+    "director_key":"sourceId",
+    "schema":[
+     {"name": "PLACEHOLDER"},
+     {"name":"chunkId","type":"INT UNSIGNED NOT NULL"},
+     {"name":"subChunkId","type":"INT UNSIGNED NOT NULL"}
+    ],
+    "auth_key":""
+}

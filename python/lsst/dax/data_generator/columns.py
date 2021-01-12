@@ -29,8 +29,10 @@ from astropy.coordinates import SkyCoord
 __all__ = ["ColumnGenerator", "ObjIdGenerator", "FilterGenerator",
            "RaDecGenerator", "MagnitudeGenerator",
            "UniformGenerator", "PoissonGenerator",
-           "ForcedSourceGenerator",
+           "ForcedSourceGenerator", "SourceGenerator",
            "VisitIdGenerator", "mergeBlocks"]
+
+BASE_ID_NUM = 100000  # TODO: more than 100k objects in a chunk will cause issues
 
 
 def calcSeedFrom(chunk_id, seed, column_seed=0):
@@ -205,7 +207,7 @@ class SimpleBox:
 
 class ColumnGenerator(ABC):
 
-    def __call__(self, box, length, seed):
+    def __call__(self, box, length, seed, spec_cols):
         """
         Parameters
         ----------
@@ -216,6 +218,8 @@ class ColumnGenerator(ABC):
         seed : int
             Seed value for the random number generator to
             generate repeatable results.
+        spec_cols : string
+            String defining columns.
 
         Returns
         -------
@@ -250,7 +254,7 @@ class RaDecGenerator(ColumnGenerator):
             self.column_seed = 2
         self.include_err = include_err
 
-    def __call__(self, box, length, seed, edge_width=0.0, edge_only=False, unique_box_id=0, **kwargs):
+    def __call__(self, box, length, seed, spec_cols, edge_width=0.0, edge_only=False, unique_box_id=0, **kwargs):
         """
         Parameters
         ----------
@@ -295,32 +299,27 @@ class RaDecGenerator(ColumnGenerator):
 
 class ObjIdGenerator(ColumnGenerator):
 
-    def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
+    def __call__(self, box, length, seed, spec_cols, unique_box_id=0, **kwargs):
         """
         Returns
         -------
         object_id : array
             Array containing unique IDs for each object
         """
-
-        # TODO: more than 100k objects in a chunk will cause issues
-        #       Replace 100000 with max_objects_per_chunk?
-        return (unique_box_id * 100000) + np.arange(length)
+        return (unique_box_id * BASE_ID_NUM) + np.arange(length)
 
 
 class VisitIdGenerator(ColumnGenerator):
 
-    def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
+    def __call__(self, box, length, seed, spec_cols, unique_box_id=0, **kwargs):
         """
         Returns
         -------
         visit_id : array
             Array containing unique IDs for each visit
         """
-
-        # TODO: This shouldn't have the same issue as objects/chunk
-        #       but maybe replace 100000 with max_objects_per_chunk?
-        return 10000000000 + (unique_box_id * 100000) + np.arange(length)
+        # This shouldn't have the same issue as objects/chunk.
+        return 10000000000 + (unique_box_id * BASE_ID_NUM) + np.arange(length)
 
 
 class MagnitudeGenerator(ColumnGenerator):
@@ -351,7 +350,7 @@ class MagnitudeGenerator(ColumnGenerator):
         self.max_mag = max_mag
         self.column_seed = column_seed  # arbitrary, but different from other columns
 
-    def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
+    def __call__(self, box, length, seed, spec_cols, unique_box_id=0, **kwargs):
 
         np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
 
@@ -392,12 +391,10 @@ class UniformGenerator(ColumnGenerator):
         self.max_val = max_val
         self.column_seed = column_seed  # arbitrary, but different from other columns
 
-    def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
+    def __call__(self, box, length, seed, spec_cols, unique_box_id=0, **kwargs):
 
         np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
 
-        # This needs to be made row by row not column by column, as
-        # row by row results in repeatable values when doing edges first.
         columns = []
         delta_value = self.max_val - self.min_val
         for _ in range(self.n_columns):
@@ -413,7 +410,7 @@ class PoissonGenerator(ColumnGenerator):
         self.mean_value = mean_val
         self.column_seed = column_seed
 
-    def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
+    def __call__(self, box, length, seed, spec_cols, unique_box_id=0, **kwargs):
 
         np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
 
@@ -440,7 +437,7 @@ class FilterGenerator(ColumnGenerator):
         self.filters = filters
         self.column_seed = column_seed
 
-    def __call__(self, box, length, seed, unique_box_id=0, **kwargs):
+    def __call__(self, box, length, seed, spec_cols, unique_box_id=0, **kwargs):
         np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
         return np.random.choice(list(self.filters), length)
 
@@ -467,7 +464,7 @@ class ForcedSourceGenerator(ColumnGenerator):
         self.visit_radius = visit_radius
         self.column_seed = column_seed
 
-    def __call__(self, box, length, seed, prereq_row=None, prereq_tables=None, unique_box_id=0,
+    def __call__(self, box, length, seed, spec_cols, prereq_row=None, prereq_tables=None, unique_box_id=0,
                  box_center=None, edge_only=False):
         assert prereq_tables is not None, "ForcedSourceGenerator requires the Visit table."
         assert box_center is not None, "Must supply box center"
@@ -516,4 +513,136 @@ class ForcedSourceGenerator(ColumnGenerator):
         assert len(out_ccdVisitIds) == n_rows_total
 
         return (out_objectIds, out_ccdVisitIds, psFlux, psFluxSigma, flags)
+
+
+class SourceGenerator(ColumnGenerator):
+    """Class to generate Source columns from Object and Visit tables.
+
+    Parameters
+    ----------
+    filters : str
+        String where each character is a valid filter id. These
+        should probably match the values given to FilterGenerator.
+    visit_radius : float
+        Distance from the visit center within which and object is
+        considered part of that visit.
+    column_seed : int
+        Arbitrary integer that should be different from other
+        column values. Used in random number generation.
+
+    """
+
+    def __init__(self, filters="ugrizy", visit_radius=0.30, column_seed=27, target_percentage=0.30):
+        self.filters = filters
+        self.visit_radius = visit_radius
+        self.column_seed = column_seed
+        self.target_percentage = target_percentage
+
+    def random_col(self, min_val, max_val, length, integer=False):
+        if (min_val > max_val):
+            min_val, max_val = (max_val, min_val)
+        delta_value = max_val - min_val
+        col = delta_value * np.random.rand(length) + min_val
+        if integer:
+            col = col.astype(int)
+        return col
+
+    def __call__(self, box, length, seed, spec_cols, prereq_row=None, prereq_tables=None, unique_box_id=0,
+                 box_center=None, edge_only=False):
+        assert prereq_tables is not None, "SourceGenerator requires the Visit table."
+        assert box_center is not None, "Must supply box center"
+
+        np.random.seed(calcSeedFrom(unique_box_id, seed, self.column_seed))
+
+        visit_table = prereq_tables['CcdVisit']
+        object_table = prereq_tables['Object']
+
+        objects_inside_box = object_table[(object_table['psRa'] >= box.raA) &
+                                          (object_table['psRa'] < box.raB) &
+                                          (object_table['psDecl'] >= box.decA) &
+                                          (object_table['psDecl'] < box.decB)]
+        v_radius = self.visit_radius * 1.5  # Go a little bit bigger so nothing is missed.
+        min_dec = box.decA - v_radius
+        max_dec = box.decB + v_radius
+        trimmed_visit = visit_table.loc[(visit_table['decl'] >= min_dec) & (visit_table['decl'] <= max_dec)]
+        print(f"edge_only={edge_only} len trimmed={len(trimmed_visit)}  base={len(visit_table)}")
+
+        # Unlike the ForcedSource table, only some of the objects should have visits, not
+        # all of them. It would be nice to have the brightest objects get visits, but that
+        # isn't that important right now. Just trim objects from objects_inside_box until
+        # the right ratio is reached for now.
+        sel, = np.where(np.random.random(len(objects_inside_box)) > 1.0 - self.target_percentage)
+        df = objects_inside_box.iloc[sel]
+        objects_inside_box = df
+
+        visit_skycoords = SkyCoord(ra=trimmed_visit['ra'], dec=trimmed_visit['decl'], unit="deg")
+        visit_deltas = box_center.separation(visit_skycoords).degree
+        sel_matching_visits, = np.where(visit_deltas < self.visit_radius)
+        n_matching_visits = len(sel_matching_visits)
+        print(f"Found {n_matching_visits} matching visits")
+
+        out_objectIds = np.repeat(objects_inside_box['objectId'].values, n_matching_visits)
+        out_ccdVisitIds = np.tile(trimmed_visit['ccdVisitId'].iloc[sel_matching_visits].values,
+                                  len(objects_inside_box))
+        # TODO: Figure out a way to get RA and Dec column names from  RaDecGenerator
+        out_obj_ras = np.repeat(objects_inside_box['psRa'].values, n_matching_visits)
+        out_obj_decs = np.repeat(objects_inside_box['psDecl'].values, n_matching_visits)
+
+        # Use the string of Source columns to generate the needed columns.
+        # TODO: maybe allow values in parenthesis to indicate max, min, etc
+        spec_c = spec_cols.split(",")
+        col_list = []
+        for cn in spec_c:
+            cname, ctype = cn.split(":")
+            col_list.append({"cname": cname, "ctype": ctype, "data": None})
+
+        n_rows_total = n_matching_visits * len(objects_inside_box)
+        length = n_rows_total
+
+        assert len(out_objectIds) == n_rows_total
+        assert len(out_ccdVisitIds) == n_rows_total
+
+        cdata = []
+        for j, col_info in enumerate(col_list):
+            ctype = col_info['ctype']
+            cname = col_info['cname']
+            if ctype == 'SID':
+                # Use the ObjIdGenerator
+                data = (unique_box_id * BASE_ID_NUM) + np.arange(length)
+            elif ctype == 'OID':
+                # Use the object id for the corresponding object
+                data = out_objectIds
+            elif ctype == 'VID':
+                # Use the visit id for the visit
+                data = out_ccdVisitIds
+            elif ctype == 'RA':
+                # Use the list of object RAs
+                # TODO: add a small random component.
+                data = out_obj_ras
+            elif ctype == 'DEC':
+                # Use the list of object Decs
+                # TODO: add a small random component.
+                data = out_obj_decs
+            elif ctype == 'CHAR(1)':
+                # Random filter
+                data = np.random.choice(list(self.filters), length)
+            elif ctype == 'INT':
+                data = self.random_col(0, 2147483647, length, integer=True)
+            elif ctype == 'TINYINT':
+                data = self.random_col(0, 127, length, integer=True)
+            elif ctype == 'BIGINT':
+                data = self.random_col(0, 2147483647*2, length, integer=True)
+            elif ctype == 'FLOAT':
+                data = self.random_col(0.0, 27.5, length)
+            elif ctype == 'FLOATE':
+                data = self.random_col(0.05, 0.5, length)
+            else:
+                # Error, unknown type
+                print(f"Error, unknown type j={j} cname={cname} ctype={ctype}")
+                raise ValueError(f"unknown type j={j} cname={cname} ctype={ctype}")
+            col_info['data'] = data
+            cdata.append(data)
+
+        return tuple(cdata)
+
 

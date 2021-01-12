@@ -59,7 +59,7 @@ class DataGenClient:
     the server.
     """
 
-    def __init__(self, host, port, retry=False, target_dir='fakeData', chunks_per_req=5):
+    def __init__(self, host, port, retry=False, target_dir='fakeData', chunks_per_req=1):
         self._host = host
         self._port = port
         self._name = "-1"
@@ -661,6 +661,7 @@ class DataGenClient:
             The Full path to the index file created for this chunk or used to
             determine to which chunk child table rows belong.
         """
+        print(f"callPartitioner {chunk_id}, {tbl_name}, {cfg_fname}")
         st_time = self._timing_dict.start()
         # The list of --in.path files needs to be generated. It
         # needs to have all the .csv files for tblName.

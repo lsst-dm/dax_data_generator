@@ -46,7 +46,7 @@ if __name__ == "__main__":
     skip_ingest = False
     skip_schema = False
     retry = False
-    chunks_per_req = 5
+    chunks_per_req = 1
     try:
         arguments, values = getopt.getopt(argument_list, options, long_options)
         print("arguments=", arguments)

@@ -138,21 +138,23 @@ class DataGenerator:
             pandas.DataFrame.
 
         """
-        print(f"chunk_id={chunk_id} edge_width={edge_width}, edge_only={edge_only}")
+        print(f"make chunk_id={chunk_id} edge_width={edge_width}, edge_only={edge_only}")
         output_tables = {}
 
         resolved_order = self._resolve_table_order(self.spec)
-        tables_loaded_from_file = []
+        tables_loaded_from_file = set()
 
         for table in resolved_order:
+            print(f"make chunk_id={chunk_id} table={table}")
             st_time = self.timingdict.start()
             if("from_file" in self.spec[table]):
-                ffname = self.spec[table]["from_file"]
-                if self.pregen_dir:
-                    ffname = os.path.join(self.pregen_dir, ffname)
-                output_tables[table] = pd.read_csv(ffname, header=None,
-                                                   names=self.spec[table]["columns"].split(","))
-                tables_loaded_from_file.append(table)
+                if table not in tables_loaded_from_file:
+                    ffname = self.spec[table]["from_file"]
+                    if self.pregen_dir:
+                        ffname = os.path.join(self.pregen_dir, ffname)
+                    output_tables[table] = pd.read_csv(ffname, header=None,
+                                                    names=self.spec[table]["columns"].split(","))
+                    tables_loaded_from_file.add(table)
                 continue
 
             column_generators = self.spec[table]["columns"]
@@ -199,6 +201,7 @@ class DataGenerator:
         # were pre-generated and loaded from a file.
         if not return_pregenerated:
             for table in tables_loaded_from_file:
+                print(f"del table={table}")
                 del output_tables[table]
 
         return output_tables
@@ -260,12 +263,15 @@ class DataGenerator:
 
         for column_name, column_generator in column_generators.items():
             print(f"Working on column_name={column_name}")
-            split_column_names = column_name.split(",")
+            split_column_in = column_name.split(",")
+            split_column_names = []
+            for n in split_column_in:
+                split_column_names.append(n.split(":")[0])
             for name in split_column_names:
                 output_columns[name] = []
 
             block = column_generator(
-                box, row_count, self.seed,
+                box, row_count, self.seed, column_name,
                 box_center=box_center,
                 unique_box_id=unique_box_id,
                 prereq_tables=prereq_tables,
