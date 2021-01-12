@@ -532,23 +532,19 @@ class SourceGenerator(ColumnGenerator):
 
     """
 
-    def __init__(self, filters="ugrizy", visit_radius=0.30, column_seed=27):
+    def __init__(self, filters="ugrizy", visit_radius=0.30, column_seed=27, target_percentage=0.30):
         self.filters = filters
         self.visit_radius = visit_radius
         self.column_seed = column_seed
+        self.target_percentage = target_percentage
 
     def random_col(self, min_val, max_val, length, integer=False):
         if (min_val > max_val):
-            tmp = min_val
-            min_val = max_val
-            max_val = min_val
+            min_val, max_val = (max_val, min_val)
         delta_value = max_val - min_val
         col = delta_value * np.random.rand(length) + min_val
         if integer:
-            i_col = []
-            for f in col:
-                i_col.append(int(f))
-            col = np.array(i_col)
+            col = col.astype(int)
         return col
 
     def __call__(self, box, length, seed, spec_cols, prereq_row=None, prereq_tables=None, unique_box_id=0,
@@ -575,9 +571,7 @@ class SourceGenerator(ColumnGenerator):
         # all of them. It would be nice to have the brightest objects get visits, but that
         # isn't that important right now. Just trim objects from objects_inside_box until
         # the right ratio is reached for now.
-        target_percentage = 0.3  # supplied by Colin
-        df = objects_inside_box.copy()
-        sel, = np.where(np.random.random(len(objects_inside_box)) > 1.0 - target_percentage)
+        sel, = np.where(np.random.random(len(objects_inside_box)) > 1.0 - self.target_percentage)
         df = objects_inside_box.iloc[sel]
         objects_inside_box = df
 
@@ -597,16 +591,10 @@ class SourceGenerator(ColumnGenerator):
         # Use the string of Source columns to generate the needed columns.
         # TODO: maybe allow values in parenthesis to indicate max, min, etc
         spec_c = spec_cols.split(",")
-        col_dict = {}
-        indx = 0
+        col_list = []
         for cn in spec_c:
-            col_info = {}
             cname, ctype = cn.split(":")
-            col_info['cname'] = cname
-            col_info['ctype'] = ctype
-            col_info['data'] = None
-            col_dict[indx] = col_info
-            indx += 1
+            col_list.append({"cname": cname, "ctype": ctype, "data": None})
 
         n_rows_total = n_matching_visits * len(objects_inside_box)
         length = n_rows_total
@@ -614,8 +602,8 @@ class SourceGenerator(ColumnGenerator):
         assert len(out_objectIds) == n_rows_total
         assert len(out_ccdVisitIds) == n_rows_total
 
-        for j in range(len(col_dict)):
-            col_info = col_dict[j]
+        cdata = []
+        for j, col_info in enumerate(col_list):
             ctype = col_info['ctype']
             cname = col_info['cname']
             if ctype == 'SID':
@@ -637,8 +625,7 @@ class SourceGenerator(ColumnGenerator):
                 data = out_obj_decs
             elif ctype == 'CHAR(1)':
                 # Random filter
-                filters="ugrizy"
-                data = np.random.choice(list(filters), length)
+                data = np.random.choice(list(self.filters), length)
             elif ctype == 'INT':
                 data = self.random_col(0, 2147483647, length, integer=True)
             elif ctype == 'TINYINT':
@@ -654,10 +641,8 @@ class SourceGenerator(ColumnGenerator):
                 print(f"Error, unknown type j={j} cname={cname} ctype={ctype}")
                 raise ValueError(f"unknown type j={j} cname={cname} ctype={ctype}")
             col_info['data'] = data
+            cdata.append(data)
 
-        clist = []
-        for j in range(len(col_dict)):
-            clist.append(col_dict[j]['data'])
-        return tuple(clist)
+        return tuple(cdata)
 
 

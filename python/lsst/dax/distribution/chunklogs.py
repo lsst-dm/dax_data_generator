@@ -37,6 +37,7 @@ class ChunkListFile:
     def read(self):
         with open(self._fname, 'r') as list_file:
             f_raw = list_file.read()
+        print(f"chunklogs parsing file {self._fname}")
         self.parse(f_raw)
 
     def parse(self, raw, separator='\n'):
@@ -231,6 +232,7 @@ class ChunkLogs:
         if self._target_raw:
             raw_in = ChunkListFile(None)
             # Use comma for separator since this came from the command line.
+            print(f"chunklogs parsing command line {self._target_raw}")
             raw_in.parse(self._target_raw, ',')
 
         if self._target._fname:

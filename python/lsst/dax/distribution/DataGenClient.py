@@ -59,7 +59,7 @@ class DataGenClient:
     the server.
     """
 
-    def __init__(self, host, port, retry=False, target_dir='fakeData', chunks_per_req=5):
+    def __init__(self, host, port, retry=False, target_dir='fakeData', chunks_per_req=1):
         self._host = host
         self._port = port
         self._name = "-1"
