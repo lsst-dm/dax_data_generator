@@ -1,0 +1,68 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dgenclient-d
+  labels:
+    app: datagenclient-d
+spec:
+  parallelism: 60
+  template:
+    metadata:
+      labels:
+        app: datagenclient-d
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values:
+                  - lsst-qserv-db01
+                  - lsst-qserv-db02
+                  - lsst-qserv-db03
+                  - lsst-qserv-db04
+                  - lsst-qserv-db05
+                  - lsst-qserv-db06
+                  - lsst-qserv-db07
+                  - lsst-qserv-db08
+                  - lsst-qserv-db09
+                  - lsst-qserv-db10
+                  - lsst-qserv-db11
+                  - lsst-qserv-db12
+                  - lsst-qserv-db13
+                  - lsst-qserv-db14
+                  - lsst-qserv-db15
+                  - lsst-qserv-db16
+                  - lsst-qserv-db17
+                  - lsst-qserv-db18
+                  - lsst-qserv-db19
+                  - lsst-qserv-db20
+                  - lsst-qserv-db21
+                  - lsst-qserv-db22
+                  - lsst-qserv-db23
+                  - lsst-qserv-db24
+                  - lsst-qserv-db25
+                  - lsst-qserv-db26
+                  - lsst-qserv-db27
+                  - lsst-qserv-db28
+                  - lsst-qserv-db29
+                  - lsst-qserv-db30
+      tolerations:
+      - key: "dedicated"
+        operator: "Equal"
+        value: "qserv"
+        effect: "NoSchedule"
+      hostNetwork: True
+      containers:
+      - name: datagen-c
+        image: qserv/dax_data_generator:tickets-DM-27938
+        imagePullPolicy: Always
+        # "-H192.168.1.143" needs to be set to the correct computer
+        command: ["/home/qserv/dax_data_generator/scripts/run_datagenclient.sh"]
+        args: ["-Hlsst-qserv-master01.ncsa.illinois.edu", "-r"]
+        resources:
+          requests:
+            cpu: "1"
+      restartPolicy: Never

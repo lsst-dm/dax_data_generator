@@ -12,13 +12,18 @@ spec:
         app: datagenclient
     spec:
       hostNetwork: True
+      tolerations:
+      - key: "dedicated"
+        operator: "Equal"
+        value: "qserv"
+        effect: "NoSchedule"
       containers:
       - name: datagen
         image: qserv/dax_data_generator:master
         imagePullPolicy: Always
         # "-H192.168.1.143" needs to be set to the correct computer
         command: ["/home/qserv/dax_data_generator/scripts/run_datagenclient.sh"]
-        args: ["-H192.168.1.143", "-r"]
+        args: ["-H192.168.1.143", "-r", "-C2"]
         resources:
           requests:
             cpu: "1"

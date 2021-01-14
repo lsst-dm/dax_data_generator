@@ -263,6 +263,7 @@ class ChunkTracking:
                 print("ERROR Failed to start transaction ", self._db_name)
                 raise RuntimeError("ERROR failed to start transaction ", self._db_name)
             self._transaction.id = id
+            self._chunk_logs.add_transaction_started(id)
         print(f"new transaction started {self._transaction.id}")
         self._transaction_dict[self._transaction.id] = self._transaction
         print("-----------------------------------------------")
@@ -320,6 +321,7 @@ class ChunkTracking:
         success, status, content = self._ingest.endTransaction(transaction_id, abort)
         transaction.closed = True
         self._mark_chunks_completed(transaction.completed_chunks)
+        self._chunk_logs.add_transaction_completed(self._transaction.id)
         return success, status, content
 
     def _mark_chunks_completed(self, completed_chunks):
