@@ -61,7 +61,7 @@ spec:
         imagePullPolicy: Always
         # "-H192.168.1.143" needs to be set to the correct computer
         command: ["/home/qserv/dax_data_generator/scripts/run_datagenclient.sh"]
-        args: ["-Hlsst-qserv-master01.ncsa.illinois.edu", "-r"]
+        args: ["-Hlsst-qserv-master01.ncsa.illinois.edu", "-r", "-C2"]
         resources:
           requests:
             cpu: "1"
