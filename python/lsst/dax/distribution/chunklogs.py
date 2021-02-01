@@ -122,6 +122,7 @@ class ChunkListFile:
         chunk_ids : list of ints
             Chunk id numbers to add to the set and possibly append to the file.
         """
+        print(f"&&& add {self.file_wopen} {self._fname}  {chunk_ids}")
         needed = [id for id in chunk_ids if id not in self.chunk_set]
 
         self.chunk_set.update(needed)
@@ -130,6 +131,7 @@ class ChunkListFile:
         if self.file_wopen:
             with open(self._fname, 'a') as list_file:
                 list_file.write('\n' + self.toStrDsk(needed))
+                list_file.flush()
 
 
 class ChunkLogs:
@@ -175,7 +177,7 @@ class ChunkLogs:
         0 to 1000 (inclusive), 4321, and 6832.
     """
 
-    def __init__(self, target, completed=None, assigned=None, limbo=None, raw=None):
+    def __init__(self, target, completed=None, assigned=None, limbo=None, trans_start=None, trans_complete=None, raw=None):
         # Chunks that need to be created.
         self._target = ChunkListFile(target)
         # Chunks that were completed in a previous run.
@@ -184,6 +186,10 @@ class ChunkLogs:
         self._assigned = ChunkListFile(assigned)
         # Chunks where other chunks in the group did complete.
         self._limbo = ChunkListFile(limbo)
+        # List of started transactions
+        self._transactions_started = ChunkListFile(trans_start)
+        # List of completed transactions
+        self._transactions_completed = ChunkListFile(trans_complete)
         # raw text list from command line
         self._target_raw = raw
 
@@ -271,7 +277,8 @@ class ChunkLogs:
     def write(self):
         """Write the output files to disk.
         """
-        lst = [self._target, self._completed, self._assigned, self._limbo]
+        lst = [self._target, self._completed, self._assigned, self._limbo,
+               self._transactions_started, self._transactions_completed]
         for item in lst:
             item.write()
 
@@ -294,6 +301,10 @@ class ChunkLogs:
             Assigned file name
         limbo : str
             Limbo file name
+        trans_started : str
+            Transactions Started file name
+        trans_completed : str
+            Transactions Completed file name.
         """
         if path_header is None:
             path_header = ''
@@ -301,7 +312,9 @@ class ChunkLogs:
         completed = os.path.join(path_header, "completed.clg")
         assigned = os.path.join(path_header, "assigned.clg")
         limbo = os.path.join(path_header, "limbo.clg")
-        return target, completed, assigned, limbo
+        transactions_started = os.path.join(path_header, "transactions_started.clg")
+        transactions_completed = os.path.join(path_header, "transactions_completed.clg")
+        return target, completed, assigned, limbo, transactions_started, transactions_completed
 
     def createOutput(self, path_header):
         """Create an output ChunkLogs object base on this one.
@@ -325,12 +338,14 @@ class ChunkLogs:
         """
         if path_header is None:
             path_header = ''
-        targf, compf, assif, limbf = ChunkLogs.createNames(path_header)
-        logs_out = ChunkLogs(targf, compf, assif, limbf)
+        targf, compf, assif, limbf, tr_st, tr_cm = ChunkLogs.createNames(path_header)
+        logs_out = ChunkLogs(targf, compf, assif, limbf, tr_st, tr_cm)
         logs_out._target.chunk_set = self._target.chunk_set.copy()
         logs_out._completed.chunk_set = self._completed.chunk_set.copy()
         logs_out._assigned.chunk_set = self._assigned.chunk_set.copy()
         logs_out._limbo.chunk_set = self._limbo.chunk_set.copy()
+        logs_out._transactions_started.chunk_set = self._transactions_started.chunk_set.copy()
+        logs_out._transactions_completed.chunk_set = self._transactions_completed.chunk_set.copy()
         logs_out.result_set = self.result_set.copy()
         return logs_out
 
@@ -416,4 +431,30 @@ class ChunkLogs:
         These will be written to disk if the file already started.
         """
         self._limbo.add(chunk_ids)
+
+    def add_transaction_started(self, transaction_id):
+        """ Add the id to the list of started transaction ids.
+        Parameters
+        ----------
+        transaction_id : int
+            The transaction id for the started transaction.
+
+        Note
+        ----
+        These will be written to disk if the file already started.
+        """
+        self._transactions_started.add([transaction_id])
+
+    def add_transaction_completed(self, transaction_id):
+        """ Add the id to the list of completed transaction ids.
+        Parameters
+        ----------
+        transaction_id : int
+            The transaction id for the completed transaction.
+
+        Note
+        ----
+        These will be written to disk if the file already started.
+        """
+        self._transactions_completed.add([transaction_id])
 

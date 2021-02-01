@@ -313,6 +313,7 @@ class DataGenServer:
 
             # client requesting chunk list
             client_times = None
+            transaction_id = -9999999  # Obviously invalid value, must be negative.
             while self._loop and not out_of_chunks:
                 clientReqChunkCount = sv_conn.servRecvReqChunks()
                 chunksForClient, transaction_id = self._chunk_tracking.get_chunks_for_client(

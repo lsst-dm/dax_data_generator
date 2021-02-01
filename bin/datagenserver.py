@@ -125,7 +125,7 @@ def server():
         clfs = chunklogs.ChunkLogs(targetf, completedf, assignedf, limbof, raw)
     else:
         clfs = chunklogs.ChunkLogs(None, raw=raw)
-    # 0-50000 would be all chunks for stripes = 200 substripes = 5
+
     dgServ = DataGenServer(config_file_path, clfs, out_dir, skip_ingest, skip_schema, keep_csv)
     if dgServ.chunksToSendTotal() == 0:
         print("No chunks to generate, exiting.")
